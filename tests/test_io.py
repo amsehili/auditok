@@ -13,6 +13,7 @@ from auditok.io import (
     BufferAudioSource,
     check_audio_data,
     _guess_audio_format,
+    _normalize_use_channel,
     _get_audio_parameters,
     _array_to_bytes,
     _mix_audio_channels,
@@ -112,6 +113,18 @@ class TestIO(TestCase):
     )
     def test_guess_audio_format(self, fmt, filename, expected):
         result = _guess_audio_format(fmt, filename)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(
+        none=(None, 0),
+        positive_int=(1, 1),
+        negative_int=(-1, -1),
+        left=("left", 0),
+        right=("right", 1),
+        mix=("mix", "mix"),
+    )
+    def test_normalize_use_channel(self, use_channel, expected):
+        result = _normalize_use_channel(use_channel)
         self.assertEqual(result, expected)
 
     @genty_dataset(
