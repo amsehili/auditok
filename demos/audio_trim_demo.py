@@ -67,9 +67,9 @@ asource.rewind()
 validator = AudioEnergyValidator(sample_width=asource.get_sample_width(), energy_threshold=50)
 
 # Create a tokenizer with an unlimited token length and continuous silence within a token
-# Note the DROP_TRAILING_SILENCE mode that will ensure removing tailing silence
+# Note the DROP_TAILING_SILENCE mode that will ensure removing tailing silence
 trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999,
-                          max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TRAILING_SILENCE, init_min=3, init_max_silence=1)
+                          max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TAILING_SILENCE, init_min=3, init_max_silence=1)
 
 
 tokens = trimmer.tokenize(asource)

@@ -1,7 +1,7 @@
 AUDIo TOKenizer
 ===============
 
-`auditok` is an Audio Activity Detection library that wan be used with online data (i.e. microphone) or with audio files.
+`auditok` is an **Audio Activity Detection** library that can be used with online data (i.e. microphone) or with audio files.
 
 Requirements
 ------------
@@ -10,7 +10,7 @@ If installed, numpy  will be privileged for math operations on vectors.
 
 Installation
 ------------
-    pip install auditok
+    python setup.py install
 
 Demos
 -----
@@ -22,7 +22,15 @@ This code reads data from the microphone and plays back whatever it detects.
 
     python demos/echo.py 50 15
 
-   If only one argument is given it will be used for energy. Other demos are in /demos.
+   If only one argument is given it will be used for energy.
+   
+Try out this demo with an audio file (no argument is required):
+
+    python demos/audio_tokenize_demo.py
+
+Finally, this in this demo `auditok` is used to remove tailing and leading silence from an audio file:
+
+    python demos/audio_trim_demo.py
 
 Documentation
 -------------
@@ -40,4 +48,3 @@ License
 Author
 ------
 Amine Sehili (<amine.sehili@gmail.com>)
-
