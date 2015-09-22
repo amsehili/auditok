@@ -421,11 +421,11 @@ class TestStreamTokenizerModes(unittest.TestCase):
         self.assertEqual(end, 9, msg="wrong end frame for token 1, expected: 9, found: {0} ".format(end))
     
     
-    def test_DROP_TRAILING_SILENCE(self):
+    def test_DROP_TAILING_SILENCE(self):
         
         tokenizer = StreamTokenizer(self.A_validator, min_length = 5, max_length=10,
                                     max_continuous_silence=2, init_min = 3,
-                                    init_max_silence = 3, mode=StreamTokenizer.DROP_TRAILING_SILENCE)
+                                    init_max_silence = 3, mode=StreamTokenizer.DROP_TAILING_SILENCE)
         
         data_source = StringDataSource("aaAAAAAaaaaa")
         #                             ^   ^
@@ -446,11 +446,11 @@ class TestStreamTokenizerModes(unittest.TestCase):
         self.assertEqual(end, 6, msg="wrong end frame for token 1, expected: 6, found: {0} ".format(end))
         
         
-    def test_STRICT_MIN_LENGTH_and_DROP_TRAILING_SILENCE(self):
+    def test_STRICT_MIN_LENGTH_and_DROP_TAILING_SILENCE(self):
         
         tokenizer = StreamTokenizer(self.A_validator, min_length = 5, max_length=8,
                                     max_continuous_silence=3, init_min = 3,
-                                    init_max_silence = 3, mode=StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE)
+                                    init_max_silence = 3, mode=StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TAILING_SILENCE)
         
         data_source = StringDataSource("aaAAAAAAAAAAAAaa")
         #                             ^      ^

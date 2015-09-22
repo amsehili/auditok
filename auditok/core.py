@@ -12,102 +12,79 @@ __all__ = ["StreamTokenizer"]
 
 
 class StreamTokenizer():
-    
     """
     Class for stream tokenizers. It implements a 4-state automata scheme
     for interesting sub-sequences extraction.
-    """
     
-    SILENCE = 0
-    POSSIBLE_SILENCE = 1
-    POSSIBLE_NOISE = 2 
-    NOISE = 3
+    **Parameters:**
     
-    STRICT_MIN_LENGTH = 2
-    DROP_TRAILING_SILENCE = 4
+    `validator` :
+        instance of `DataValidator` that implements `is_valid` method.
     
-    def __init__(self, validator, 
-                 min_length, max_length, max_continuous_silence,
-                 init_min=0, init_max_silence=0,
-                 mode=0):
+    `min_length` : *(int)*
+        Minimum number of frames of a valid token. This includes all \
+        tolerated non valid frames within the token.
         
-        """
-        
-        Parameters
-        -----------
-        
-
-        `validator` :
-            instance of `DataValidator` that implements `is_valid` method.
-        
-        `min_length` : *(int)*
-            Minimum number of frames of a valid token. This includes all \
-            tolerated non valid frames within the token.
+    `max_length` : *(int)*
+        Maximum number of frames of a valid token. This includes all \
+        tolerated non valid frames within the token.
+    
+    `max_continuous_silence` : *(int)*
+        Maximum number of consecutive non-valid frames within a token.
+        Note that, within a valid token, there may be many tolerated \
+        *silent* regions that contain each a number of non valid frames up to \
+        `max_continuous_silence`
+    
+    `init_min` : *(int, default=0)*
+        Minimum number of consecutive valid frames that must be **initially** \
+        gathered before any sequence of non valid frames can be tolerated. This
+        option is not always needed, it can be used to drop non-valid tokens as
+        early as possible. **Default = 0** means that the option is by default 
+        ineffective. 
             
-        `max_length` : *(int)*
-            Maximum number of frames of a valid token. This includes all \
-            tolerated non valid frames within the token.
+    `init_max_silence` : *(int, default=0)*
+        Maximum number of tolerated consecutive non-valid frames if the \
+        number already gathered valid frames has not yet reached 'init_min'.
+        This arguement is normally used if `init_min` is used. **Default = 0**,
+        by default this argument is not taken into consideration.
         
-        `max_continuous_silence` : *(int)*
-            Maximum number of consecutive non-valid frames within a token.
-            Note that, within a valid token, there may be many tolerated \
-            *silent* regions that contain each a number of non valid frames up to \
-            `max_continuous_silence`
+    `mode` : *(int, default=0)*
+        `mode` can be:
         
-        `init_min` : *(int, default=0)*
-            Minimum number of consecutive valid frames that must be **initially** \
-            gathered before any sequence of non valid frames can be tolerated. This
-            option is not always needed, it can be used to drop non-valid tokens as
-            early as possible. **Default = 0** means that the option is by default 
-            ineffective. 
-                
-        `init_max_silence` : *(int, default=0)*
-            Maximum number of tolerated consecutive non-valid frames if the \
-            number already gathered valid frames has not yet reached 'init_min'.
-            This arguement is normally used if `init_min` is used. **Default = 0**,
-            by default this argument is not taken into consideration.
-            
+       1. `StreamTokenizer.STRICT_MIN_LENGTH`: 
+           if token *i* is delivered because `max_length`
+           is reatched, and token *i+1* is immedialtely adjacent to
+           token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
+           at frame *k+1*) then accept toekn *i+1* only of it has a size of at
+           least `min_length`. The default behavior is to accept toekn *i+1*
+           event if it is shorter than `min_length` (given that the above conditions
+           are fullfilled of course).
+           
+        ** Example **
+           
+           In the following code, without `STRICT_MIN_LENGTH`, the 'BB' token is
+           accepted although it is shorter than `min_length` (3), because it immediatly
+           follows the latest delivered token:
+           
+            .. code:: python
         
-        keep_trailing_silence : boolean, default=False
-            Whether to keep the trailing non valid frames of a valid token
-            This seems to be particularly useful to avoid an abrupt cut-off
-            when tokenizing some kinds of signals (e.g. audio signal)
-        
-        `mode` : *(int, default=0)*
-            `mode` can be:
-            
-           1. `StreamTokenizer.STRICT_MIN_LENGTH`: if token *i* is delivered because `max_length`
-               is reatched, and token *i+1* is immedialtely adjacent to
-               token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
-               at frame *k+1*) then accept toekn *i+1* only of it has a size of at
-               least `min_length`. The default behavior is to accept toekn *i+1*
-               event if it is shorter than `min_length` (given that the above conditions
-               are fullfilled of course).
-               
-              Example
-              -------
-               
-               In the following code, without `STRICT_MIN_LENGTH`, the 'BB' token is
-               accepted although it is shorter than `min_length` (3), because it immediatly
-               follows the latest delivered token:
-               
-                #!python
                 from auditok import StreamTokenizer, StringDataSource, DataValidator
-    
+
                 class UpperCaseChecker(DataValidator):
-                    def is_valid(self, frame):
-                        return frame.isupper()
-    
+                def is_valid(self, frame):
+                     return frame.isupper()
+
                 dsource = StringDataSource("aaaAAAABBbbb")
                 tokenizer = StreamTokenizer(validator=UpperCaseChecker(), 
                             min_length=3, max_length=4, max_continuous_silence=0)
-                 
+             
                 tokenizer.tokenize(dsource)
-                
-                
+            
+            
             output:
                 
-                #!python
+            .. code:: python
+            
                 [(['A', 'A', 'A', 'A'], 3, 6), (['B', 'B'], 7, 8)]
             
             The following toknizer will however reject the 'BB' token 
@@ -117,62 +94,81 @@ class StreamTokenizer():
                             min_length=3, max_length=4, max_continuous_silence=0,
                             mode=StreamTokenizer.STRICT_MIN_LENGTH)
                 tokenizer.tokenize(dsource)
-            
-            output:
-            
-                #!python
-                [(['A', 'A', 'A', 'A'], 3, 6)]
-                
-               
-           2. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all trailing non-valid frames
-               from a token to be delivered if and only if it is not **truncated**.
-               This can be a bit tricky. A token is actually delivered if:
-               
-               a. `max_continuous_silence` is reached
-               
-               OR
-               
-               b. Its length reaches `max_length`. This is called a **truncated** token
-               
-            In the current implementation, a `StreamTokenizer`'s decision is only based on seen
-            data and on incoming data. Thus, if a token is truncated at a non-valid but tolerated
-            frame (`max_length` is reached but `max_continuous_silence` not yet) any trailing
-            silence will be kept because it can potentilly be part of valid token (if `max_length`
-            was bigger). But if `max_continuous_silence` is reched before `max_length`, the delivered
-            token will not be considered as truncted but a result of *normal* end of detection
-            (i.e. no more valid data). In that case the trailing silence can be removed if you use
-            the `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
-               
-            Take the following example:
-                
-                #!python
-                tokenizer = StreamTokenizer(validator=UpperCaseChecker(), min_length=3,
-                max_length=6, max_continuous_silence=3,
-                mode=StreamTokenizer.DROP_TRAILING_SILENCE)
-                
-                dsource = StringDataSource("aaaAAAaaaBBbbbb")
-                tokenizer.tokenize(dsource)
-                
-            output:
-            
-                #!python
-                [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B'], 9, 10)]
-                
-            The first troken is delivered with its trailing silence because it is truncated
-            while the second one has its trailing frames removed.
-            
-            Without `StreamTokenizer.DROP_TRAILING_SILENCE` the output whould be:
-                
-                #!python
-                [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B', 'b', 'b', 'b'], 9, 13)]
-
-            
-            
-           3. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`:
-               use both options. That means: first remove trailing silence, then ckeck if the
-               token still has at least a length of `min_length`.
         
-        """
+        output:
+        
+        .. code:: python
+        
+            [(['A', 'A', 'A', 'A'], 3, 6)]
+            
+           
+       2. `StreamTokenizer.DROP_TAILING_SILENCE`: drop all tailing non-valid frames
+           from a token to be delivered if and only if it is not **truncated**.
+           This can be a bit tricky. A token is actually delivered if:
+           
+           a. `max_continuous_silence` is reached
+           
+           OR
+           
+           b. Its length reaches `max_length`. This is called a **truncated** token
+           
+        In the current implementation, a `StreamTokenizer`'s decision is only based on seen
+        data and on incoming data. Thus, if a token is truncated at a non-valid but tolerated
+        frame (`max_length` is reached but `max_continuous_silence` not yet) any tailing
+        silence will be kept because it can potentilly be part of valid token (if `max_length`
+        was bigger). But if `max_continuous_silence` is reched before `max_length`, the delivered
+        token will not be considered as truncted but a result of *normal* end of detection
+        (i.e. no more valid data). In that case the tailing silence can be removed if you use
+        the `StreamTokenizer.DROP_TAILING_SILENCE` mode.
+           
+        Take the following example:
+            
+        .. code:: python
+        
+            tokenizer = StreamTokenizer(validator=UpperCaseChecker(), min_length=3,
+            max_length=6, max_continuous_silence=3,
+            mode=StreamTokenizer.DROP_TAILING_SILENCE)
+            
+            dsource = StringDataSource("aaaAAAaaaBBbbbb")
+            tokenizer.tokenize(dsource)
+            
+        output:
+        
+        .. code:: python
+        
+            [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B'], 9, 10)]
+            
+        The first troken is delivered with its tailing silence because it is truncated
+        while the second one has its tailing frames removed.
+        
+        Without `StreamTokenizer.DROP_TAILING_SILENCE` the output whould be:
+            
+        .. code:: python
+            
+            [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B', 'b', 'b', 'b'], 9, 13)]
+
+        
+        
+       3. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TAILING_SILENCE`:
+           use both options. That means: first remove tailing silence, then ckeck if the
+           token still has at least a length of `min_length`.
+        
+    """
+    
+    SILENCE = 0
+    POSSIBLE_SILENCE = 1
+    POSSIBLE_NOISE = 2 
+    NOISE = 3
+    
+    STRICT_MIN_LENGTH = 2
+    DROP_TAILING_SILENCE = 4
+    
+    def __init__(self, validator, 
+                 min_length, max_length, max_continuous_silence,
+                 init_min=0, init_max_silence=0,
+                 mode=0):
+        
+        
         
         if not isinstance(validator, DataValidator):
             raise TypeError("'validator' must be an instance of 'DataValidator'")
@@ -200,7 +196,7 @@ class StreamTokenizer():
         self._mode = None
         self.set_mode(mode)
         self._strict_min_length = (mode & self.STRICT_MIN_LENGTH) != 0
-        self._drop_trailing_silence  = (mode & self.DROP_TRAILING_SILENCE) != 0
+        self._drop_tailing_silence  = (mode & self.DROP_TAILING_SILENCE) != 0
         
         self._deliver = None
         self._tokens = None
@@ -215,34 +211,27 @@ class StreamTokenizer():
     
     def set_mode(self, mode):
         """
-        Set this tokenizer's mode.
-        
-        Paramerters
-        ------------
+        **Parameters:**
         
         `mode` : *(int)*
-           New mode, must be one of:
-           
-           a. `StreamTokenizer.STRICT_MIN_LENGTH`
-           
-           b. `StreamTokenizer.DROP_TRAILING_SILENCE`
-           
-           c. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`
-           
-           d. 0
-           
-           
-           See `StreamTokenizer.__init__` for more information about the mode.
+            New mode, must be one of:
+            
+                a. `StreamTokenizer.STRICT_MIN_LENGTH`
+                b. `StreamTokenizer.DROP_TAILING_SILENCE`
+                c. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TAILING_SILENCE`       
+                d. 0
+                   
+        See `StreamTokenizer.__init__` for more information about the mode.
         """
         
-        if not mode in [self.STRICT_MIN_LENGTH, self.DROP_TRAILING_SILENCE,
-           self.STRICT_MIN_LENGTH | self.DROP_TRAILING_SILENCE, 0]:
+        if not mode in [self.STRICT_MIN_LENGTH, self.DROP_TAILING_SILENCE,
+           self.STRICT_MIN_LENGTH | self.DROP_TAILING_SILENCE, 0]:
             
             raise ValueError("Wrong value for mode")
         
         self._mode = mode
         self._strict_min_length = (mode & self.STRICT_MIN_LENGTH) != 0
-        self._drop_trailing_silence  = (mode & self.DROP_TRAILING_SILENCE) != 0
+        self._drop_tailing_silence  = (mode & self.DROP_TAILING_SILENCE) != 0
         
     
     def get_mode(self):
@@ -250,10 +239,10 @@ class StreamTokenizer():
         Return the current mode. To check whether a specific mode is activated use
         the bitwise 'and' operator `&`. Example:
            
-            #!python
+        .. code:: python
+        
             if mode & self.STRICT_MIN_LENGTH != 0:
                 ...
-                
         """
         return self._mode
         
@@ -271,25 +260,25 @@ class StreamTokenizer():
         Read data from `data_source`, one frame a time, and process the read frames in
         order to detect sequences of frames that make up valid tokens.
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         
         `data_source` : instance of the `DataSource` class that implements a 'read' method.
-        'read' should return a slice of signal, i.e. frame (of whatever \
-        type as long as it can be processed by validator) and None if \
-        there is no more signal.
+            'read' should return a slice of signal, i.e. frame (of whatever \
+            type as long as it can be processed by validator) and None if \
+            there is no more signal.
         
         `callback` : an optional 3-argument function.
-           If a `callback` function is given, it will be called each time a valid token
-           is found.
+            If a `callback` function is given, it will be called each time a valid token
+            is found.
            
            
-        Returns
-        -------
+        **Returns:**
         
         A list of tokens if `callback` is None. Each token is tuple with the following elemnts:
         
-            #!python
+        .. code:: python
+        
             (data, start, end)
             
         where `data` is a list of read frames, `start`: index of the first frame in the
@@ -422,7 +411,7 @@ class StreamTokenizer():
     
     def _process_end_of_detection(self, truncated=False):
         
-        if not truncated and self._drop_trailing_silence and self._silence_length > 0:
+        if not truncated and self._drop_tailing_silence and self._silence_length > 0:
             # happens if max_continuous_silence is reached
             # or max_length is reached at a silent frame
             self._data = self._data[0: - self._silence_length]

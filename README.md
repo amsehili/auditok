@@ -15,6 +15,7 @@ Installation
 Demos
 -----
 This code reads data from the microphone and plays back whatever it detects.
+
     python demos/echo.py
 
 `echo.py` accepts two arguments: energy threshold (default=45) and duration in seconds (default=10):

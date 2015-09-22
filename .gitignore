@@ -1,2 +1,11 @@
-pdoc/
+web/
 *pyc
+auditok/__pycache__
+.*.swp
+tags
+build
+dist
+MANIFEST.in
+*~
+.pydevproject
+.project

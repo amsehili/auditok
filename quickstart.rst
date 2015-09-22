@@ -3,6 +3,9 @@
 auditok, an AUDIo TOKenization module
 =====================================
 
+.. contents:: `Contents`
+   :depth: 3
+
 
 **auditok**  is a module that can be used as a generic tool for data
 tokenization. Although its core motivation is **Acoustic Activity 
@@ -26,10 +29,10 @@ audio window (of 10, 20 or 100 milliseconds for instance) if what
 interests you are audio regions made up of a sequence of "noisy"
 windows (whatever kind of noise: speech, baby cry, laughter, etc.).
 
-The most important component of `auditok` is the `StreamTokenizer` class.
-An instance of this class encapsulates a `DataValidator` and can be 
+The most important component of `auditok` is the `auditok.core.StreamTokenizer`
+class. An instance of this class encapsulates a `DataValidator` and can be 
 configured to detect the desired regions from a stream.
-The `auditok.core.StreamTokenizer.tokenize` method accepts a `DataSource`
+The `StreamTokenizer.tokenize` method accepts a `DataSource`
 object that has a `read` method. Read data can be of any type accepted
 by the `validator`.
 
@@ -48,14 +51,10 @@ The `AudioDataSource` class inherits from `DataSource` and supplies
 a higher abstraction level than `AudioSource` thanks to a bunch of
 handy features:
 
-- Define a fixed-length of block_size (i.e. analysis window)
-- Allow overlap between two consecutive analysis windows (hop_size < block_size).
-   This can be very important if your validator use the **spectral** 
-   information of audio data instead of raw audio samples.
-- Limit the amount (i.e. duration) of read data (very useful when reading
-   data from the microphone)
-- Record and rewind data (also useful if you read data from the microphone
-   and you want to process it many times offline and/or save it)  
+- Define a fixed-length block_size (i.e. analysis window)
+- Allow overlap between two consecutive analysis windows (hop_size < block_size). This can be very important if your validator use the **spectral** information of audio data instead of raw audio samples.
+- Limit the amount (i.e. duration) of read data (very useful when reading data from the microphone)
+- Record and rewind data (also useful if you read data from the microphone and you want to process it many times offline and/or save it)  
 
 
 Last but not least, the current version has only one audio window validator based on
@@ -81,6 +80,7 @@ silent frames.
 
 Extract sub-sequences of consecutive upper case letters
 -------------------------------------------------------
+
 
 We want to extract sub-sequences of characters that have:
     
@@ -108,11 +108,15 @@ checked character is in upper case and `False` otherwise.
 The output is a list of two tuples, each contains the extracted sub-sequence and its
 start and end position in the original sequence respectively:
 
+
+.. code:: python
+
     
     [(['A', 'B', 'C', 'D', 'E', 'F'], 3, 8), (['G', 'H', 'I', 'J', 'K'], 11, 15)]
     
-Tolerate up to two non-valid (lower case) letter within an extracted sequence
------------------------------------------------------------------------------
+
+Tolerate up to two non-valid (lower case) letters within an extracted sequence
+------------------------------------------------------------------------------
 
 To do so, we set `max_continuous_silence` =2:
 
@@ -138,19 +142,19 @@ output:
   
     [(['A', 'B', 'C', 'D', 'b', 'b', 'E', 'F', 'c', 'G', 'H', 'I', 'd', 'd'], 3, 16), (['J', 'K', 'e', 'e'], 18, 21)]
     
-Notice the trailing lower case letters "dd" and "ee" at the end of the two
-tokens. The default behavior of `StreamTokenizer` is to keep the *trailing
+Notice the tailing lower case letters "dd" and "ee" at the end of the two
+tokens. The default behavior of `StreamTokenizer` is to keep the *tailing
 silence* if it does'nt exceed `max_continuous_silence`. This can be changed
-using the `DROP_TRAILING_SILENCE` mode (see next example).
+using the `DROP_TAILING_SILENCE` mode (see next example).
 
-Remove trailing silence
+Remove tailing silence
 -----------------------
 
-Trailing silence can be useful for many sound recognition applications, including
-speech recognition. Moreover, from the human auditory system point of view, trailing
+Tailing silence can be useful for many sound recognition applications, including
+speech recognition. Moreover, from the human auditory system point of view, tailing
 low energy signal helps removing abrupt signal cuts.
 
-If you want to remove it anyway, you can do it by setting `mode` to `StreamTokenizer.DROP_TRAILING_SILENCE`:
+If you want to remove it anyway, you can do it by setting `mode` to `StreamTokenizer.DROP_TAILING_SILENCE`:
 
 .. code:: python
 
@@ -163,7 +167,7 @@ If you want to remove it anyway, you can do it by setting `mode` to `StreamToken
     dsource = StringDataSource("aaaABCDbbEFcGHIdddJKee")
     tokenizer = StreamTokenizer(validator=UpperCaseChecker(), 
                  min_length=1, max_length=9999, max_continuous_silence=2,
-                 mode=StreamTokenizer.DROP_TRAILING_SILENCE)
+                 mode=StreamTokenizer.DROP_TAILING_SILENCE)
                  
     tokenizer.tokenize(dsource)
 
@@ -174,8 +178,10 @@ output:
     [(['A', 'B', 'C', 'D', 'b', 'b', 'E', 'F', 'c', 'G', 'H', 'I'], 3, 14), (['J', 'K'], 18, 19)]
 
 
+
 Limit the length of detected tokens
 -----------------------------------
+
 
 Imagine that you just want to detect and recognize a small part of a long
 acoustic event (e.g. engine noise, water flow, etc.) and avoid that that 
@@ -211,9 +217,12 @@ The following code limits the length of a token to 5:
 
 output:
 
+.. code:: python
+
     "token = 'ABCDE', starts at 3, ends at 7"
     "token = 'FGHIJ', starts at 8, ends at 12"
     "token = 'K', starts at 13, ends at 13"
+
 
 
 Using real audio data
@@ -288,9 +297,7 @@ So if your not sure what you analysis windows in seconds is, use the following:
     # Which is the same as
     max_continuous_silence = int(0.3 / (analysis_window_ms / 1000))
     
-    
-Examples
---------
+
 
 Extract isolated phrases from an utterance
 ------------------------------------------
@@ -369,13 +376,13 @@ by tolerating a larger continuous silence within a detection:
     assert len(tokens) == 6
         
          
-Trim leading and trailing silence
+Trim leading and tailing silence
 ---------------------------------
  
 The  tokenizer in the following example is set up to remove the silence
 that precedes the first acoustic activity or follows the last activity 
 in a record. It preserves whatever it founds between the two activities.
-In other words, it removes the leading and trailing silence.
+In other words, it removes the leading and tailing silence.
 
 Sampling rate is 44100 sample per second, we'll use an analysis window of 100 ms
 (i.e. bloc_ksize == 4410)
@@ -384,7 +391,7 @@ Energy threshold is 50.
 
 The tokenizer will start accumulating windows up from the moment it encounters
 the first analysis window of an energy >= 50. ALL the following windows will be 
-kept regardless of their energy. At the end of the analysis, it will drop trailing
+kept regardless of their energy. At the end of the analysis, it will drop tailing
 windows with an energy below 50.
 
 This is an interesting example because the audio file we're analyzing contains a very
@@ -407,10 +414,9 @@ Again we can deal with this situation by using a higher energy threshold (55 for
 .. code:: python
 
     from auditok import ADSFactory, AudioEnergyValidator, StreamTokenizer, player_for, dataset
-    import pyaudio
 
     # record = True so that we'll be able to rewind the source.
-    asource = ADSFactory.ads(filename=dataset.was_der_mensch_saet_mono_44100_lead_trail_silence,
+    asource = ADSFactory.ads(filename=dataset.was_der_mensch_saet_mono_44100_lead_tail_silence,
              record=True, block_size=4410)
     asource.open()
 
@@ -431,8 +437,8 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     validator = AudioEnergyValidator(sample_width=asource.get_sample_width(), energy_threshold=50)
     
     # Create a tokenizer with an unlimited token length and continuous silence within a token
-    # Note the DROP_TRAILING_SILENCE mode that will ensure removing trailing silence
-    trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999, init_min=3, init_max_silence=1, max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TRAILING_SILENCE)
+    # Note the DROP_TAILING_SILENCE mode that will ensure removing tailing silence
+    trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999, init_min=3, init_max_silence=1, max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TAILING_SILENCE)
     
     
     tokens = trimmer.tokenize(asource)
@@ -444,7 +450,7 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     
     player = player_for(asource)
     
-    print("Playing original signal (with leading and trailing silence)...")
+    print("Playing original signal (with leading and tailing silence)...")
     player.play(original_signal)
     print("Playing trimmed signal...")
     player.play(trimmed_signal)
@@ -467,7 +473,6 @@ an over detection (echo method prints a detection where you have made no noise).
 .. code:: python
 
     from auditok import ADSFactory, AudioEnergyValidator, StreamTokenizer, player_for
-    import pyaudio
      
     # record = True so that we'll be able to rewind the source.
     # max_time = 10: read 10 seconds from the microphone
@@ -507,7 +512,7 @@ Contributing
 **auditok** is on `GitHub <https://github.com/amsehili/auditok>`_. You're welcome to fork it and contribute.
 
 
-Amine SEHILI <amine.sehili[_at_]gmail.com>
+Amine SEHILI <amine.sehili@gmail.com>
 September 2015
 
 License
