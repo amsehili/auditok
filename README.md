@@ -28,14 +28,15 @@ Try out this demo with an audio file (no argument is required):
 
     python demos/audio_tokenize_demo.py
 
-Finally, this in this demo `auditok` is used to remove tailing and leading silence from an audio file:
+Finally, in this demo `auditok` is used to remove tailing and leading silence from an audio file:
 
     python demos/audio_trim_demo.py
 
 Documentation
 -------------
 
-Check out  a quick start and the API documentation [here](http://amsehili.github.io/auditok/pdoc/)
+Check out this [quick start](https://github.com/amsehili/auditok/blob/master/quickstart.rst) or the  [API documentation](http://amsehili.github.io/auditok/pdoc/).
+
 
 Contribution
 ------------
