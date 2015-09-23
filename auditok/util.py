@@ -517,18 +517,15 @@ class AudioEnergyValidator(DataValidator):
 
         @staticmethod
         def _convert(signal, sample_width):
-            return numpy.array(numpy.frombuffer(signal, 
-                               dtype=AudioEnergyValidator._formats[sample_width]),
-                               dtype=numpy.float64)
-                               
+            return numpy.array(numpy.frombuffer(signal, dtype=AudioEnergyValidator._formats[sample_width]), dtype=numpy.float64)                             
             
         @staticmethod
-        def _siganl_energy(signal):
-                return float(numpy.dot(signal, signal)) / len(signal)
+        def _signal_energy(signal):
+            return float(numpy.dot(signal, signal)) / len(signal)
         
         @staticmethod    
         def _signal_log_energy(signal):
-            energy = AudioEnergyValidator._siganl_energy(signal)
+            energy = AudioEnergyValidator._signal_energy(signal)
             if energy <= 0:
                 return -200
             return 10. * numpy.log10(energy)
@@ -536,22 +533,22 @@ class AudioEnergyValidator(DataValidator):
     else:
         
         
-        _formats = {1: 'B' , 2: 'H', 4: 'I'}
+        _formats = {1: 'b' , 2: 'h', 4: 'i'}
         
         @staticmethod
         def _convert(signal, sample_width):
-            array("d", array(AudioEnergyValidator._formats[sample_width], signal))
+            return array("d", array(AudioEnergyValidator._formats[sample_width], signal))
         
         @staticmethod
-        def _siganl_energy(signal):
-                energy = 0.
-                for a in signal:
-                    energy += a * a
-                return energy / len(signal)
+        def _signal_energy(signal):
+            energy = 0.
+            for a in signal:
+                energy += a * a
+            return energy / len(signal)
         
         @staticmethod    
         def _signal_log_energy(signal):
-            energy = AudioEnergyValidator._siganl_energy(signal)
+            energy = AudioEnergyValidator._signal_energy(signal)
             if energy <= 0:
                 return -200
             return 10. * math.log10(energy)

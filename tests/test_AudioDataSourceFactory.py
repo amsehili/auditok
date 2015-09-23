@@ -7,7 +7,6 @@ September 2015
 import unittest
 from auditok import dataset, ADSFactory, BufferAudioSource, WaveAudioSource
 import wave
-from Crypto.Cipher.AES import block_size
 
 
 class TestADSFactoryFileAudioSource(unittest.TestCase):

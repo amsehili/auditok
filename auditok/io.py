@@ -33,8 +33,8 @@ class AudioSource():
         
         """
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         
         `sampling_rate` *(int)* :
             Number of samples per second of audio stream. Default = 16000.
@@ -76,13 +76,13 @@ class AudioSource():
         """
         Read and return `size` audio samples at most.
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         `size` : *(int)* :
             the number of samples to read.
         
-        Returns
-        --------
+        **Returns:**
+        
         Audio data as a string of length 'N' * 'smaple_width' * 'channels', where 'N' is:
         
         `size` if `size` < 'left_samples'
@@ -133,8 +133,8 @@ class Rewindable():
     def set_position(self, position):
         """ Move to an absolute position 
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         `position` : *(int)*
             number of samples to skip from the start of the stream
         """
@@ -143,8 +143,8 @@ class Rewindable():
     def set_time_position(self, time_position):
         """ Move to an absolute position expressed in seconds
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         `time_position` : *(float)*
             seconds to skip from the start of the stream
         """
@@ -209,8 +209,8 @@ class BufferAudioSource(AudioSource, Rewindable):
     def set_data(self, data_buffer):
         """ Set new data for this audio stream. 
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         `data_buffer` :
            a string buffer with a length multiple of (sample_width * channels)
         """
@@ -223,8 +223,8 @@ class BufferAudioSource(AudioSource, Rewindable):
     def append_data(self, data_buffer):
         """ Append data to this audio stream
         
-        Parameters
-        ----------
+        **Parameters:**
+        
         `data_buffer` :
            a string buffer with a length multiple of (sample_width * channels)
         
@@ -275,8 +275,8 @@ class WaveAudioSource(AudioSource):
     def __init__(self, filename):
         
         """
-        Parameters
-        ----------
+        **Parameters:**
+        
         `filename` :
             path to a valid wave file
         
@@ -413,13 +413,13 @@ def from_file(filename):
     Create an `AudioSource` object using the audio file specified by `filename`.
     The appropriate `AudioSource` class is guessed from file's extension.
     
-    Parameters
-    ----------
+    **Parameters:**
+    
     `filename` :
         path to an audio file
         
-    Returns
-    -------
+    **Returns:**
+    
     an `AudioSource` object that reads data from the given file.
     
     """
@@ -434,13 +434,13 @@ def player_for(audio_source):
     """
     Return a `PyAudioPlayer` that can play data from `audio_source`.
     
-    Parameters
-    ----------
+    **Parameters:**
+    
     `audio_source` : 
         an `AudioSource` object.
     
-    Returns
-    -------
+    **Returns:**
+    
     `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
     as `audio_source`.
     """

@@ -54,7 +54,7 @@ handy features:
 - Define a fixed-length block_size (i.e. analysis window)
 - Allow overlap between two consecutive analysis windows (hop_size < block_size). This can be very important if your validator use the **spectral** information of audio data instead of raw audio samples.
 - Limit the amount (i.e. duration) of read data (very useful when reading data from the microphone)
-- Record and rewind data (also useful if you read data from the microphone and you want to process it many times offline and/or save it)  
+- Record and rewind data (also useful if you read data from the microphone and you want to process it many times off-line and/or save it)  
 
 
 Last but not least, the current version has only one audio window validator based on
@@ -84,7 +84,7 @@ Extract sub-sequences of consecutive upper case letters
 
 We want to extract sub-sequences of characters that have:
     
-- A minimu length of 1 (`min_length` = 1)
+- A minimum length of 1 (`min_length` = 1)
 - A maximum length of 9999 (`max_length` = 9999)
 - Zero consecutive lower case characters within them (`max_continuous_silence` = 0)
 
@@ -144,7 +144,7 @@ output:
     
 Notice the tailing lower case letters "dd" and "ee" at the end of the two
 tokens. The default behavior of `StreamTokenizer` is to keep the *tailing
-silence* if it does'nt exceed `max_continuous_silence`. This can be changed
+silence* if it doesn't exceed `max_continuous_silence`. This can be changed
 using the `DROP_TAILING_SILENCE` mode (see next example).
 
 Remove tailing silence
@@ -403,7 +403,7 @@ that a valid event must start with at least 3 noisy windows, between which there
 is at most 1 silent window.
 
 Still with this configuration we can get the tokenizer detect that noise as a valid event
-(if it actually contains 3 consecutive noisy frames). To circummvent this we use an enough
+(if it actually contains 3 consecutive noisy frames). To circumvent this we use an enough
 large analysis window (here of 100 ms) to ensure that the brief noise be surrounded by a much
 longer silence and hence the energy of the overall analysis window will be below 50.
 
@@ -459,12 +459,12 @@ Again we can deal with this situation by using a higher energy threshold (55 for
 Online audio signal processing
 ------------------------------
 
-In the next example, audio data is directely acquired from the built-in microphone.
+In the next example, audio data is directly acquired from the built-in microphone.
 The `tokenize` method is passed a callback function so that audio activities
 are delivered as soon as they are detected. Each detected activity is played
 back using the build-in audio output device.
 
-As mentionned before , Signal energy is strongly related to many factors such
+As mentioned before , Signal energy is strongly related to many factors such
 microphone sensitivity, background noise (including noise inherent to the hardware), 
 distance and your operating system sound settings. Try a lower `energy_threshold`
 if your noise does not seem to be detected and a higher threshold if you notice

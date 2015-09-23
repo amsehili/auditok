@@ -490,6 +490,6 @@ from io import *
 from util import *
 import dataset
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 

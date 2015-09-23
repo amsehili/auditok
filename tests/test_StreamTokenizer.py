@@ -62,7 +62,7 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
     
     
         
-    # A valid token is considered iff the tokenizer encounters
+    # A valid token is considered as so iff the tokenizer encounters
     # at least valid frames (init_min = 3) between witch there
     # are at most 0 consecutive non valid frames (init_max_silence = 0)
     # The tokenizer will only rely on the other parameters
@@ -74,13 +74,10 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
                                      init_max_silence = 0, mode=0)
         
         
-        #data_source = StringDataSource("aAaaaAaAaaAaAaaaaaAAAAAAAAAaaaaaAAAAA")
-        #                                             ^       ^     ^   ^
-        #                                             18      26    32  36
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaAAAAAAAAAaaaaaaAAAAA")
-        #                                             ^           ^  ^   ^
-        #                                             18          30 33  37
+        #                                                 ^           ^  ^   ^
+        #                                                 18          30 33  37
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -116,8 +113,8 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaaAAAAAAAAAaaaaaaaAAAAA")
-        #                                ^          ^  ^           ^   ^   ^
-        #                                5          16 19          31  35  39
+        #                                    ^          ^  ^           ^   ^   ^
+        #                                    5          16 19          31  35  39
         tokens = tokenizer.tokenize(data_source)
                 
         self.assertEqual(len(tokens), 3, msg="wrong number of tokens, expected: 3, found: {0} ".format(len(tokens)))
@@ -166,8 +163,8 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaAAAAAAAAAaaaaaAAAAA")
-        #                            ^            ^   ^         ^
-        #                            1            14  18        28
+        #                                ^            ^   ^         ^
+        #                                1            14  18        28
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -215,8 +212,8 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaaAAAAAaaaaaaAAAAAaaAAaaAAA")
-        #                            ^              ^             ^            ^
-        #                            1              16            30           45
+        #                                ^              ^             ^            ^
+        #                                1              16            30           45
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -251,8 +248,8 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaAAAAAAAAaaaaaaAAAAAaaaaaAAaaAaa")
-        #                                             ^   ^^   ^    ^   ^     ^   ^
-        #                                             18 2223  27   32  36    42  46
+        #                                                 ^   ^^   ^    ^   ^     ^   ^
+        #                                                 18 2223  27   32  36    42  46
         
         tokens = tokenizer.tokenize(data_source)
                
@@ -309,8 +306,8 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
                                     init_max_silence = 3, mode=0)
         
         data_source = StringDataSource("aaaAAAAAaAAAAAAaaAAAAAAAAAa")
-        #                              ^   ^ ^    ^  ^       ^
-        #                              3   7 9   14 17      25
+        #                                  ^   ^ ^    ^  ^       ^
+        #                                  3   7 9   14 17      25
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -354,9 +351,9 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
                                     init_max_silence = 3, mode=0)
         
         data_source = StringDataSource("aaaAAAAAaAAAAAAaaAAAAAAAAAa")
-        #                              ^        ^^ ^ ^        ^
-        #                              3       12131517      26
-        #                                     (12 13 15 17)
+        #                                  ^        ^^ ^ ^        ^
+        #                                  3       12131517      26
+        #                                         (12 13 15 17)
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -403,8 +400,8 @@ class TestStreamTokenizerModes(unittest.TestCase):
                                     init_max_silence = 3, mode=StreamTokenizer.STRICT_MIN_LENGTH)
         
         data_source = StringDataSource("aaAAAAAAAAAAAA")
-        #                             ^      ^
-        #                             2      9
+        #                                 ^      ^
+        #                                 2      9
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -428,8 +425,8 @@ class TestStreamTokenizerModes(unittest.TestCase):
                                     init_max_silence = 3, mode=StreamTokenizer.DROP_TAILING_SILENCE)
         
         data_source = StringDataSource("aaAAAAAaaaaa")
-        #                             ^   ^
-        #                             2   6
+        #                                 ^   ^
+        #                                 2   6
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -453,8 +450,8 @@ class TestStreamTokenizerModes(unittest.TestCase):
                                     init_max_silence = 3, mode=StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TAILING_SILENCE)
         
         data_source = StringDataSource("aaAAAAAAAAAAAAaa")
-        #                             ^      ^
-        #                             2      8
+        #                                 ^      ^
+        #                                 2      8
         
         tokens = tokenizer.tokenize(data_source)
                 
@@ -489,8 +486,8 @@ class TestStreamTokenizerCallback(unittest.TestCase):
                                     init_max_silence = 3, mode=0)
         
         data_source = StringDataSource("aaAAAAAAAAAAAAa")
-        #                             ^      ^^   ^
-        #                             2      910  14
+        #                                 ^      ^^   ^
+        #                                 2      910  14
         
         tokenizer.tokenize(data_source, callback=callback)
         
