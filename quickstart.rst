@@ -385,7 +385,7 @@ in a record. It preserves whatever it founds between the two activities.
 In other words, it removes the leading and tailing silence.
 
 Sampling rate is 44100 sample per second, we'll use an analysis window of 100 ms
-(i.e. bloc_ksize == 4410)
+(i.e. block_size == 4410)
 
 Energy threshold is 50.
 
