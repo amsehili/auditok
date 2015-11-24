@@ -1,4 +1,5 @@
-AUDIo TOKenizer
+[![Build Status](https://travis-ci.org/amsehili/auditok.svg?branch=master)](https://travis-ci.org/amsehili/auditok)
+AUDIo TOKenizer 
 ===============
 
 `auditok` is an **Audio Activity Detection** library that can be used with online data (i.e. microphone) or with audio files.
