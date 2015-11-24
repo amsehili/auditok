@@ -57,9 +57,7 @@ except KeyboardInterrupt:
    asource.close()
    sys.exit(0)
 
-"""
 except Exception as e:
 
    sys.stderr.write(str(e) + "\n")
    sys.exit(1)
-"""
