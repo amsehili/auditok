@@ -1,6 +1,7 @@
 before_install:
   - sudo apt-get update --fix-missing
 install:
+  - python setup.py install
   - pip install six
 language: python
 python:
