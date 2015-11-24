@@ -2,12 +2,27 @@
 AUDIo TOKenizer 
 ===============
 
-`auditok` is an **Audio Activity Detection** library that can be used with online data (i.e. microphone) or with audio files.
+`auditok` is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
+
+The following two figures illustrate the detector output when:
+
+1. the detector tolerates phases of silence of up to 0.3 second (300 ms) within an audio activity (also referred to as acoustic event):
+![](doc/figures/figure_1.png)
+
+2. the detector splits an audio activity event into many activities if the within silence is over 0.2 second:
+![](doc/figures/figure_2.png)
+
 
 Requirements
 ------------
-`auditok` uses [PyAudio](http://people.csail.mit.edu/hubert/pyaudio/) for audio acquisition and playback.
-If installed, numpy  will be privileged for math operations on vectors.
+`auditok` can be used with standard Python! 
+However if you want more features, the following packages are needed:
+- [pydub](https://github.com/jiaaro/pydub): read audio files of popular audio formats (ogg, mp3, etc.) or extract audio from a video file
+- [PyAudio](http://people.csail.mit.edu/hubert/pyaudio/): read audio data from the microphone and play back detections
+- matplotlib: plot audio signal and detections (see figures above)
+- numpy: required by matplotlib. Also used for math operations instead of standard python if available
+- Optionnaly, you can use `sox` or `parecord` for data acquisition and feed `auditok` using a pipe.
+
 
 Installation
 ------------
