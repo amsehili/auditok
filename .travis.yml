@@ -10,4 +10,4 @@ python:
   - "3.3"
   - "3.4"
 script:
-  - python -m unittest discover tests
+  - python tests/test_AudioDataSourceFactory.py
