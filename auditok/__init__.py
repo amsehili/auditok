@@ -308,7 +308,7 @@ detect.
           break
        original_signal.append(w)
        
-    original_signal = ''.join(original_signal)
+    original_signal = b''.join(original_signal)
     
     print("Playing the original file...")
     player.play(original_signal)
@@ -316,7 +316,7 @@ detect.
     print("playing detected regions...")
     for t in tokens:
         print("Token starts at {0} and ends at {1}".format(t[1], t[2]))
-        data = ''.join(t[0])
+        data = b''.join(t[0])
         player.play(data)
         
     assert len(tokens) == 8
@@ -335,7 +335,7 @@ by tolerating a larger continuous silence within a detection:
     
     for t in tokens:
        print("Token starts at {0} and ends at {1}".format(t[1], t[2]))
-       data = ''.join(t[0])
+       data = b''.join(t[0])
        player.play(data)
     
     assert len(tokens) == 6
@@ -362,7 +362,7 @@ This is an interesting example because the audio file we're analyzing contains a
 brief noise that occurs within the leading silence. We certainly do want our tokenizer 
 to stop at this point and considers whatever it comes after as a useful signal.
 To force the tokenizer to ignore that brief event we use two other parameters `init_min`
-ans `init_max_silence`. By `init_min`=3 and `init_max_silence`=1 we tell the tokenizer
+and `init_max_silence`. By `init_min`=3 and `init_max_silence`=1 we tell the tokenizer
 that a valid event must start with at least 3 noisy windows, between which there
 is at most 1 silent window.
 
@@ -392,7 +392,7 @@ Again we can deal with this situation by using a higher energy threshold (55 for
           break
        original_signal.append(w)
     
-    original_signal = ''.join(original_signal)
+    original_signal = b''.join(original_signal)
     
     # rewind source
     asource.rewind()
@@ -411,7 +411,7 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     # Make sure we only have one token
     assert len(tokens) == 1, "Should have detected one single token"
     
-    trimmed_signal = ''.join(tokens[0][0])
+    trimmed_signal = b''.join(tokens[0][0])
     
     player = player_for(asource)
     
@@ -449,7 +449,7 @@ an over detection (echo method prints a detection where you have made no noise).
     
     def echo(data, start, end):
        print("Acoustic activity at: {0}--{1}".format(start, end))
-       player.play(''.join(data))
+       player.play(b''.join(data))
        
     asource.open()
     
@@ -484,11 +484,13 @@ License
 This package is published under GNU GPL Version 3.
 """
 
-from core import *
-from io import *
-from util import *
-import dataset
+from __future__ import absolute_import
+from .core import *
+from .io import *
+from .util import *
+from . import dataset
+from .exceptions import *
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 

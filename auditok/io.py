@@ -6,10 +6,12 @@ September 2015
 """
 
 from abc import ABCMeta, abstractmethod
+from six import with_metaclass
 import wave
+import sys
 
 __all__ = ["AudioSource", "Rewindable", "BufferAudioSource", "WaveAudioSource",
-           "PyAudioSource", "PyAudioPlayer", "from_file", "player_for"]
+           "PyAudioSource", "StdinAudioSource", "PyAudioPlayer", "from_file", "player_for"]
 
 DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
@@ -183,7 +185,7 @@ class BufferAudioSource(AudioSource, Rewindable):
         self._is_open = False
         self.rewind()
     
-    def read(self, size=None):
+    def read(self, size):
         
         if not self._is_open:
             raise IOError("Stream is not open")
@@ -369,7 +371,40 @@ class PyAudioSource(AudioSource):
         return None
     
 
-
+class StdinAudioSource(AudioSource):
+    
+    """ A class for an `AudioSource` that reads data from standard input. """
+    
+    def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
+                 sample_width = DEFAULT_SAMPLE_WIDTH,
+                 channels = DEFAULT_NB_CHANNELS):
+    
+        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        self._is_open = False
+    
+    
+    def is_open(self):
+        return self._is_open
+        
+    def open(self):
+        self._is_open = True
+    
+    def close(self):
+        self._is_open = False
+        
+    def read(self, size):
+        if not self._is_open:
+            raise IOError("Stream is not open")
+        
+        to_read = size * self.sample_width * self.channels
+        data = sys.stdin.read(to_read)
+        
+        if data is None or len(data) < 1:
+            return None
+        
+        return data
+       
+           
 class PyAudioPlayer():
     """ A class for audio playback """
     
@@ -394,7 +429,10 @@ class PyAudioPlayer():
     def play(self, data):
         if self.stream.is_stopped():
             self.stream.start_stream()
-        self.stream.write(data)
+        
+        for chunk in self._chunk_data(data):
+            self.stream.write(chunk)
+            
         self.stream.stop_stream()
     
         
@@ -403,8 +441,14 @@ class PyAudioPlayer():
             self.stream.stop_stream()
         self.stream.close()
         self._p.terminate()
-        
     
+    def _chunk_data(self, data):
+        # make audio chunks of 100 ms to allow interruption (like ctrl+c)
+        chunk_size = int((self.sampling_rate * self.sample_width * self.channels) / 10)
+        start = 0
+        while start < len(data):
+            yield data[start : start + chunk_size]
+            start += chunk_size
         
 
 def from_file(filename):

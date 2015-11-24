@@ -20,6 +20,8 @@ class StreamTokenizer():
     NOISE = 3
     
     STRICT_MIN_LENGTH = 2
+    DROP_TRAILING_SILENCE = 4
+    # alias
     DROP_TAILING_SILENCE = 4
     
     def __init__(self, validator, 

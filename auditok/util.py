@@ -6,7 +6,9 @@ September 2015
 from abc import ABCMeta, abstractmethod
 import math
 from array import array
-from io import Rewindable, from_file, BufferAudioSource, PyAudioSource
+from .io import Rewindable, from_file, BufferAudioSource, PyAudioSource
+from .exceptions import DuplicateArgument
+import sys
 
 
 try:
@@ -14,6 +16,14 @@ try:
     _WITH_NUMPY = True
 except ImportError as e:
     _WITH_NUMPY = False
+    
+try:
+    from builtins import str
+    basestring = str
+except ImportError as e:
+    if sys.version_info >= (3, 0):
+        basestring = str
+    
     
 
 __all__ = ["DataSource", "DataValidator", "StringDataSource", "ADSFactory", "AudioEnergyValidator"]
@@ -108,8 +118,93 @@ class ADSFactory:
     `ADSFactory.ads` automatically creates and return object with the desired behavior according
     to the supplied keyword arguments. 
      
-    
     """
+    
+    @staticmethod
+    def _check_normalize_args(kwargs):
+        
+        for k in kwargs:
+            if not k in ["block_dur", "hop_dur", "block_size", "hop_size", "max_time", "record",
+                         "audio_source", "filename", "data_buffer", "frames_per_buffer", "sampling_rate",
+                         "sample_width", "channels", "sr", "sw", "ch", "asrc", "fn", "fpb", "db", "mt",
+                         "rec", "bd", "hd", "bs", "hs"]:
+                raise ValueError("Invalid argument: {0}".format(k))
+        
+        if "block_dur" in kwargs and "bd" in kwargs:
+            raise DuplicateArgument("Either 'block_dur' or 'bd' must be specified, not both")
+        
+        if "hop_dur" in kwargs and "hd" in kwargs:
+            raise DuplicateArgument("Either 'hop_dur' or 'hd' must be specified, not both")
+        
+        if "block_size" in kwargs and "bs" in kwargs:
+            raise DuplicateArgument("Either 'block_size' or 'bs' must be specified, not both")
+        
+        if "hop_size" in kwargs and "hs" in kwargs:
+            raise DuplicateArgument("Either 'hop_size' or 'hs' must be specified, not both")
+        
+        if "max_time" in kwargs and "mt" in kwargs:
+            raise DuplicateArgument("Either 'max_time' or 'mt' must be specified, not both")
+        
+        if "audio_source" in kwargs and "asrc" in kwargs:
+            raise DuplicateArgument("Either 'audio_source' or 'asrc' must be specified, not both")
+        
+        if "filename" in kwargs and "fn" in kwargs:
+            raise DuplicateArgument("Either 'filename' or 'fn' must be specified, not both")
+        
+        if "data_buffer" in kwargs and "db" in kwargs:
+            raise DuplicateArgument("Either 'filename' or 'db' must be specified, not both")
+        
+        if "frames_per_buffer" in kwargs and "fbb" in kwargs:
+            raise DuplicateArgument("Either 'frames_per_buffer' or 'fpb' must be specified, not both")
+        
+        if "sampling_rate" in kwargs and "sr" in kwargs:
+            raise DuplicateArgument("Either 'sampling_rate' or 'sr' must be specified, not both")
+        
+        if "sample_width" in kwargs and "sw" in kwargs:
+            raise DuplicateArgument("Either 'sample_width' or 'sw' must be specified, not both")
+        
+        if "channels" in kwargs and "ch" in kwargs:
+            raise DuplicateArgument("Either 'channels' or 'ch' must be specified, not both")
+        
+        if "record" in kwargs and "rec" in kwargs:
+            raise DuplicateArgument("Either 'record' or 'rec' must be specified, not both")
+        
+        
+        kwargs["bd"] = kwargs.pop("block_dur", None) or kwargs.pop("bd", None)
+        kwargs["hd"] = kwargs.pop("hop_dur", None) or kwargs.pop("hd", None)
+        kwargs["bs"] = kwargs.pop("block_size", None) or kwargs.pop("bs", None)
+        kwargs["hs"] = kwargs.pop("hop_size", None) or kwargs.pop("hs", None)
+        kwargs["mt"] = kwargs.pop("max_time", None) or kwargs.pop("mt", None)
+        kwargs["asrc"] = kwargs.pop("audio_source", None) or kwargs.pop("asrc", None)
+        kwargs["fn"] = kwargs.pop("filename", None) or kwargs.pop("fn", None)
+        kwargs["db"] = kwargs.pop("data_buffer", None) or kwargs.pop("db", None)
+        
+        record = kwargs.pop("record", False)
+        if not record:
+            record = kwargs.pop("rec", False)
+            if not isinstance(record, bool):
+                raise TypeError("'record' must be a boolean")
+            
+        kwargs["rec"] = record
+        
+        # keep long names for arguments meant for BufferAudioSource and PyAudioSource
+        if "frames_per_buffer" in kwargs or "fpb" in kwargs:
+            kwargs["frames_per_buffer"] = kwargs.pop("frames_per_buffer", None) or kwargs.pop("fpb", None)
+        
+        if "sampling_rate" in kwargs or "sr" in kwargs:
+            kwargs["sampling_rate"] = kwargs.pop("sampling_rate", None) or kwargs.pop("sr", None)
+        
+        if "sample_width" in kwargs or "sw" in kwargs:    
+            kwargs["sample_width"] = kwargs.pop("sample_width", None) or kwargs.pop("sw", None)
+        
+        if "channels" in kwargs or "ch" in kwargs:
+            kwargs["channels"] = kwargs.pop("channels", None) or kwargs.pop("ch", None)
+        
+        
+        
+        
+            
+            
     
     @staticmethod
     def ads(**kwargs):
@@ -126,106 +221,115 @@ class ADSFactory:
            The returned `AudioDataSource` encapsulate an `io.PyAudioSource` object and hence 
            it accepts the next four parameters are passed to use instead of their default values.
         
-        `sampling_rate` : *(int)*
+        `sampling_rate`, `sr` : *(int)*
             number of samples per second. Default = 16000.
         
-        `sample_width` : *(int)*
+        `sample_width`, `sw` : *(int)*
             number of bytes per sample (must be in (1, 2, 4)). Default = 2
         
-        `channels` : *(int)*
+        `channels`, `ch` : *(int)*
             number of audio channels. Default = 1 (only this value is currently accepted)  
             
-        `frames_per_buffer` *(int)*:
+        `frames_per_buffer`, `fpb` : *(int)*
             number of samples of PyAudio buffer. Default = 1024.
         
-        `audio_source` : an `io.AudioSource` object
+        `audio_source`, `asrc` : an `AudioSource` object
             read data from this audio source
             
-        `filename` : *(string)*
+        `filename`, `fn` : *(string)*
             build an `io.AudioSource` object using this file (currently only wave format is supported)
             
-        `data_buffer` : *(string)*
+        `data_buffer`, `db` : *(string)*
             build an `io.BufferAudioSource` using data in `data_buffer`. If this keyword is used,
             `sampling_rate`, `sample_width` and `channels` are passed to `io.BufferAudioSource`
             constructor and used instead of default values.
             
-        `max_time` : *(float)*
-             maximum time (in seconds) to read. Default behavior: read until there is no more data
-             available. 
+        `max_time`, `mt` : *(float)*
+            maximum time (in seconds) to read. Default behavior: read until there is no more data
+            available. 
         
          
-        `record` : *(bool)*
+        `record`, `rec` : *(bool)*
             save all read data in cache. Provide a navigable object which boasts a `rewind` method.
             Default = False.
-            
-          
-         `block_size` : *(int)*
-             number of samples to read each time the `read` method is called. Default : a block size
-             that represent a window of 10ms, so for a sampling rate of 16000, the default `block_size`
-             is 160, for a rate of 44100, `block_size` = 441, etc.
         
-        `hop_size` : *(int)*
-            determines the number of overlapping samples between two consecutive read windows. For a
+        
+        `block_dur`, `bd` : *(float)*
+            processing block duration in seconds. This represents the quantity of audio data to return 
+            each time the `read` method is invoked. If `block_dur` is 0.025 (i.e. 25 ms) and the sampling
+            rate is 8000 and the sample width is 2 bytes, `read` returns a buffer of 0.025 * 8000 * 2 = 400
+            bytes at most. This parameter will be looked for (and used if available) before `block_size`.
+            If neither parameter is given, `block_dur` will be set to 0.01 second (i.e. 10 ms)
+            
+            
+        `hop_dur`, `hd` : *(float)*
+            quantity of data to skip from current processing window. if `hop_dur` is supplied then there
+            will be an overlap of `block_dur` - `hop_dur` between two adjacent processing windows. This
+            parameter will be looked for (and used if available) before `hop_size`. If neither parameter
+            is given, `hop_dur` will be set to `block_dur` which means that there will be no overlap
+            between adjacent windows.
+             
+          
+        `block_size`,`bs` : *(int)*
+            number of samples to read each time the `read` method is called. Default: a block size
+            that represents a window of 10ms, so for a sampling rate of 16000, the default `block_size`
+            is 160 samples, for a rate of 44100, `block_size` = 441 samples, etc.
+            
+        
+        `hop_size`, `hs` : *(int)*
+            determines the number of overlapping samples between two adjacent read windows. For a
             `hop_size` of value *N*, the overlap is `block_size` - *N*. Default : `hop_size` = `block_size`,
             means that there is no overlap.       
         
         """
         
-        for k in kwargs.iterkeys():
-            if not k in ["block_size", "hop_size", "max_time", "record", "audio_source",
-                         "filename", "frames_per_buffer", "data_buffer", "filename", "sampling_rate",
-                         "sample_width", "channels"]:
-                raise ValueError("Invalid argument: {0}".format(k))
         
+        ADSFactory._check_normalize_args(kwargs)
         
-        if kwargs.has_key("block_size"):
-            block_size = kwargs.pop("block_size")
-        else:
-            block_size = None
+        block_dur = kwargs.pop("bd")
+        hop_dur = kwargs.pop("hd")
+        block_size = kwargs.pop("bs")
+        hop_size = kwargs.pop("hs")
+        max_time = kwargs.pop("mt")
+        audio_source = kwargs.pop("asrc")
+        filename = kwargs.pop("fn")
+        data_buffer = kwargs.pop("db")
         
-        if kwargs.has_key("hop_size"):
-            hop_size = kwargs.pop("hop_size")
-        else:
-            hop_size = None
+        # normalize db sr, sw and ch
         
-        if kwargs.has_key("max_time"):
-            max_time = float(kwargs.pop("max_time"))
-        else:
-            max_time = None
-        
-        if kwargs.has_key("record"):
-            record = kwargs.pop("record")
-        else:
-            record = False
+        record = kwargs.pop("rec")
         
         # Case 1: an audio source is supplied
-        if kwargs.has_key("audio_source"):
-            if kwargs.has_key("filename") or kwargs.has_key("data_buffer"):
+        if audio_source is not None:
+            if (filename, data_buffer) != (None, None):
                 raise Warning("You should provide one of 'audio_source', 'filename' or 'data_buffer'\
                  keyword parameters. 'audio_source' will be used")
-            audio_source = kwargs.pop("audio_source")
-            
             
         # Case 2: a file name is supplied
-        elif kwargs.has_key("filename"):
-            if kwargs.has_key("data_buffer"):
+        elif filename is not None:
+            if data_buffer is not None:
                 raise Warning("You should provide one of 'filename' or 'data_buffer'\
                  keyword parameters. 'filename' will be used")
-            audio_source = from_file(kwargs.pop("filename"))
-            
+            audio_source = from_file(filename)
             
         # Case 3: a data_buffer is supplied 
-        elif kwargs.has_key("data_buffer"):
-            audio_source = BufferAudioSource(**kwargs)
+        elif data_buffer is not None:
+            audio_source = BufferAudioSource(data_buffer = data_buffer, **kwargs)
             
         # Case 4: try to access native audio input
         else:
             audio_source = PyAudioSource(**kwargs)
              
-        # Set default block_size to 10 ms
-        if block_size is None:
-            block_size = audio_source.get_sampling_rate() / 100
-        
+             
+        if block_dur is not None:
+            if block_size is not None:
+                raise DuplicateArgument("Either 'block_dur' or 'block_size' can be specified, not both")
+            else:
+                block_size = int(audio_source.get_sampling_rate() * block_dur)
+        elif block_size is None:
+            # Set default block_size to 10 ms
+            block_size = int(audio_source.get_sampling_rate() / 100)
+
         # Instantiate base AudioDataSource  
         ads = ADSFactory.AudioDataSource(audio_source=audio_source, block_size=block_size)
         
@@ -238,6 +342,12 @@ class ADSFactory:
             ads = ADSFactory.RecorderADS(ads=ads)
             
         # Read overlapping blocks of data
+        if hop_dur is not None:
+            if hop_size is not None:
+                raise DuplicateArgument("Either 'hop_dur' or 'hop_size' can be specified, not both")
+            else:
+                hop_size = int(audio_source.get_sampling_rate() * hop_dur)
+            
         if hop_size is not None:
             if hop_size <= 0 or  hop_size > block_size:
                 raise ValueError("hop_size must be > 0 and <= block_size")
@@ -365,7 +475,6 @@ class ADSFactory:
             #self.get_block_size = _get_block_size
             
             
-            
         def _read_first_block(self):
             # For the first call, we need an entire block of size 'block_size'
             block = self.ads.read()
@@ -477,7 +586,7 @@ class ADSFactory:
             if self._record:
                 # If has been recording, create a new BufferAudioSource
                 # from recorded data
-                dbuffer = ''.join(self._cache)
+                dbuffer = self._concatenate(self._cache)
                 asource = BufferAudioSource(dbuffer, self.get_sampling_rate(),
                                              self.get_sample_width(),
                                              self.get_channels())
@@ -503,6 +612,18 @@ class ADSFactory:
             self._record = True
             self._cache = []
             self.read = self._read_and_rec
+        
+        def _concatenate(self, data):
+            try:
+                # should always work for python 2
+                # work for python 3 ONLY if data is a list (or an iterator)
+                # whose each element is a 'bytes' objects
+                return b''.join(data)
+            except TypeError:
+                # work for 'str' in python 2 and python 3
+                return ''.join(data)
+                
+        
 
 
                 
