@@ -32,8 +32,8 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         
         
         data_source = StringDataSource("aAaaaAaAaaAaAaaaaaaaAAAAAAAA")
-        #                            ^              ^   ^      ^
-        #                            2              16  20     27
+        #                                ^              ^   ^      ^
+        #                                2              16  20     27
         tokens = tokenizer.tokenize(data_source)
                 
         self.assertEqual(len(tokens), 2, msg="wrong number of tokens, expected: 2, found: {0} ".format(len(tokens)))

@@ -6,7 +6,6 @@ September 2015
 """
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 import wave
 import sys
 

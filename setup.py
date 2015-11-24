@@ -1,3 +1,4 @@
+import sys
 import re
 import ast
 from setuptools import setup
@@ -5,9 +6,18 @@ from setuptools import setup
 
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
 
-with open('auditok/__init__.py', 'rb') as f:
-    version = str(ast.literal_eval(_version_re.search(
-        f.read().decode('utf-8')).group(1)))
+if sys.version_info >= (3, 0):
+   with open('auditok/__init__.py', 'rt') as f:
+      version = str(ast.literal_eval(_version_re.search(
+      f.read()).group(1)))
+      long_desc = open('quickstart.rst', 'rt').read() 
+
+else:
+   print("kll")
+   with open('auditok/__init__.py', 'rb') as f:
+       version = str(ast.literal_eval(_version_re.search(
+       f.read().decode('utf-8')).group(1)))
+       long_desc = open('quickstart.rst', 'rt').read().decode('utf-8')
 
 
 setup(
@@ -18,7 +28,7 @@ setup(
     author='Amine Sehili',
     author_email='amine.sehili@gmail.com',
     description='A module for Audio/Acoustic Activity Detection',
-    long_description= open('quickstart.rst').read().decode('utf-8'),
+    long_description= long_desc,
     packages=['auditok'],
     include_package_data=True,
     package_data={'auditok': ['data/*']},
@@ -49,5 +59,6 @@ setup(
         'Topic :: Multimedia :: Sound/Audio :: Analysis',
         'Topic :: Scientific/Engineering :: Information Analysis'
     ],
+    entry_points = {'console_scripts': ['auditok = auditok.cmdline:main']}
 
 )
