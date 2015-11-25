@@ -119,9 +119,9 @@ class TokenizerWorker(Worker):
                                  "audio_data" : audio_data,
                                  "start" : start,
                                  "end" : end,
-                                 "start_time" : "{:5.2f}".format(start * self.analysis_window),
-                                 "end_time" : "{:5.2f}".format((end+1) * self.analysis_window),
-                                 "duration" : "{:5.2f}".format((end - start + 1) * self.analysis_window)}
+                                 "start_time" : start * self.analysis_window,
+                                 "end_time" : (end+1) * self.analysis_window,
+                                 "duration" : (end - start + 1) * self.analysis_window}
                                 )
         
         self.ads.open()
@@ -168,7 +168,7 @@ class PlayerWorker(Worker):
                     self.player.play(audio_data)
                     if self.debug:
                         print("[PLAY]: playing detection {id} (start:{start}, end:{end}, dur:{dur})".format(id=_id, 
-                        start=start_time, end=end_time, dur=dur))
+                        start="{:5.2f}".format(start_time), end="{:5.2f}".format(end_time), dur="{:5.2f}".format(dur)))
     
     def notify(self, message):
         self.send(message)
@@ -228,7 +228,7 @@ class TokenSaverWorker(Worker):
                 end_time = message.pop("end_time", None)
                 _id = message.pop("id", None)
                 if audio_data is not None and len(audio_data) > 0:
-                    fname = self.name_format.format(N=_id, start = start_time, end = end_time)
+                    fname = self.name_format.format(N=_id, start = "{:.2f}".format(start_time), end = "{:.2f}".format(end_time))
                     try:
                         save_audio_data(audio_data, fname, filetype=self.filetype, **self.kwargs)
                         if self.debug:
@@ -481,7 +481,7 @@ def main(argv=None):
         group.add_option("-n", "--min-duration", dest="min_duration", help="Min duration of a valid audio event in seconds [default: %default]", type=float, default=0.2, metavar="FLOAT")
         group.add_option("-m", "--max-duration", dest="max_duration", help="Max duration of a valid audio event in seconds [default: %default]", type=float, default=5, metavar="FLOAT")
         group.add_option("-s", "--max-silence", dest="max_silence", help="Max duration of a consecutive silence within a valid audio event in seconds [default: %default]", type=float, default=0.3, metavar="FLOAT")
-        parser.add_option("-d", "--drop-trailing-silence", dest="drop_trailing_silence", help="Drop trailing silence from a detection [default: do not play]",  action="store_true", default=False)
+        group.add_option("-d", "--drop-trailing-silence", dest="drop_trailing_silence", help="Drop trailing silence from a detection [default: do not play]",  action="store_true", default=False)
         group.add_option("-e", "--energy-threshold", dest="energy_threshold", help="Log energy threshold for detection [default: %default]", type=float, default=45, metavar="FLOAT")
         parser.add_option_group(group)
         
@@ -501,14 +501,11 @@ def main(argv=None):
         # process options
         (opts, args) = parser.parse_args(argv)
         
-        
         if (opts.output_tokens, opts.command, opts.echo, opts.plot, opts.debug) == (None, None, False, False, False):
             # nothing to do with audio data
             sys.stderr.write("Nothing to do!\nType -h for more information\n")
             sys.exit(1)
         
-        print(opts.debug)
-            
         
         if opts.input == "-":
             asource = StdinAudioSource(sampling_rate = opts.sampling_rate,

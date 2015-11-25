@@ -19,14 +19,74 @@ Requirements
 However if you want more features, the following packages are needed:
 - [pydub](https://github.com/jiaaro/pydub): read audio files of popular audio formats (ogg, mp3, etc.) or extract audio from a video file
 - [PyAudio](http://people.csail.mit.edu/hubert/pyaudio/): read audio data from the microphone and play back detections
-- matplotlib: plot audio signal and detections (see figures above)
-- numpy: required by matplotlib. Also used for math operations instead of standard python if available
+- `matplotlib`: plot audio signal and detections (see figures above)
+- `numpy`: required by matplotlib. Also used for math operations instead of standard python if available
 - Optionnaly, you can use `sox` or `parecord` for data acquisition and feed `auditok` using a pipe.
 
 
 Installation
 ------------
     python setup.py install
+
+Command line usage:
+------------------
+
+The first thing you want to check is perhaps how `auditok` detects your voice. If you have installed `PyAudio` just run (`Ctrl-C` to stop):
+
+    auditok -D -E
+
+Option `-D` means debug, whereas `-E` stands for echo, so `auditok` plays back whatever it detects.
+
+If there are too many detections, use a higher value for energy threshold (the current version only implements a `validator` based on energy threshold. The use of spectral information is also desirable and might be part of future releases). To change the energy threshold (default: 45), use option `-e`:
+
+    auditok -D -E -e 55
+
+If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`):
+
+    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -r 16000 -i -
+
+With `-i -`,  `auditok` reads data from standard input.
+
+`rec` and `play` are just an alias for `sox`. Doing so you won't be able to play audio detections (`-E` requires `Pyaudio`). Fortunately, `auditok` gives the possibility to call any command every time it detects an activity, passing the activity as a file to the user supplied command:
+
+    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -r 16000 -C "play -q -t raw -r 16000 -c 1 -b 16 -e signed $"
+    
+The `-C` option tells `auditok` to interpret its content as a command that is run whenever `auditok` detects an audio activity, replacing the `$` by a name of a temporary file into which the activity is saved as raw audio. Here we use `play` to play the activity, giving the necessary `play` arguments for raw data.
+
+The `-C` option can be useful in many cases. Imagine a command that sends audio data over a network only if there is an audio activity and saves bandwidth during silence.
+
+### Plot signal and detections:
+
+use option `-p`. Requires `matplotlib` and `numpy`
+
+### read data from file
+
+    auditok -i input.wav ...
+
+Install `pydub` for other audio formats.
+
+### Limit the length of aquired data
+
+    auditok -M 12 ...
+
+Time is in seconds.
+
+### Save the whole acquired audio signal
+
+    auditok -O output.wav ...
+
+Install `pydub` for other audio formats.
+
+
+### Save each detection into a separate audio file
+
+    auditok -o det_{N}_{start}_{end}.wav ...
+
+You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want, they will be replaced by detection number, start time and end time respectively. Another example:
+
+    auditok -o {start}-{end}.wav ...
+    
+Install `pydub` for more audio formats.
 
 Demos
 -----
@@ -65,3 +125,4 @@ License
 Author
 ------
 Amine Sehili (<amine.sehili@gmail.com>)
+
