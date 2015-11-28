@@ -13,7 +13,6 @@ if sys.version_info >= (3, 0):
       long_desc = open('quickstart.rst', 'rt').read() 
 
 else:
-   print("kll")
    with open('auditok/__init__.py', 'rb') as f:
        version = str(ast.literal_eval(_version_re.search(
        f.read().decode('utf-8')).group(1)))

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # encoding: utf-8
 '''
-auditok.auditok -- shortdesc
+auditok.auditok -- Audio Activity Detection tool
 
-auditok.auditok is a description
+auditok.auditok is a program that can be used for Audio/Acoustic activity detection.
+It can read audio data from audio files as well as from built-in device(s) or standard input 
 
-It defines classes_and_methods
 
 @author:     Mohamed El Amine SEHILI
 
@@ -14,7 +14,7 @@ It defines classes_and_methods
 @license:    GPL v3
 
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 24 nov 2015
+@deffield    updated: 28 nov 2015
 '''
 
 import sys
@@ -26,7 +26,7 @@ import tempfile
 import wave
 import time
 import threading
-from fileinput import filename
+import logging
 
 try:
     import future
@@ -47,227 +47,25 @@ except ImportError:
 from .core import StreamTokenizer
 from .io import PyAudioSource, BufferAudioSource, StdinAudioSource, player_for
 from .util import ADSFactory, AudioEnergyValidator
+from auditok import __version__ as version
 
 __all__ = []
-__version__ = 0.1
+__version__ = version
 __date__ = '2015-11-23'
-__updated__ = '2015-11-23'
+__updated__ = '2015-11-28'
 
 DEBUG = 0
 TESTRUN = 1
 PROFILE = 0
 
+LOGGER_NAME = "AUDITOK_LOGGER"
+
 class AudioFileFormatError(Exception):
     pass
 
+class TimeFormatError(Exception):
+    pass
 
-class Worker(Thread):
-    
-    def __init__(self, timeout=0.2, debug=False):
-        self.timeout = timeout
-        self.debug = debug
-        self._inbox = Queue()
-        self._stop_request = Queue()
-        Thread.__init__(self)
-    
-    def _stop_requested(self):
-        
-        try:
-            message = self._stop_request.get_nowait()
-            if message == "stop":
-                return True
-
-        except Empty:
-            return False
-    
-    def stop(self):
-        self._stop_request.put("stop")
-        self.join()
-        
-    def send(self, message):
-        self._inbox.put(message)
-    
-    def _get_message(self):
-        try:
-            message = self._inbox.get(timeout=self.timeout)
-            return message        
-        except Empty:
-            return None
-
-
-class TokenizerWorker(Worker):
-    
-    END_OF_PROCESSING = "END_OF_PROCESSING"
-    
-    def __init__(self, ads, tokenizer, analysis_window, observers):
-        Worker.__init__(self)
-        self.ads = ads
-        self.tokenizer = tokenizer
-        self.analysis_window = analysis_window
-        self.observers = observers
-        self._inbox = Queue()
-        self.count = 0
-        
-    def run(self):
-        
-        def notify_observers(data, start, end):
-            audio_data = b''.join(data)
-            self.count += 1
-            # notify observers
-            for observer in self.observers:
-                observer.notify({"id" : self.count,
-                                 "audio_data" : audio_data,
-                                 "start" : start,
-                                 "end" : end,
-                                 "start_time" : start * self.analysis_window,
-                                 "end_time" : (end+1) * self.analysis_window,
-                                 "duration" : (end - start + 1) * self.analysis_window}
-                                )
-        
-        self.ads.open()
-        self.tokenizer.tokenize(data_source=self, callback=notify_observers)
-        for observer in self.observers:
-            observer.notify(TokenizerWorker.END_OF_PROCESSING)
-            
-    def add_observer(self, observer):
-        self.observers.append(observer)
-       
-    def remove_observer(self, observer):
-        self.observers.remove(observer)
-    
-    def read(self):
-        if self._stop_requested():
-            return None
-        else:
-            return self.ads.read()
-    
-        
-class PlayerWorker(Worker):
-    
-    def __init__(self, player, timeout=0.2, debug=False):
-        self.player = player
-        Worker.__init__(self, timeout=timeout, debug=debug)
-        
-    def run(self):
-        while True:
-            if self._stop_requested():
-                break
-            
-            message = self._get_message()
-            if message is not None:
-                if message == TokenizerWorker.END_OF_PROCESSING:
-                    break
-                
-                audio_data = message.pop("audio_data", None)
-                start_time = message.pop("start_time", None)
-                end_time = message.pop("end_time", None)
-                dur = message.pop("duration", None)
-                _id = message.pop("id", None)
-                
-                if audio_data is not None:
-                    self.player.play(audio_data)
-                    if self.debug:
-                        print("[PLAY]: playing detection {id} (start:{start}, end:{end}, dur:{dur})".format(id=_id, 
-                        start="{:5.2f}".format(start_time), end="{:5.2f}".format(end_time), dur="{:5.2f}".format(dur)))
-    
-    def notify(self, message):
-        self.send(message)
-        
-               
-class CommandLineWorker(Worker):
-    
-    def __init__(self, command, timeout=0.2, debug=False):
-        self.command = command
-        Worker.__init__(self, timeout=timeout, debug=debug)
-    
-    def run(self):
-        while True:
-            if self._stop_requested():
-                break
-            
-            message = self._get_message()
-            if message is not None:
-                if message == TokenizerWorker.END_OF_PROCESSING:
-                    break
-                
-                audio_data = message.pop("audio_data", None)
-                _id = message.pop("id", None)
-                if audio_data is not None:
-                    raw_audio_file = tempfile.NamedTemporaryFile(delete=False)
-                    raw_audio_file.write(audio_data)
-                    cmd = self.command.replace("$", raw_audio_file.name)
-                    if self.debug:
-                        print("[CMD]: (detection {id}) {cmd}".format(id=_id, cmd=cmd))
-                    os.system(cmd)
-                    os.unlink(raw_audio_file.name)
-                
-    def notify(self, message):
-        self.send(message)
-        
-
-class TokenSaverWorker(Worker):
-    
-    def __init__(self, name_format, filetype, timeout=0.2, debug=False, **kwargs):
-        self.name_format = name_format
-        self.filetype = filetype
-        self.kwargs = kwargs
-        Worker.__init__(self, timeout=timeout, debug=debug)
-    
-    def run(self):
-        while True:
-            if self._stop_requested():
-                break
-            
-            message = self._get_message()
-            if message is not None:
-                if message == TokenizerWorker.END_OF_PROCESSING:
-                    break
-                
-                audio_data = message.pop("audio_data", None)
-                start_time = message.pop("start_time", None)
-                end_time = message.pop("end_time", None)
-                _id = message.pop("id", None)
-                if audio_data is not None and len(audio_data) > 0:
-                    fname = self.name_format.format(N=_id, start = "{:.2f}".format(start_time), end = "{:.2f}".format(end_time))
-                    try:
-                        save_audio_data(audio_data, fname, filetype=self.filetype, **self.kwargs)
-                        if self.debug:
-                            print("[SAVE]: saving detection {id} to {fname}".format(id=_id, fname=fname))
-                    except Exception as e:
-                        sys.stderr.write(str(e) + "\n")
-    
-    def notify(self, message):
-        self.send(message)
-
-
-class LogWorker(Worker):
-    
-    def __init__(self, timeout=0.2):
-        self.detections = []
-        Worker.__init__(self, timeout=timeout)
-        
-    def run(self):
-        while True:
-            if self._stop_requested():
-                break
-            
-            message = self._get_message()
-            
-            if message is not None:
-                
-                if message == TokenizerWorker.END_OF_PROCESSING:
-                    break
-                
-                audio_data = message.pop("audio_data", None)
-                start = message.pop("start", None)
-                end = message.pop("end", None)
-                if audio_data is not None and len(audio_data) > 0:
-                    self.detections.append((start, end))
-    
-    def notify(self, message):
-        self.send(message)
-
-            
 def file_to_audio_source(filename, filetype=None, **kwargs):
     
     lower_fname = filename.lower()
@@ -425,7 +223,7 @@ def save_audio_data(data, filename, filetype=None, **kwargs):
         raise AudioFileFormatError("cannot write file format {0} (file name: {1})".format(filetype, filename))
 
 
-def plot_all(signal, sampling_rate, energy_as_amp, detections=[]):
+def plot_all(signal, sampling_rate, energy_as_amp, detections=[], show=True, save_as=None):
     
     import matplotlib.pyplot as plt
     import numpy as np
@@ -438,26 +236,313 @@ def plot_all(signal, sampling_rate, energy_as_amp, detections=[]):
     
     line = plt.axhline(y=energy_as_amp, lw=1, ls="--", c="r", label="Energy threshold as normalized amplitude")
     plt.plot(t, signal)
-    legend = plt.legend(["Energy threshold as normalized amplitude"], loc=1, fontsize=28)
+    legend = plt.legend(["Detection threshlod"], bbox_to_anchor=(0., 1.02, 1., .102), loc=1, fontsize=16)
     ax = plt.gca().add_artist(legend)
 
-    plt.xlabel("Time (s)", fontsize=32)
-    plt.ylabel("Amplitude (normalized)", fontsize=32)
-    plt.show()
+    plt.xlabel("Time (s)", fontsize=24)
+    plt.ylabel("Amplitude (normalized)", fontsize=24)
     
+    if save_as is not None:
+        plt.savefig(save_as, dpi=120)
+    
+    if show:
+        plt.show()
+
+
+def seconds_to_str_fromatter(_format):
+    """
+    Accepted format directives: %i %s %m %h
+    """
+    # check directives are correct 
+    
+    if _format == "%S":
+        def _fromatter(seconds):
+            return "{:.2f}".format(seconds)
+    
+    elif _format == "%I":
+        def _fromatter(seconds):
+            return "{0}".format(int(seconds * 1000))
+    
+    else:
+        _format = _format.replace("%h", "{hrs:02d}")
+        _format = _format.replace("%m", "{mins:02d}")
+        _format = _format.replace("%s", "{secs:02d}")
+        _format = _format.replace("%i", "{millis:03d}")
+        
+        try:
+            i = _format.index("%")
+            raise TimeFormatError("Unknow time format directive '{0}'".format(_format[i:i+2]))
+        except ValueError:
+            pass
+        
+        def _fromatter(seconds):
+            millis = int(seconds * 1000)
+            hrs, millis = divmod(millis, 3600000)
+            mins, millis = divmod(millis, 60000)
+            secs, millis = divmod(millis, 1000)
+            return _format.format(hrs=hrs, mins=mins, secs=secs, millis=millis)
+    
+    return _fromatter
+
+
+
+class Worker(Thread):
+    
+    def __init__(self, timeout=0.2, debug=False, logger=None):
+        self.timeout = timeout
+        self.debug = debug
+        self.logger = logger
+        
+        if self.debug and self.logger is None:
+            self.logger = logging.getLogger(LOGGER_NAME)
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler(sys.stdout)
+            self.logger.addHandler(handler)
+            
+        self._inbox = Queue()
+        self._stop_request = Queue()
+        Thread.__init__(self)
+    
+    
+    def debug_message(self, message):
+        self.logger.debug(message)
+        
+    def _stop_requested(self):
+        
+        try:
+            message = self._stop_request.get_nowait()
+            if message == "stop":
+                return True
+
+        except Empty:
+            return False
+    
+    def stop(self):
+        self._stop_request.put("stop")
+        self.join()
+        
+    def send(self, message):
+        self._inbox.put(message)
+    
+    def _get_message(self):
+        try:
+            message = self._inbox.get(timeout=self.timeout)
+            return message        
+        except Empty:
+            return None
+
+
+class TokenizerWorker(Worker):
+    
+    END_OF_PROCESSING = "END_OF_PROCESSING"
+    
+    def __init__(self, ads, tokenizer, analysis_window, observers):
+        self.ads = ads
+        self.tokenizer = tokenizer
+        self.analysis_window = analysis_window
+        self.observers = observers
+        self._inbox = Queue()
+        self.count = 0
+        Worker.__init__(self)
+        
+    def run(self):
+        
+        def notify_observers(data, start, end):
+            audio_data = b''.join(data)
+            self.count += 1
+            
+            start_time = start * self.analysis_window
+            end_time = (end+1) * self.analysis_window
+            duration = (end - start + 1) * self.analysis_window
+            
+            # notify observers
+            for observer in self.observers:
+                observer.notify({"id" : self.count,
+                                 "audio_data" : audio_data,
+                                 "start" : start,
+                                 "end" : end,
+                                 "start_time" : start_time,
+                                 "end_time" : end_time,
+                                 "duration" : duration}
+                                )
+        
+        self.ads.open()
+        self.tokenizer.tokenize(data_source=self, callback=notify_observers)
+        for observer in self.observers:
+            observer.notify(TokenizerWorker.END_OF_PROCESSING)
+            
+    def add_observer(self, observer):
+        self.observers.append(observer)
+       
+    def remove_observer(self, observer):
+        self.observers.remove(observer)
+    
+    def read(self):
+        if self._stop_requested():
+            return None
+        else:
+            return self.ads.read()
+    
+        
+class PlayerWorker(Worker):
+    
+    def __init__(self, player, timeout=0.2, debug=False, logger=None):
+        self.player = player
+        Worker.__init__(self, timeout=timeout, debug=debug, logger=logger)
+        
+    def run(self):
+        while True:
+            if self._stop_requested():
+                break
+            
+            message = self._get_message()
+            if message is not None:
+                if message == TokenizerWorker.END_OF_PROCESSING:
+                    break
+                
+                audio_data = message.pop("audio_data", None)
+                start_time = message.pop("start_time", None)
+                end_time = message.pop("end_time", None)
+                dur = message.pop("duration", None)
+                _id = message.pop("id", None)
+                
+                if audio_data is not None:
+                    if self.debug:
+                        self.debug_message("[PLAY]: Detection {id} played (start:{start}, end:{end}, dur:{dur})".format(id=_id, 
+                        start="{:5.2f}".format(start_time), end="{:5.2f}".format(end_time), dur="{:5.2f}".format(dur)))
+                    self.player.play(audio_data)
+    
+    def notify(self, message):
+        self.send(message)
+        
+               
+class CommandLineWorker(Worker):
+    
+    def __init__(self, command, timeout=0.2, debug=False, logger=None):
+        self.command = command
+        Worker.__init__(self, timeout=timeout, debug=debug, logger=logger)
+    
+    def run(self):
+        while True:
+            if self._stop_requested():
+                break
+            
+            message = self._get_message()
+            if message is not None:
+                if message == TokenizerWorker.END_OF_PROCESSING:
+                    break
+                
+                audio_data = message.pop("audio_data", None)
+                _id = message.pop("id", None)
+                if audio_data is not None:
+                    raw_audio_file = tempfile.NamedTemporaryFile(delete=False)
+                    raw_audio_file.write(audio_data)
+                    cmd = self.command.replace("$", raw_audio_file.name)
+                    if self.debug:
+                        self.debug_message("[CMD ]: Detection {id} command: {cmd}".format(id=_id, cmd=cmd))
+                    os.system(cmd)
+                    os.unlink(raw_audio_file.name)
+                
+    def notify(self, message):
+        self.send(message)
+        
+
+class TokenSaverWorker(Worker):
+    
+    def __init__(self, name_format, filetype, timeout=0.2, debug=False, logger=None, **kwargs):
+        self.name_format = name_format
+        self.filetype = filetype
+        self.kwargs = kwargs
+        Worker.__init__(self, timeout=timeout, debug=debug, logger=logger)
+    
+    def run(self):
+        while True:
+            if self._stop_requested():
+                break
+            
+            message = self._get_message()
+            if message is not None:
+                if message == TokenizerWorker.END_OF_PROCESSING:
+                    break
+                
+                audio_data = message.pop("audio_data", None)
+                start_time = message.pop("start_time", None)
+                end_time = message.pop("end_time", None)
+                _id = message.pop("id", None)
+                if audio_data is not None and len(audio_data) > 0:
+                    fname = self.name_format.format(N=_id, start = "{:.2f}".format(start_time), end = "{:.2f}".format(end_time))
+                    try:
+                        if self.debug:
+                            self.debug_message("[SAVE]: Detection {id} saved as {fname}".format(id=_id, fname=fname))
+                        save_audio_data(audio_data, fname, filetype=self.filetype, **self.kwargs)
+                    except Exception as e:
+                        sys.stderr.write(str(e) + "\n")
+    
+    def notify(self, message):
+        self.send(message)
+
+
+class LogWorker(Worker):
+    
+    def __init__(self, print_detections=False, output_format="{start} {end}",
+                 time_formatter=seconds_to_str_fromatter("%S"), timeout=0.2, debug=False, logger=None):
+        
+        self.print_detections = print_detections
+        self.output_format = output_format
+        self.time_formatter = time_formatter
+        self.detections = []
+        Worker.__init__(self, timeout=timeout, debug=debug, logger=logger)
+        
+    def run(self):
+        while True:
+            if self._stop_requested():
+                break
+            
+            message = self._get_message()
+            
+            if message is not None:
+                
+                if message == TokenizerWorker.END_OF_PROCESSING:
+                    break
+                
+                audio_data = message.pop("audio_data", None)
+                _id = message.pop("id", None)
+                start = message.pop("start", None)
+                end = message.pop("end", None)
+                start_time = message.pop("start_time", None)
+                end_time = message.pop("end_time", None)
+                if audio_data is not None and len(audio_data) > 0:
+                    
+                    if self.debug:
+                        self.debug_message("[DET ]: Detection {id} (start:{start}, end:{end})".format(id=_id, 
+                            start="{:5.2f}".format(start_time),
+                            end="{:5.2f}".format(end_time)))
+                    
+                    if self.print_detections:
+                        print(self.output_format.format(id = _id,
+                            start = self.time_formatter(start_time),
+                            end = self.time_formatter(end_time)))
+                        
+                    self.detections.append((_id, start, end, start_time, end_time))
+                   
+    
+    def notify(self, message):
+        self.send(message)
+
+
 
 def main(argv=None):
     '''Command line options.'''
 
     program_name = os.path.basename(sys.argv[0])
-    program_version = "v0.1"
+    program_version = version
     program_build_date = "%s" % __updated__
 
     program_version_string = '%%prog %s (%s)' % (program_version, program_build_date)
     #program_usage = '''usage: spam two eggs''' # optional - will be autogenerated by optparse
     program_longdesc = '''''' # optional - give further explanation about what the program does
-    program_license = "Copyright 2015 user_name (organization_name)                                            \
-                Licensed under the Apache License 2.0\nhttp://www.apache.org/licenses/LICENSE-2.0"
+    program_license = "Copyright 2015 Mohamed El Amine SEHILI                                            \
+                Licensed under the General Public License (GPL) Version 3 \nhttp://www.gnu.org/licenses/"
 
     if argv is None:
         argv = sys.argv[1:]
@@ -482,7 +567,7 @@ def main(argv=None):
         group.add_option("-m", "--max-duration", dest="max_duration", help="Max duration of a valid audio event in seconds [default: %default]", type=float, default=5, metavar="FLOAT")
         group.add_option("-s", "--max-silence", dest="max_silence", help="Max duration of a consecutive silence within a valid audio event in seconds [default: %default]", type=float, default=0.3, metavar="FLOAT")
         group.add_option("-d", "--drop-trailing-silence", dest="drop_trailing_silence", help="Drop trailing silence from a detection [default: do not play]",  action="store_true", default=False)
-        group.add_option("-e", "--energy-threshold", dest="energy_threshold", help="Log energy threshold for detection [default: %default]", type=float, default=45, metavar="FLOAT")
+        group.add_option("-e", "--energy-threshold", dest="energy_threshold", help="Log energy threshold for detection [default: %default]", type=float, default=50, metavar="FLOAT")
         parser.add_option_group(group)
         
         
@@ -494,18 +579,23 @@ def main(argv=None):
         
         parser.add_option("-C", "--command", dest="command", help="Command to call when an audio detection occurs. Use $ to represent the file name to use with the command", default=None, type=str, metavar="STRING")
         parser.add_option("-E", "--echo", dest="echo", help="Play back each detection immediately using pyaudio [default: do not play]",  action="store_true", default=False)
-        parser.add_option("-p", "--plot", dest="plot", help="Plot audio signal and detections (requires matplotlib)",  action="store_true", default=False)
-        parser.add_option("-D", "--debug", dest="debug", help="Print operations to STDOUT",  action="store_true", default=False)
+        parser.add_option("-p", "--plot", dest="plot", help="Plot and show audio signal and detections (requires matplotlib)",  action="store_true", default=False)
+        parser.add_option("", "--save-image", dest="save_image", help="Save plotted audio signal and detections as a picture or a PDF file (requires matplotlib)",  type=str, default=None, metavar="FILE")
+        parser.add_option("-D", "--debug", dest="debug", help="Print processing operations to STDOUT",  action="store_true", default=False)
+        parser.add_option("", "--debug-file", dest="debug_file", help="Print processing operations to FILE",  type=str, default=None, metavar="FILE")
+        
+        parser.add_option("-q", "--quiet", dest="quiet", help="Do not print any information about detections [default: print start an end of each detection]",  action="store_true", default=False)
+        parser.add_option("", "--printf", dest="printf", help="print detections one per line using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start} and {end}",  type=str, default="{id} {start} {end}", metavar="STRING")
+        parser.add_option("", "--time-format", dest="time_format", help="format used to print {start} and {end}. [Default= %default]. %S: absolute time in sec. %I: absolute time in ms. If at least one of (%h, %m, %s, %i) is used, convert time into hours, minutes, seconds and millis (e.g. %h:%m:%s.%i). Only required fields are printed",  type=str, default="%S", metavar="STRING")
+        
+        
+        
+        
+        
         
 
         # process options
         (opts, args) = parser.parse_args(argv)
-        
-        if (opts.output_tokens, opts.command, opts.echo, opts.plot, opts.debug) == (None, None, False, False, False):
-            # nothing to do with audio data
-            sys.stderr.write("Nothing to do!\nType -h for more information\n")
-            sys.exit(1)
-        
         
         if opts.input == "-":
             asource = StdinAudioSource(sampling_rate = opts.sampling_rate,
@@ -525,7 +615,27 @@ def main(argv=None):
                 sys.stderr.write("Cannot read data from audio device!\n")
                 sys.stderr.write("You should either install pyaudio or read data from STDIN\n")
                 sys.exit(2)
-
+               
+                
+        logger = logging.getLogger(LOGGER_NAME)
+        handler = logging.StreamHandler(sys.stdout)
+        if opts.quiet or not opts.debug:
+            # only critical messages will be printed
+            handler.setLevel(logging.CRITICAL)
+        else:
+            handler.setLevel(logging.DEBUG)
+        
+        logger.addHandler(handler)
+        
+        if opts.debug_file is not None:
+            logger.setLevel(logging.DEBUG)
+            opts.debug = True
+            handler = logging.FileHandler(opts.debug_file, "w")
+            fmt = logging.Formatter('[%(asctime)s] | %(message)s')
+            handler.setFormatter(fmt)
+            handler.setLevel(logging.DEBUG)
+            logger.addHandler(handler)
+            
         record = opts.output_main is not None or opts.plot
                         
         ads = ADSFactory.ads(audio_source = asource, block_dur = opts.analysis_window, max_time = opts.max_time, record = record)
@@ -558,10 +668,10 @@ def main(argv=None):
                 if tok_type == "": 
                     tok_type = "wav"
                 
-                token_saver = TokenSaverWorker(name_format = opts.output_tokens, filetype = tok_type,
-                                               debug = opts.debug, sr=asource.get_sampling_rate(),
-                                               sw = asource.get_sample_width(),
-                                               ch = asource.get_channels())
+                token_saver = TokenSaverWorker(name_format=opts.output_tokens, filetype=tok_type,
+                                               debug=opts.debug, logger=logger, sr=asource.get_sampling_rate(),
+                                               sw=asource.get_sample_width(),
+                                               ch=asource.get_channels())
                 observers.append(token_saver)
             
             except Exception:
@@ -571,7 +681,7 @@ def main(argv=None):
         if opts.echo:
             try:
                 player = player_for(asource)
-                player_worker = PlayerWorker(player = player, debug = opts.debug)
+                player_worker = PlayerWorker(player=player, debug=opts.debug, logger=logger)
                 observers.append(player_worker)
             except Exception:
                 sys.stderr.write("Cannot get a audio player!\n")
@@ -579,11 +689,14 @@ def main(argv=None):
                 sys.exit(2)
                 
         if opts.command is not None and len(opts.command) > 0:
-            cmd_worker = CommandLineWorker(command = opts.command, debug = opts.debug)
+            cmd_worker = CommandLineWorker(command=opts.command, debug=opts.debug, logger=logger)
             observers.append(cmd_worker)
         
-        if opts.plot:    
-            log_worker = LogWorker()
+        if not opts.quiet or opts.plot is not None or opts.save_image is not None:    
+            oformat = opts.printf.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r")
+            converter = seconds_to_str_fromatter(opts.time_format)
+            log_worker = LogWorker(print_detections = not opts.quiet, output_format=oformat,
+                                   time_formatter=converter, logger=logger, debug=opts.debug)
             observers.append(log_worker)
         
         tokenizer_worker = TokenizerWorker(ads, tokenizer, opts.analysis_window, observers)
@@ -609,15 +722,16 @@ def main(argv=None):
             ads.rewind()
             data = ads.get_audio_source().get_data_buffer()
             signal = AudioEnergyValidator._convert(data, asource.get_sample_width())
-            detections = [(det[0] * opts.analysis_window, det[1] * opts.analysis_window) for det in log_worker.detections]
+            detections = [(det[3] , det[4]) for det in log_worker.detections]
             max_amplitude = 2**(asource.get_sample_width() * 8 - 1) - 1
             energy_as_amp = np.sqrt(np.exp(opts.energy_threshold * np.log(10) / 10)) / max_amplitude
-            plot_all(signal / max_amplitude, asource.get_sampling_rate(), energy_as_amp, detections)
+            plot_all(signal / max_amplitude, asource.get_sampling_rate(), energy_as_amp, detections, show = opts.plot, save_as = opts.save_image)
+        
         
         # start observer threads
         for obs in observers:
             obs.start()
-        # start tokenization threads
+        # start tokenization thread
         tokenizer_worker.start()
         
         while True:
@@ -629,9 +743,9 @@ def main(argv=None):
             
         if opts.output_main is not None:
             _save_main_stream()
-        if opts.plot:
+        if opts.plot or opts.save_image is not None:
             _plot()
-        
+            
         return 0
             
     except KeyboardInterrupt:
@@ -643,13 +757,13 @@ def main(argv=None):
             
         if opts.output_main is not None:
             _save_main_stream()
-        if opts.plot:
+        if opts.plot or opts.save_image is not None:
             _plot()
-            
+        
         return 0
 
     except Exception as e:
-        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        sys.stderr.write(program_name + ": " + str(e) + "\n")
         sys.stderr.write("for help use -h\n")
         
         return 2
