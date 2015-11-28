@@ -9,6 +9,19 @@ AUDIo TOKenizer
 - [Installation](https://github.com/amsehili/auditok#installation)
 - [Command line usage](https://github.com/amsehili/auditok#command-line-usage)
   - [Try the detector with your voice](https://github.com/amsehili/auditok#try-the-detector-with-your-voice)
+  - [Play back detections](https://github.com/amsehili/auditok#play-back-detections)
+  - [Set detection threshold](https://github.com/amsehili/auditok#set-detection-threshold)
+  - [Set printed detection information format](https://github.com/amsehili/auditok#set-printed-detection-information-format)
+  - [Practical use case: generate a subtitles template](https://github.com/amsehili/auditok#practical-use-case-generate-a-subtitles-template)
+  - [Plot signal and detections:](https://github.com/amsehili/auditok#plot-signal-and-detections)
+  - [Save plot as image or PDF](https://github.com/amsehili/auditok#save-plot-as-image-or-pdf)
+  - [Read data from file](https://github.com/amsehili/auditok#read-data-from-file)
+  - [Limit the length of aquired/read data](https://github.com/amsehili/auditok#limit-the-length-of-aquired-data)
+  - [Save the whole acquired audio signal](https://github.com/amsehili/auditok#save-the-whole-acquired-audio-signal)
+  - [Save each detection into a separate audio file](https://github.com/amsehili/auditok#save-each-detection-into-a-separate-audio-file)
+- [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
+- [License](https://github.com/amsehili/auditok#license)
+- [uthor](https://github.com/amsehili/auditok#author)
 
 Two-figure explanation
 ----------------------
@@ -90,7 +103,7 @@ OR
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -e 55 -C "play -q -t raw -r 16000 -c 1 -b 16 -e signed $"
 
-If however you figure out that the detector is missing your some of or all audio activities, use a lower value for `e`.
+If however you figure out that the detector is missing some of or all your audio activities, use a lower value for `-e`.
 
 ### Set detection information format
 
@@ -128,7 +141,7 @@ Output:
 
 Valid time directives are: `%h` (hours) `%m` (minutes) `%s` (seconds) `%i` (milliseconds). Two other directives, `%S` (default) and `%I` can be used for absolute time in seconds and milliseconds respectively.
 
-## Practical use case: generate a subtitles template
+### Practical use case: generate a subtitles template
 
 Using `--printf ` and `--time-format`, the following command, used with an input file, will generate and **srt** file template that can be later edited a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
 
@@ -162,7 +175,7 @@ use option `-p`. Requires `matplotlib` and `numpy`.
 
     auditok ...  -p
 
-### Save plot as image
+### Save plot as image or PDF
 
     auditok ...  --save-image output.png
 
@@ -196,6 +209,24 @@ You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want
     auditok -o {start}-{end}.wav ...
     
 Install `pydub` for more audio formats.
+
+
+Setting detection parameters
+----------------------------
+
+Alongside the threshold option `-e` seen so far, a couple of other options can have a great impact on the detector behavior. These options are summarized in the following table:
+
+
+| Option | Description                                            | Unit    | Default          |
+|-----------------------------------------------------------------|---------|------------------|
+| -n     | Minimum length an accepted audio activity should have  | second  |   0.2 (200 ms)   |
+| -m     | Maximum length an accepted audio activity should reach | second  |   5.             |
+| -s     | Maximum length of a continuous silence period within   | second  |   0.3 (300 ms)   |
+|        | an accepted audio activity                             |         |                  |
+| -d     | Drop trailing silence from an accepted audio activity  | boolean |   False          |
+| -a     | Analysis window length (default value should be good)  | second  |   0.01 (10 ms)   |
+
+
 
 
 License
