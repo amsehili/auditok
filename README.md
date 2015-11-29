@@ -172,9 +172,15 @@ Output:
 ### Plot signal and detections:
 
 use option `-p`. Requires `matplotlib` and `numpy`.
+<<<<<<< HEAD
 
     auditok ...  -p
 
+=======
+
+    auditok ...  -p
+
+>>>>>>> 78ccd74544ffc6f8a251dbcdf9b7019d559a3655
 ### Save plot as image or PDF
 
     auditok ...  --save-image output.png
@@ -210,6 +216,7 @@ You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want
     
 Install `pydub` for more audio formats.
 
+<<<<<<< HEAD
 
 Setting detection parameters
 ----------------------------
@@ -226,6 +233,24 @@ Alongside the threshold option `-e` seen so far, a couple of other options can h
 | `-d`   | Drop trailing silence from an accepted audio activity | boolean |   False          |
 | `-a`   | Analysis window length (default value should be good) | second  |   0.01 (10 ms)   |
 
+=======
+
+Setting detection parameters
+----------------------------
+
+Alongside the threshold option `-e` seen so far, a couple of other options can have a great impact on the detector behavior. These options are summarized in the following table:
+
+
+| Option | Description                                           | Unit    | Default          |
+| -------|-------------------------------------------------------|---------|------------------|
+| `-n`   | Minimum length an accepted audio activity should have | second  |   0.2 (200 ms)   |
+| `-m`   | Maximum length an accepted audio activity should reach| second  |   5.             |
+| `-s`   | Maximum length of a continuous silence period within  | second  |   0.3 (300 ms)   |
+|        | an accepted audio activity                            |         |                  |
+| `-d`   | Drop trailing silence from an accepted audio activity | boolean |   False          |
+| `-a`   | Analysis window length (default value should be good) | second  |   0.01 (10 ms)   |
+
+>>>>>>> 78ccd74544ffc6f8a251dbcdf9b7019d559a3655
 
 License
 -------
