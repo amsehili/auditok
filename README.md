@@ -105,7 +105,7 @@ OR
 
 If however you figure out that the detector is missing some of or all your audio activities, use a lower value for `-e`.
 
-### Set detection information format
+### Set printed detection information format
 
 By default, the `auditok` prints the `id` `start time` `end time` of each detected activity:
 
@@ -126,7 +126,7 @@ Output:
     [4]: 7.32 to 7.82
     ...
 
-Keywords `{id}`, `{start}` and `{end}` can be placed and repeate anywhere in the text. Time is shown in seconds, if you want a more detailed time information, use `--time-format`:
+Keywords `{id}`, `{start}` and `{end}` can be placed and repeated anywhere in the text. Time is shown in seconds, if you want a more detailed time information, use `--time-format`:
 
     auditok -e 55 --printf "[{id}]: {start} to {end}" --time-format "%h:%m:%s.%i"
     
@@ -143,7 +143,7 @@ Valid time directives are: `%h` (hours) `%m` (minutes) `%s` (seconds) `%i` (mill
 
 ### Practical use case: generate a subtitles template
 
-Using `--printf ` and `--time-format`, the following command, used with an input file, will generate and **srt** file template that can be later edited a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
+Using `--printf ` and `--time-format`, the following command, used with an input audio or video file, will generate and an **srt** file template that can be later edited with a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
 
     auditok -e 55 -i input.wav -m 10 --printf "{id}\n{start} --> {end}\nPut some text here...\n" --time-format "%h:%m:%s.%i"
 
