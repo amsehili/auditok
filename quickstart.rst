@@ -142,19 +142,19 @@ output:
   
     [(['A', 'B', 'C', 'D', 'b', 'b', 'E', 'F', 'c', 'G', 'H', 'I', 'd', 'd'], 3, 16), (['J', 'K', 'e', 'e'], 18, 21)]
     
-Notice the tailing lower case letters "dd" and "ee" at the end of the two
-tokens. The default behavior of `StreamTokenizer` is to keep the *tailing
+Notice the trailing lower case letters "dd" and "ee" at the end of the two
+tokens. The default behavior of `StreamTokenizer` is to keep the *trailing
 silence* if it doesn't exceed `max_continuous_silence`. This can be changed
-using the `DROP_TAILING_SILENCE` mode (see next example).
+using the `DROP_TRAILING_SILENCE` mode (see next example).
 
-Remove tailing silence
+Remove trailing silence
 -----------------------
 
-Tailing silence can be useful for many sound recognition applications, including
-speech recognition. Moreover, from the human auditory system point of view, tailing
+Trailing silence can be useful for many sound recognition applications, including
+speech recognition. Moreover, from the human auditory system point of view, trailing
 low energy signal helps removing abrupt signal cuts.
 
-If you want to remove it anyway, you can do it by setting `mode` to `StreamTokenizer.DROP_TAILING_SILENCE`:
+If you want to remove it anyway, you can do it by setting `mode` to `StreamTokenizer.DROP_TRAILING_SILENCE`:
 
 .. code:: python
 
@@ -167,7 +167,7 @@ If you want to remove it anyway, you can do it by setting `mode` to `StreamToken
     dsource = StringDataSource("aaaABCDbbEFcGHIdddJKee")
     tokenizer = StreamTokenizer(validator=UpperCaseChecker(), 
                  min_length=1, max_length=9999, max_continuous_silence=2,
-                 mode=StreamTokenizer.DROP_TAILING_SILENCE)
+                 mode=StreamTokenizer.DROP_TRAILING_SILENCE)
                  
     tokenizer.tokenize(dsource)
 
@@ -376,13 +376,13 @@ by tolerating a larger continuous silence within a detection:
     assert len(tokens) == 6
         
          
-Trim leading and tailing silence
+Trim leading and trailing silence
 ---------------------------------
  
 The  tokenizer in the following example is set up to remove the silence
 that precedes the first acoustic activity or follows the last activity 
 in a record. It preserves whatever it founds between the two activities.
-In other words, it removes the leading and tailing silence.
+In other words, it removes the leading and trailing silence.
 
 Sampling rate is 44100 sample per second, we'll use an analysis window of 100 ms
 (i.e. block_size == 4410)
@@ -391,7 +391,7 @@ Energy threshold is 50.
 
 The tokenizer will start accumulating windows up from the moment it encounters
 the first analysis window of an energy >= 50. ALL the following windows will be 
-kept regardless of their energy. At the end of the analysis, it will drop tailing
+kept regardless of their energy. At the end of the analysis, it will drop trailing
 windows with an energy below 50.
 
 This is an interesting example because the audio file we're analyzing contains a very
@@ -416,7 +416,7 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     from auditok import ADSFactory, AudioEnergyValidator, StreamTokenizer, player_for, dataset
 
     # record = True so that we'll be able to rewind the source.
-    asource = ADSFactory.ads(filename=dataset.was_der_mensch_saet_mono_44100_lead_tail_silence,
+    asource = ADSFactory.ads(filename=dataset.was_der_mensch_saet_mono_44100_lead_trail_silence,
              record=True, block_size=4410)
     asource.open()
 
@@ -437,8 +437,8 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     validator = AudioEnergyValidator(sample_width=asource.get_sample_width(), energy_threshold=50)
     
     # Create a tokenizer with an unlimited token length and continuous silence within a token
-    # Note the DROP_TAILING_SILENCE mode that will ensure removing tailing silence
-    trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999, init_min=3, init_max_silence=1, max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TAILING_SILENCE)
+    # Note the DROP_TRAILING_SILENCE mode that will ensure removing trailing silence
+    trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999, init_min=3, init_max_silence=1, max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TRAILING_SILENCE)
     
     
     tokens = trimmer.tokenize(asource)
@@ -450,7 +450,7 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     
     player = player_for(asource)
     
-    print("Playing original signal (with leading and tailing silence)...")
+    print("Playing original signal (with leading and trailing silence)...")
     player.play(original_signal)
     print("Playing trimmed signal...")
     player.play(trimmed_signal)

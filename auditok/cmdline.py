@@ -588,11 +588,6 @@ def main(argv=None):
         parser.add_option("", "--printf", dest="printf", help="print detections one per line using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start} and {end}",  type=str, default="{id} {start} {end}", metavar="STRING")
         parser.add_option("", "--time-format", dest="time_format", help="format used to print {start} and {end}. [Default= %default]. %S: absolute time in sec. %I: absolute time in ms. If at least one of (%h, %m, %s, %i) is used, convert time into hours, minutes, seconds and millis (e.g. %h:%m:%s.%i). Only required fields are printed",  type=str, default="%S", metavar="STRING")
         
-        
-        
-        
-        
-        
 
         # process options
         (opts, args) = parser.parse_args(argv)
