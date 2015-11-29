@@ -64,7 +64,7 @@ This will print **id** **start time** and **end time** for each detected activit
     
 Note that when data is read from standard input the same audio parameters must be used for both `sox` (or any other data generation/acquisition tool) and `auditok`. The following table summarizes audio parameters.
 
-| Audio parameter | sox	option | auditok option | auditok default       |
+| Audio parameter | sox	option | auditok option | `auditok` default     |
 | --------------- |------------|----------------|-----------------------|
 | Sampling rate   |     -r     |       -r       |      16000            |
 | Sample width    |  -b (bits) |     -w (bytes) |      2                |
@@ -217,16 +217,14 @@ Setting detection parameters
 Alongside the threshold option `-e` seen so far, a couple of other options can have a great impact on the detector behavior. These options are summarized in the following table:
 
 
-| Option | Description                                            | Unit    | Default          |
-|-----------------------------------------------------------------|---------|------------------|
-| -n     | Minimum length an accepted audio activity should have  | second  |   0.2 (200 ms)   |
-| -m     | Maximum length an accepted audio activity should reach | second  |   5.             |
-| -s     | Maximum length of a continuous silence period within   | second  |   0.3 (300 ms)   |
-|        | an accepted audio activity                             |         |                  |
-| -d     | Drop trailing silence from an accepted audio activity  | boolean |   False          |
-| -a     | Analysis window length (default value should be good)  | second  |   0.01 (10 ms)   |
-
-
+| Option | Description                                           | Unit    | Default          |
+| -------|-------------------------------------------------------|---------|------------------|
+| `-n`   | Minimum length an accepted audio activity should have | second  |   0.2 (200 ms)   |
+| `-m`   | Maximum length an accepted audio activity should reach| second  |   5.             |
+| `-s`   | Maximum length of a continuous silence period within  | second  |   0.3 (300 ms)   |
+|        | an accepted audio activity                            |         |                  |
+| `-d`   | Drop trailing silence from an accepted audio activity | boolean |   False          |
+| `-a`   | Analysis window length (default value should be good) | second  |   0.01 (10 ms)   |
 
 
 License
