@@ -11,7 +11,7 @@ AUDIo TOKenizer
   - [Try the detector with your voice](https://github.com/amsehili/auditok#try-the-detector-with-your-voice)
   - [Play back detections](https://github.com/amsehili/auditok#play-back-detections)
   - [Set detection threshold](https://github.com/amsehili/auditok#set-detection-threshold)
-  - [Set printed detection information format](https://github.com/amsehili/auditok#set-printed-detection-information-format)
+  - [Set format for printed detections information](https://github.com/amsehili/auditok#set-format-for-printed-detections-information)
   - [Practical use case: generate a subtitles template](https://github.com/amsehili/auditok#practical-use-case-generate-a-subtitles-template)
   - [Plot signal and detections:](https://github.com/amsehili/auditok#plot-signal-and-detections)
   - [Save plot as image or PDF](https://github.com/amsehili/auditok#save-plot-as-image-or-pdf)
@@ -105,9 +105,9 @@ OR
 
 If however you figure out that the detector is missing some of or all your audio activities, use a lower value for `-e`.
 
-### Set printed detection information format
+### Set format for printed detections information
 
-By default, the `auditok` prints the `id` `start time` `end time` of each detected activity:
+By default, `auditok` prints the `id` `start time` `end time` of each detected activity:
 
     1 1.87 2.67
     2 3.05 3.73
