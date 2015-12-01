@@ -23,7 +23,6 @@ try:
    tokens = tokenizer.tokenize(asource)
 
    # Play detected regions back
-
    player = player_for(asource)
 
    # Rewind and read the whole signal

@@ -236,7 +236,7 @@ def plot_all(signal, sampling_rate, energy_as_amp, detections=[], show=True, sav
     
     line = plt.axhline(y=energy_as_amp, lw=1, ls="--", c="r", label="Energy threshold as normalized amplitude")
     plt.plot(t, signal)
-    legend = plt.legend(["Detection threshlod"], bbox_to_anchor=(0., 1.02, 1., .102), loc=1, fontsize=16)
+    legend = plt.legend(["Detection threshold"], bbox_to_anchor=(0., 1.02, 1., .102), loc=1, fontsize=16)
     ax = plt.gca().add_artist(legend)
 
     plt.xlabel("Time (s)", fontsize=24)

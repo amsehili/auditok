@@ -16,7 +16,7 @@ else:
    with open('auditok/__init__.py', 'rb') as f:
        version = str(ast.literal_eval(_version_re.search(
        f.read().decode('utf-8')).group(1)))
-       long_desc = open('quickstart.rst', 'rt').read().decode('utf-8')
+       long_desc = open('doc/index.rst', 'rt').read().decode('utf-8')
 
 
 setup(

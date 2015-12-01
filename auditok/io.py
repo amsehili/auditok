@@ -1,8 +1,27 @@
 """
 Module for low-level audio input-output operations. 
 
-September 2015
-@author: Amine SEHILI <amine.sehili@gmail.com>
+Class summary
+=============
+
+.. autosummary::
+
+        AudioSource
+        Rewindable
+        BufferAudioSource
+        WaveAudioSource
+        PyAudioSource
+        StdinAudioSource
+        PyAudioPlayer
+        
+
+Function summary
+================
+
+.. autosummary::
+
+        from_file
+        player_for
 """
 
 from abc import ABCMeta, abstractmethod
@@ -18,38 +37,32 @@ DEFAULT_NB_CHANNELS = 1
 
 
 class AudioSource():
-    __metaclass__ = ABCMeta
-    
     """ 
-    Base class for audio source.
+    Base class for audio source objects.
         
     Subclasses should implement methods to open/close and audio stream 
     and read the desired amount of audio samples.
-         
+    
+    :Parameters:
+        
+        `sampling_rate` : int
+            Number of samples per second of audio stream. Default = 16000.
+        
+        `sample_width` : int
+            Size in bytes of one audio sample. Possible values : 1, 2, 4.
+            Default = 2.
+            
+        `channels` : int
+            Number of channels of audio stream. The current version supports
+            only mono audio streams (i.e. one channel).
     """
+    
+    __metaclass__ = ABCMeta
 
     def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
                  sample_width = DEFAULT_SAMPLE_WIDTH,
                  channels = DEFAULT_NB_CHANNELS):
-        
-        """
-        
-        **Parameters:**
-        
-        
-        `sampling_rate` *(int)* :
-            Number of samples per second of audio stream. Default = 16000.
-        
-        `sample_width` *(int)* :
-            Size in bytes of one audio sample. Possible values : 1, 2, 4.
-            Default = 2.
-            
-        `channels` *(int)* :
-            Number of channels of audio stream. The current version supports
-            only mono audio streams (i.e. one channel).
-        
-        """
-        
+  
         if not sample_width in (1, 2, 4):
             raise ValueError("Sample width must be one of: 1, 2 or 4 (bytes)")
         
@@ -77,18 +90,18 @@ class AudioSource():
         """
         Read and return `size` audio samples at most.
         
-        **Parameters:**
+        :Parameters:
         
-        `size` : *(int)* :
-            the number of samples to read.
-        
-        **Returns:**
-        
-        Audio data as a string of length 'N' * 'smaple_width' * 'channels', where 'N' is:
-        
-        `size` if `size` < 'left_samples'
-        
-        'left_samples' if `size` > 'left_samples' 
+            `size` : int
+                the number of samples to read.
+            
+        :Returns:
+            
+            Audio data as a string of length 'N' * 'smaple_width' * 'channels', where 'N' is:
+            
+            - `size` if `size` < 'left_samples'
+            
+            - 'left_samples' if `size` > 'left_samples' 
         
         """ 
     
@@ -107,15 +120,14 @@ class AudioSource():
 
 
 class Rewindable():
-    __metaclass__ = ABCMeta
-    
     """
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
     audio stream as well as method to move to an absolute audio position
     expressed in time or in number of samples. 
-    
     """
+    
+    __metaclass__ = ABCMeta
     
     @abstractmethod
     def rewind(self):
@@ -134,30 +146,29 @@ class Rewindable():
     def set_position(self, position):
         """ Move to an absolute position 
         
-        **Parameters:**
+        :Parameters:
         
-        `position` : *(int)*
-            number of samples to skip from the start of the stream
+            `position` : int
+                number of samples to skip from the start of the stream
         """
     
     @abstractmethod
     def set_time_position(self, time_position):
         """ Move to an absolute position expressed in seconds
         
-        **Parameters:**
+        :Parameters:
         
-        `time_position` : *(float)*
-            seconds to skip from the start of the stream
+            `time_position` : float
+                seconds to skip from the start of the stream
         """
         pass
     
     
 
 class BufferAudioSource(AudioSource, Rewindable):
-    
     """
-    A class that represent audio data as a memory buffer. It implements
-    methods from `io.Rewindable` and is therefore a navigable `io.AudioSource`.
+    An :class:`AudioSource` that encapsulates and reads data from a memory buffer.
+    It implements methods from :class:`Rewindable` and is therefore a navigable :class:`AudioSource`.
     """
     
     def __init__(self, data_buffer,
@@ -210,10 +221,10 @@ class BufferAudioSource(AudioSource, Rewindable):
     def set_data(self, data_buffer):
         """ Set new data for this audio stream. 
         
-        **Parameters:**
+        :Parameters:
         
-        `data_buffer` :
-           a string buffer with a length multiple of (sample_width * channels)
+            `data_buffer` : str, basestring, Bytes
+                a string buffer with a length multiple of (sample_width * channels)
         """
         if len(data_buffer) % (self.sample_width * self.channels) !=0:
             raise ValueError("length of data_buffer must be a multiple of (sample_width * channels)")
@@ -224,11 +235,10 @@ class BufferAudioSource(AudioSource, Rewindable):
     def append_data(self, data_buffer):
         """ Append data to this audio stream
         
-        **Parameters:**
+        :Parameters:
         
-        `data_buffer` :
-           a string buffer with a length multiple of (sample_width * channels)
-        
+            `data_buffer` : str, basestring, Bytes
+                a buffer with a length multiple of (sample_width * channels)
         """
         
         if len(data_buffer) % (self.sample_width * self.channels) !=0:
@@ -270,19 +280,17 @@ class BufferAudioSource(AudioSource, Rewindable):
         
 
 class WaveAudioSource(AudioSource):
+    """
+    A class for an `AudioSource` that reads data from a wave file.
     
-    """ A class for an `AudioSource` that reads data from a wave file. """
-    
-    def __init__(self, filename):
-        
-        """
-        **Parameters:**
+    :Parameters:
         
         `filename` :
             path to a valid wave file
+    """
+    
+    def __init__(self, filename):
         
-        """
-                
         self._filename = filename
         self._audio_stream = None
         
@@ -319,8 +327,9 @@ class WaveAudioSource(AudioSource):
 
 
 class PyAudioSource(AudioSource):
-    
-    """ A class for an `AudioSource` that reads data the built-in microphone. """
+    """
+    A class for an `AudioSource` that reads data the built-in microphone using PyAudio. 
+    """
     
     def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
                  sample_width = DEFAULT_SAMPLE_WIDTH,
@@ -371,8 +380,9 @@ class PyAudioSource(AudioSource):
     
 
 class StdinAudioSource(AudioSource):
-    
-    """ A class for an `AudioSource` that reads data from standard input. """
+    """
+    A class for an :class:`AudioSource` that reads data from standard input.
+    """
     
     def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
                  sample_width = DEFAULT_SAMPLE_WIDTH,
@@ -405,7 +415,9 @@ class StdinAudioSource(AudioSource):
        
            
 class PyAudioPlayer():
-    """ A class for audio playback """
+    """
+    A class for audio playback using Pyaudio
+    """
     
     def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
                  sample_width = DEFAULT_SAMPLE_WIDTH,
@@ -456,14 +468,14 @@ def from_file(filename):
     Create an `AudioSource` object using the audio file specified by `filename`.
     The appropriate `AudioSource` class is guessed from file's extension.
     
-    **Parameters:**
+    :Parameters:
     
-    `filename` :
-        path to an audio file
+        `filename` :
+            path to an audio file.
         
-    **Returns:**
+    :Returns:
     
-    an `AudioSource` object that reads data from the given file.
+        an `AudioSource` object that reads data from the given file.
     
     """
     
@@ -475,17 +487,17 @@ def from_file(filename):
 
 def player_for(audio_source):
     """
-    Return a `PyAudioPlayer` that can play data from `audio_source`.
+    Return a :class:`PyAudioPlayer` that can play data from `audio_source`.
     
-    **Parameters:**
+    :Parameters:
     
-    `audio_source` : 
-        an `AudioSource` object.
+        `audio_source` : 
+            an `AudioSource` object.
     
-    **Returns:**
+    :Returns:
     
-    `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
-    as `audio_source`.
+        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
+        as `audio_source`.
     """
     
     return PyAudioPlayer(audio_source.get_sampling_rate(),
