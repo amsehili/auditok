@@ -14,7 +14,7 @@ It can read audio data from audio files as well as from built-in device(s) or st
 @license:    GPL v3
 
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 28 nov 2015
+@deffield    updated: 02 Dec 2015
 '''
 
 import sys
@@ -52,7 +52,7 @@ from auditok import __version__ as version
 __all__ = []
 __version__ = version
 __date__ = '2015-11-23'
-__updated__ = '2015-11-28'
+__updated__ = '2015-12-02'
 
 DEBUG = 0
 TESTRUN = 1
@@ -550,14 +550,14 @@ def main(argv=None):
         # setup option parser
         parser = OptionParser(version=program_version_string, epilog=program_longdesc, description=program_license)
         
-        group = OptionGroup(parser, "[Input-Outpu options]")
+        group = OptionGroup(parser, "[Input-Output options]")
         group.add_option("-i", "--input", dest="input", help="Input audio or video file. Use - for stdin [default: read from microphone using pyaudio]", metavar="FILE")
         group.add_option("-t", "--input-type", dest="input_type", help="Input audio file type. Mandatory if file name has no extension [default: %default]", type=str, default=None, metavar="String")
         group.add_option("-M", "--max_time", dest="max_time", help="Max data (in seconds) to read from microphone/file [default: read until the end of file/stream]", type=float, default=None, metavar="FLOAT")
         group.add_option("-O", "--output-main", dest="output_main", help="Save main stream as. If omitted main stream will not be saved [default: omitted]", type=str, default=None, metavar="FILE")
         group.add_option("-o", "--output-tokens", dest="output_tokens", help="Output file name format for detections. Use {N} and {start} and {end} to build file names, example: 'Det_{N}_{start}-{end}.wav'", type=str, default=None, metavar="STRING")
         group.add_option("-T", "--output-type", dest="output_type", help="Audio type used to save detections and/or main stream. If not supplied will: (1). guess from extension or (2). use wav format", type=str, default=None, metavar="STRING")
-        group.add_option("-u", "--use-channel", dest="use_channel", help="Choose channel to use from a multi-channel audio file (requires pydub). 'left', 'right' and 'mix' are accepted values. [Default: 1 (i.e. 1st/left channel)]", type=str, default="1", metavar="STRING")
+        group.add_option("-u", "--use-channel", dest="use_channel", help="Choose channel to use from a multi-channel audio file (requires pydub). 'left', 'right' and 'mix' are accepted values. [Default: 1 (i.e. 1st or left channel)]", type=str, default="1", metavar="STRING")
         parser.add_option_group(group)
         
         
@@ -577,16 +577,19 @@ def main(argv=None):
         group.add_option("-w", "--width", dest="sample_width", help="Number of bytes per audio sample [default: %default]", type=int, default=2, metavar="INT")
         parser.add_option_group(group)
         
-        parser.add_option("-C", "--command", dest="command", help="Command to call when an audio detection occurs. Use $ to represent the file name to use with the command", default=None, type=str, metavar="STRING")
-        parser.add_option("-E", "--echo", dest="echo", help="Play back each detection immediately using pyaudio [default: do not play]",  action="store_true", default=False)
-        parser.add_option("-p", "--plot", dest="plot", help="Plot and show audio signal and detections (requires matplotlib)",  action="store_true", default=False)
-        parser.add_option("", "--save-image", dest="save_image", help="Save plotted audio signal and detections as a picture or a PDF file (requires matplotlib)",  type=str, default=None, metavar="FILE")
+        group = OptionGroup(parser, "[Do something with detections]", "Use these options to print, play or plot detections.") 
+        group.add_option("-C", "--command", dest="command", help="Command to call when an audio detection occurs. Use $ to represent the file name to use with the command (e.g. -C 'du -h $')", default=None, type=str, metavar="STRING")
+        group.add_option("-E", "--echo", dest="echo", help="Play back each detection immediately using pyaudio [default: do not play]",  action="store_true", default=False)
+        group.add_option("-p", "--plot", dest="plot", help="Plot and show audio signal and detections (requires matplotlib)",  action="store_true", default=False)
+        group.add_option("", "--save-image", dest="save_image", help="Save plotted audio signal and detections as a picture or a PDF file (requires matplotlib)",  type=str, default=None, metavar="FILE")
+        group.add_option("", "--printf", dest="printf", help="print detections one per line using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start} and {end}",  type=str, default="{id} {start} {end}", metavar="STRING")
+        group.add_option("", "--time-format", dest="time_format", help="format used to print {start} and {end}. [Default= %default]. %S: absolute time in sec. %I: absolute time in ms. If at least one of (%h, %m, %s, %i) is used, convert time into hours, minutes, seconds and millis (e.g. %h:%m:%s.%i). Only required fields are printed",  type=str, default="%S", metavar="STRING")
+        parser.add_option_group(group)
+        
+        parser.add_option("-q", "--quiet", dest="quiet", help="Do not print any information about detections [default: print 'id', 'start' and 'end' of each detection]",  action="store_true", default=False)
         parser.add_option("-D", "--debug", dest="debug", help="Print processing operations to STDOUT",  action="store_true", default=False)
         parser.add_option("", "--debug-file", dest="debug_file", help="Print processing operations to FILE",  type=str, default=None, metavar="FILE")
         
-        parser.add_option("-q", "--quiet", dest="quiet", help="Do not print any information about detections [default: print start an end of each detection]",  action="store_true", default=False)
-        parser.add_option("", "--printf", dest="printf", help="print detections one per line using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start} and {end}",  type=str, default="{id} {start} {end}", metavar="STRING")
-        parser.add_option("", "--time-format", dest="time_format", help="format used to print {start} and {end}. [Default= %default]. %S: absolute time in sec. %I: absolute time in ms. If at least one of (%h, %m, %s, %i) is used, convert time into hours, minutes, seconds and millis (e.g. %h:%m:%s.%i). Only required fields are printed",  type=str, default="%S", metavar="STRING")
         
 
         # process options
@@ -611,8 +614,9 @@ def main(argv=None):
                 sys.stderr.write("You should either install pyaudio or read data from STDIN\n")
                 sys.exit(2)
                
-                
         logger = logging.getLogger(LOGGER_NAME)
+        logger.setLevel(logging.DEBUG)
+        
         handler = logging.StreamHandler(sys.stdout)
         if opts.quiet or not opts.debug:
             # only critical messages will be printed
@@ -630,7 +634,7 @@ def main(argv=None):
             handler.setFormatter(fmt)
             handler.setLevel(logging.DEBUG)
             logger.addHandler(handler)
-            
+        
         record = opts.output_main is not None or opts.plot
                         
         ads = ADSFactory.ads(audio_source = asource, block_dur = opts.analysis_window, max_time = opts.max_time, record = record)
@@ -762,7 +766,6 @@ def main(argv=None):
         sys.stderr.write("for help use -h\n")
         
         return 2
-
 
 if __name__ == "__main__":
     if DEBUG:

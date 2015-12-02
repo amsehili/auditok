@@ -32,10 +32,6 @@ setup(
     include_package_data=True,
     package_data={'auditok': ['data/*']},
 
-    #data_files=[(['README.md', 'quickstart.rst', 'LICENSE', 'INSTALL', 'CHANGELOG']),
-    #            ('share/doc/pdoc', ['doc/pdoc/index.html']),
-    #           ],
-
     zip_safe=False,
     platforms='ANY',
     provides=['auditok'],

@@ -4,6 +4,8 @@ AUDIo TOKenizer
 
 `auditok` is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
 
+A more detailed version of this user guide as well as an API tutorial and API reference can be found at [Readthedocs](http://auditok.readthedocs.org/en/latest/)
+
 - [Two-figure explanation](https://github.com/amsehili/auditok#two-figure-explanation)
 - [Requirements](https://github.com/amsehili/auditok#requirements)
 - [Installation](https://github.com/amsehili/auditok#installation)
@@ -33,6 +35,8 @@ The following two figures illustrate an audio signal (blue) and regions detected
 2. the detector splits an audio activity event into many activities if the within activity silence is over 0.2 second:
 ![](doc/figures/figure_2.png)
 
+Beyond plotting signal and detections, you can play back audio activities as they are detected, save them or run a user command each time there is an activity,
+using, optionally, the file name of audio activity as an argument for the command.
 
 Requirements
 ------------
@@ -58,18 +62,18 @@ The first thing you want to check is perhaps how `auditok` detects your voice. I
 
     auditok
 
-This will print **id** **start time** and **end time** for each detected activity. If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`) and tell `auditok` to read data from standard input:
+This will print `id`, `start-time` and `end-time` for each detected activity. If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`) and tell `auditok` to read data from standard input:
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -r 16000 -w 2 -c 1
     
 Note that when data is read from standard input the same audio parameters must be used for both `sox` (or any other data generation/acquisition tool) and `auditok`. The following table summarizes audio parameters.
 
-| Audio parameter | sox	option | auditok option | `auditok` default     |
-| --------------- |------------|----------------|-----------------------|
-| Sampling rate   |     -r     |       -r       |      16000            |
-| Sample width    |  -b (bits) |     -w (bytes) |      2                |
-| Channels        |  -c        |     -c         |      1                |
-| Encoding        |  -e        |     None       | always signed integer |
+| Audio parameter | sox	option | `auditok` option | `auditok` default     |
+| --------------- |------------|------------------|-----------------------|
+| Sampling rate   |     -r     |       -r         |      16000            |
+| Sample width    |  -b (bits) |     -w (bytes)   |      2                |
+| Channels        |  -c        |     -c           |      1                |
+| Encoding        |  -e        |     None         | always signed integer |
 
 According to this table, the previous command can be run as:
 
@@ -79,7 +83,7 @@ According to this table, the previous command can be run as:
 
     auditok -E
 
-OR
+**or**
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -E
 
@@ -99,7 +103,7 @@ If you notice that there are too many detections, use a higher value for energy 
 
     auditok -E -e 55
 
-OR
+**or**
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -e 55 -C "play -q -t raw -r 16000 -c 1 -b 16 -e signed $"
 
@@ -107,14 +111,14 @@ If however you figure out that the detector is missing some of or all your audio
 
 ### Set format for printed detections information
 
-By default, `auditok` prints the `id` `start time` `end time` of each detected activity:
+By default, `auditok` prints the `id` `start-time` `end-time` of each detected activity:
 
     1 1.87 2.67
     2 3.05 3.73
     3 3.97 4.49
     ...
     
-If you want to personalize the output format, use `--printf` option:
+If you want to customize the output format, use `--printf` option:
 
     auditok -e 55 --printf "[{id}]: {start} to {end}"
 
@@ -204,7 +208,7 @@ Install `pydub` for other audio formats.
 
     auditok -o det_{N}_{start}_{end}.wav ...
 
-You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want, they will be replaced by detection number, start time and end time respectively. Another example:
+You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want, they will be replaced by detection number, `start-time` and `end-time` respectively. Another example:
 
     auditok -o {start}-{end}.wav ...
     

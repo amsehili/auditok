@@ -3,7 +3,6 @@
 
 This user guide will go through a few of the most useful operations you can use **auditok** for and present two practical use cases. 
 
-
 .. contents:: `Contents`
    :depth: 3
 
@@ -12,7 +11,8 @@ This user guide will go through a few of the most useful operations you can use 
 Two-figure explanation
 **********************
 
-The following two figures illustrate an audio signal (blue) and regions detected as valid audio activities (green rectangles) according to a given threshold (red dashed line). They respectively depict the detection result when:
+The following two figures illustrate an audio signal (blue) and regions detected as valid audio activities (green rectangles) according to
+a given threshold (red dashed line). They respectively depict the detection result when:
 
 1. the detector tolerates phases of silence of up to 0.3 second (300 ms) within an audio activity (also referred to as acoustic event):
 
@@ -30,6 +30,8 @@ The following two figures illustrate an audio signal (blue) and regions detected
     :figclass: align-center
     :scale: 40 %
 
+Beyond plotting signal and detections, you can play back audio activities as they are detected, save them or run a user command each time there is an activity,
+using, optionally, the file name of audio activity as an argument for the command.
 
 ******************
 Command line usage
@@ -38,30 +40,30 @@ Command line usage
 Try the detector with your voice
 ################################
 
-The first thing you want to check is perhaps how `auditok` detects your voice. If you have installed `PyAudio` just run (`Ctrl-C` to stop):
+The first thing you want to check is perhaps how **auditok** detects your voice. If you have installed `PyAudio` just run (`Ctrl-C` to stop):
 
 .. code:: bash
 
     auditok
 
-This will print **id** **start time** and **end time** for each detected activity. If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`) and tell `auditok` to read data from standard input:
+This will print **id** **start-time** and **end-time** for each detected activity. If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`) and tell **auditok** to read data from standard input:
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -r 16000 -w 2 -c 1
     
-Note that when data is read from standard input the same audio parameters must be used for both `sox` (or any other data generation/acquisition tool) and `auditok`. The following table summarizes audio parameters.
+Note that when data is read from standard input the same audio parameters must be used for both `sox` (or any other data generation/acquisition tool) and **auditok**. The following table summarizes audio parameters.
 
 
-+-----------------+------------+----------------+-----------------------+
-| Audio parameter | sox option | auditok option | `auditok` default     |
-+=================+============+================+=======================+
-| Sampling rate   |     -r     |       -r       |      16000            |
-+-----------------+------------+----------------+-----------------------+
-| Sample width    |  -b (bits) |     -w (bytes) |      2                |
-+-----------------+------------+----------------+-----------------------+
-| Channels        |  -c        |     -c         |      1                |
-+-----------------+------------+----------------+-----------------------+
-| Encoding        |  -e        |     None       | always signed integer |
-+-----------------+------------+----------------+-----------------------+
++-----------------+------------+------------------+-----------------------+
+| Audio parameter | sox option | `auditok` option | `auditok` default     |
++=================+============+==================+=======================+
+| Sampling rate   |     -r     |       -r         |      16000            |
++-----------------+------------+------------------+-----------------------+
+| Sample width    |  -b (bits) |     -w (bytes)   |      2                |
++-----------------+------------+------------------+-----------------------+
+| Channels        |  -c        |     -c           |      1                |
++-----------------+------------+------------------+-----------------------+
+| Encoding        |  -e        |     None         | always signed integer |
++-----------------+------------+------------------+-----------------------+
 
 According to this table, the previous command can be run as:
 
@@ -76,19 +78,19 @@ Play back detections
 
     auditok -E
 
-OR
+:or:
 
 .. code:: bash
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -E
 
-Option `-E` stands for echo, so `auditok` plays back whatever it detects. Using `-E` requires `PyAudio`, if you don't have `PyAudio` and want to play detections with sox, use the `-C` option:
+Option `-E` stands for echo, so **auditok** will play back whatever it detects. Using `-E` requires `PyAudio`, if you don't have `PyAudio` and want to play detections with sox, use the `-C` option:
 
 .. code:: bash
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -C "play -q -t raw -r 16000 -c 1 -b 16 -e signed $"
     
-The `-C` option tells `auditok` to interpret its content as a command that should be run whenever `auditok` detects an audio activity, replacing the `$` by a name of a temporary file into which the activity is saved as raw audio. Here we use `play` to play the activity, giving the necessary `play` arguments for raw data.
+The `-C` option tells **auditok** to interpret its content as a command that should be run whenever **auditok** detects an audio activity, replacing the `$` by a name of a temporary file into which the activity is saved as raw audio. Here we use `play` to play the activity, giving the necessary `play` arguments for raw data.
 
 `rec` and `play` are just an alias for `sox`.
 
@@ -103,7 +105,7 @@ If you notice that there are too many detections, use a higher value for energy 
 
     auditok -E -e 55
 
-OR
+:or:
 
 .. code:: bash
 
@@ -114,7 +116,7 @@ If however you figure out that the detector is missing some of or all your audio
 Set format for printed detections information
 #############################################
 
-By default, `auditok` prints the `id` `start time` `end time` of each detected activity:
+By default, **auditok** prints the **id**, **start-time** and **end-time** of each detected activity:
 
 .. code:: bash
 
@@ -123,11 +125,13 @@ By default, `auditok` prints the `id` `start time` `end time` of each detected a
     3 3.97 4.49
     ...
     
-If you want to personalize the output format, use `--printf` option:
+If you want to customize the output format, use `--printf` option:
+
+.. code:: bash
 
     auditok -e 55 --printf "[{id}]: {start} to {end}"
 
-Output:
+:output:
 
 .. code:: bash
 
@@ -141,7 +145,7 @@ Keywords `{id}`, `{start}` and `{end}` can be placed and repeated anywhere in th
 
     auditok -e 55 --printf "[{id}]: {start} to {end}" --time-format "%h:%m:%s.%i"
     
-Output:
+:output:
 
 .. code:: bash
 
@@ -163,7 +167,7 @@ Using `--printf ` and `--time-format`, the following command, used with an input
 
     auditok -e 55 -i input.wav -m 10 --printf "{id}\n{start} --> {end}\nPut some text here...\n" --time-format "%h:%m:%s.%i"
 
-Output:
+:output:
 
 .. code:: bash
 
@@ -204,20 +208,20 @@ Assume you have installed **sox** and downloaded the Speech Recognition script. 
 
     sox -t raw -r 16000 -c 1 -b 16 -e signed raw_input output.flac
 
-2- Send falc audio to google and get its filtred transcription using `speech-rec.sh <https://github.com/amsehili/gspeech-rec/blob/master/speech-rec.sh>`_ :
+2- Send flac audio data to Google and get its filtered transcription using `speech-rec.sh <https://github.com/amsehili/gspeech-rec/blob/master/speech-rec.sh>`_ :
 
 .. code:: bash
 
     speech-rec.sh -i output.flac -r 16000
     
-3- Use **grep** to select lines that coantain *transcript*:
+3- Use **grep** to select lines that contain *transcript*:
 
 .. code:: bash
 
     grep transcript
 
 
-4- Launch the followin script, giving it the transcription as input:
+4- Launch the following script, giving it the transcription as input:
 
 .. code:: bash
 
@@ -236,18 +240,21 @@ Assume you have installed **sox** and downloaded the Speech Recognition script. 
 
     exit 0
 
-As you can see, the script can handle one single voice command. It runs firefox if the text it receives contains **run firefox**.
+As you can see, the script can handle one single voice command. It runs firefox if the text it receives contains **open firefox**.
 Save a script into a file named voice-control.sh (don't forget to run a **chmod u+x voice-control.sh**).
 
-Now, thanks to option `-C`, we will use the three instructions with a pipe and tell auditok to run them for every time it detects
+Now, thanks to option `-C`, we will use the four instructions with a pipe and tell **auditok** to run them each time it detects
 an audio activity. Try the following command and say *open firefox*:
 
 
 .. code:: bash
 
-    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -M 5 -m 3 -n 1 --debug-file log -e 60 -C "sox -t raw -r 16000 -c 1 -b 16 -e signed $ audio.flac ; speech-rec.sh -i audio.flac -r 16000 | grep transcript | ./voice-control.sh"
+    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -M 5 -m 3 -n 1 --debug-file file.log -e 60 -C "sox -t raw -r 16000 -c 1 -b 16 -e signed $ audio.flac ; speech-rec.sh -i audio.flac -r 16000 | grep transcript | ./voice-control.sh"
 
+Here we used option `-M 5` to limit the amount of read audio data to 5 seconds (**auditok** stops if there are no more data) and
+option `-n 1` to tell **auditok** to only accept tokens of 1 second or more and throw any token shorter than 1 second.
 
+With `--debug-file file.log`, all processing steps are written into file.log with their timestamps, including any run command and the file name the command was given.
 
 
 Plot signal and detections
@@ -287,7 +294,7 @@ Limit the length of acquired data
 
     auditok -M 12 ...
 
-Time is in seconds.
+Time is in seconds. This is valid for data read from an audio device, stdin or an audio file.
 
 
 Save the whole acquired audio signal
@@ -337,11 +344,79 @@ Alongside the threshold option `-e` seen so far, a couple of other options can h
 +--------+-------------------------------------------------------+---------+------------------+
 
 
+Normally, `auditok` does keeps trailing silence of a detected activity. Trailing silence is at most as long as maximum length of a continuous silence (option `-m`) and can be important for some applications such as speech recognition. If you want to drop trailing silence anyway use option `-d`. The following two figures show the output of the detector when it keeps the trailing silence and when it drops it respectively:
+
+
+.. figure:: figures/figure_3_keep_trailing_silence.png
+    :align: center
+    :alt: Output from a detector that keeps trailing silence
+    :figclass: align-center
+    :scale: 40 %
+    
+
+.. code:: bash
+
+    auditok ...  -d
+
+
+.. figure:: figures/figure_4_drop_trailing_silence.png
+    :align: center
+    :alt: Output from a detector that drop trailing silence
+    :figclass: align-center
+    :scale: 40 %
+    
+You might want to only consider audio activities if they are above a certain duration. The next figure is the result of a detector that only accepts detections of 0.8 second and longer:
+
+.. code:: bash
+
+    auditok ...  -n 0.8
+
+
+.. figure:: figures/figure_5_min_800ms.png
+    :align: center
+    :alt: Output from a detector that detect activities of 800 ms or over
+    :figclass: align-center
+    :scale: 40 %
+    
+    
+Finally it is almost always interesting to limit the length of detected audio activities. In any case, one does not want a too long audio event such as an alarm or a drill to hog the detector. For illustration purposes, we set the maximum duration to 0.4 second for this detector, so an audio activity is delivered as soon as it reaches 0.4 second:
+
+.. code:: bash
+
+    auditok ...  -m 0.4
+
+
+.. figure:: figures/figure_6_max_400ms.png
+    :align: center
+    :alt: Output from a detector that delivers audio activities that reach 400 ms
+    :figclass: align-center
+    :scale: 40 %
+    
+
+Debugging
+#########
+
+If you want to print what happens when something is detected, use option `-D`.
+
+.. code:: bash
+
+    auditok ...  -D
+
+
+If you want to save everything into a log file, use `--debug-file file.log`.
+
+.. code:: bash
+
+    auditok ...  --debug-file file.log
+
+
+
+
 *******
 License
 *******
 
-`auditok` is published under the GNU General Public License Version 3.
+**auditok** is published under the GNU General Public License Version 3.
 
 ******
 Author

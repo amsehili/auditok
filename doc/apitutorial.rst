@@ -17,7 +17,7 @@ observations, all sub-sequences that meet a certain number of
 criteria in terms of:
 
 1. Minimum length of a **valid** token (i.e. sub-sequence)
-2. Maximum length of a valid token
+2. Maximum length of a **valid** token
 3. Maximum tolerated consecutive **non-valid** observations within
    a valid token
 
@@ -142,7 +142,7 @@ output:
     
 Notice the trailing lower case letters "dd" and "ee" at the end of the two
 tokens. The default behavior of :class:`auditok.core.StreamTokenizer` is to keep the *trailing
-silence* if it doesn't exceed `max_continuous_silence`. This can be changed
+silence* if it does not exceed `max_continuous_silence`. This can be changed
 using the `StreamTokenizer.DROP_TRAILING_SILENCE` mode (see next example).
 
 Remove trailing silence
@@ -226,25 +226,29 @@ output:
 `auditok` and Audio Data
 ************************
 
-In this section we will use :class:`auditok.util.ADSFactory`, :class:`auditok.util.AudioEnergyValidator` 
-and :class:`auditok.core.StreamTokenizer` for an AAD demonstration using audio data. Before we get any
+In the rest of this document we will use :class:`auditok.util.ADSFactory`, :class:`auditok.util.AudioEnergyValidator` 
+and :class:`auditok.core.StreamTokenizer` for Audio Activity Detection demos using audio data. Before we get any
 further it is worth, explaining a certain number of points.
 
-:func:`auditok.util.ADSFactory.ads` method is called to create an 
-:class:`auditok.util.ADSFactory.AudioDataSource` object that can be1
-passed to  :func:`auditok.core.StreamTokenizer.tokenize`. :func:`auditok.util.ADSFactory.ads`
-accepts a number of keyword arguments, of which none is mandatory. The returned
-:class:`auditok.util.ADSFactory.AudioDataSource` object's features and behavior can however greatly differ 
-depending on the passed arguments. Further details can be found in the respective
-method documentation. Note however the following two calls that will
-create an :class:`auditok.util.ADSFactory.AudioDataSource` that read data from an
-audio file and from the built-in microphone respectively.
+:func:`auditok.util.ADSFactory.ads` method is used to create an :class:`auditok.util.ADSFactory.AudioDataSource`
+object either from a wave file, the built-in microphone or a user-supplied data buffer. Refer to the API reference
+for more information and examples on :func:`ADSFactory.ads` and :class:`AudioDataSource`.
+
+The created :class:`AudioDataSource` object is then passed to :func:`StreamTokenizer.tokenize` for tokenization.
+
+:func:`auditok.util.ADSFactory.ads` accepts a number of keyword arguments, of which none is mandatory.
+The returned :class:`AudioDataSource` object's features and behavior can however greatly differ 
+depending on the passed arguments. Further details can be found in the respective method documentation.
+
+Note however the following two calls that will create an :class:`AudioDataSource`
+that reads data from an audio file and from the built-in microphone respectively.
 
 .. code:: python
     
     from auditok import ADSFactory
     
     # Get an AudioDataSource from a file
+    # use 'filename', alias 'fn' keyword argument
     file_ads = ADSFactory.ads(filename = "path/to/file/")
     
     # Get an AudioDataSource from the built-in microphone
@@ -253,49 +257,71 @@ audio file and from the built-in microphone respectively.
     # documentation for customized values 
     mic_ads = ADSFactory.ads()
     
-For `StreamTkenizer`, parameters `min_length`, `max_length` and `max_continuous_silence`
-are expressed in term of number of frames. If you want a `max_length` of *2 seconds* for
-your detected sound events and your *analysis window* is *10 ms* long, you have to specify
-a `max_length` of 200 (`int(2. / (10. / 1000)) == 200`). For a `max_continuous_silence` of *300 ms*
-for instance, the value to pass to StreamTokenizer is 30 (`int(0.3 / (10. / 1000)) == 30`).
+For :class:`StreamTkenizer`, parameters `min_length`, `max_length` and `max_continuous_silence`
+are expressed in terms of number of frames. Each call to :func:`AudioDataSource.read` returns
+one frame of data or None.
 
+If you want a `max_length` of 2 seconds for your detected sound events and your *analysis window* 
+is *10 ms* long, you have to specify a `max_length` of 200 (`int(2. / (10. / 1000)) == 200`).
+For a `max_continuous_silence` of *300 ms* for instance, the value to pass to StreamTokenizer is 30
+(`int(0.3 / (10. / 1000)) == 30`).
 
-Where do you get the size of the **analysis window** from?
+Each time :class:`StreamTkenizer` calls the :func:`read` (has no argument) method of an
+:class:`AudioDataSource` object, it returns the same amount of data, except if there are no more
+data (returns what's left in stream or None).
 
+This fixed-length amount of data is referred here to as **analysis window** and is a parameter of 
+:func:`ADSFactory.ads` method. By default :func:`ADSFactory.ads` uses an analysis window of 10 ms.
 
-Well this is a parameter you pass to `ADSFactory.ads`. By default `ADSFactory.ads` uses
-an analysis window of 10 ms. the number of samples that 10 ms of signal contain will
-vary depending on the sampling rate of your audio source (file, microphone, etc.).
+The number of samples that 10 ms of audio data contain will vary, depending on the sampling
+rate of your audio source/data (file, microphone, etc.).
 For a sampling rate of 16KHz (16000 samples per second), we have 160 samples for 10 ms.
-Therefore you can use block sizes of 160, 320, 1600 for analysis windows of 10, 20 and 100 
-ms respectively.
+
+You can use the `block_size` keyword (alias `bs`) to define your analysis window:
 
 .. code:: python
     
     from auditok import ADSFactory
     
+    '''
+    Assume you have an audio file with a sampling rate of 16000
+    '''
+    
+    # file_ads.read() will return blocks of 160 sample
     file_ads = ADSFactory.ads(filename = "path/to/file/", block_size = 160)
     
-    file_ads = ADSFactory.ads(filename = "path/to/file/", block_size = 320)
+    # file_ads.read() will return blocks of 320 sample
+    file_ads = ADSFactory.ads(filename = "path/to/file/", bs = 320)
     
-    # If no sampling rate is specified, ADSFactory use 16KHz as the default
-    # rate for the microphone. If you want to use a window of 100 ms, use 
-    # a block size of 1600 
-    mic_ads = ADSFactory.ads(block_size = 1600)
-    
-So if your not sure what you analysis windows in seconds is, use the following:
+
+Fortunately, you can specify the size of your analysis window in seconds, thanks to keyword `block_dur`
+(alias `bd`):
 
 .. code:: python
     
-    my_ads = ADSFactory.ads(...)
-    analysis_win_seconds = float(my_ads.get_block_size()) / my_ads.get_sampling_rate()
+    from auditok import ADSFactory
+    # use an analysis window of 20 ms
+    file_ads = ADSFactory.ads(filename = "path/to/file/", bd = 0.02)
+    
+For :class:`StreamTkenizer`, each :func:`read` call that does not return `None` is treated as a processing
+frame. :class:`StreamTkenizer` has no way to figure out the temporal length of that frame (why sould it?). So to
+correctly initialize your :class:`StreamTokenizer`, based on your analysis window duration, use something like:
+
+
+.. code:: python
+
+    analysis_win_seconds = 0.01 # 10 ms
+    my_ads = ADSFactory.ads(block_dur = analysis_win_seconds)
     analysis_window_ms = analysis_win_seconds * 1000
     
-    # For a `max_continuous_silence` of 300 ms use:
+    # If you want your maximum continuous silence to be 300 ms use:
     max_continuous_silence = int(300. / analysis_window_ms)
     
-    # Which is the same as
+    # which is the same as:
     max_continuous_silence = int(0.3 / (analysis_window_ms / 1000))
+    
+    # or simply:
+    max_continuous_silence = 30
     
 
 ******************************
@@ -411,7 +437,7 @@ Still with this configuration we can get the tokenizer detect that noise as a va
 large analysis window (here of 100 ms) to ensure that the brief noise be surrounded by a much
 longer silence and hence the energy of the overall analysis window will be below 50.
 
-When using a shorter analysis window (of 10ms for instance, block_size == 441), the brief
+When using a shorter analysis window (of 10 ms for instance, block_size == 441), the brief
 noise contributes more to energy calculation which yields an energy of over 50 for the window.
 Again we can deal with this situation by using a higher energy threshold (55 for example).
 
@@ -443,7 +469,6 @@ Again we can deal with this situation by using a higher energy threshold (55 for
     # Create a tokenizer with an unlimited token length and continuous silence within a token
     # Note the DROP_TRAILING_SILENCE mode that will ensure removing trailing silence
     trimmer = StreamTokenizer(validator, min_length = 20, max_length=99999999, init_min=3, init_max_silence=1, max_continuous_silence=9999999, mode=StreamTokenizer.DROP_TRAILING_SILENCE)
-    
     
     tokens = trimmer.tokenize(asource)
     

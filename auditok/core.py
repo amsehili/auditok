@@ -54,7 +54,7 @@ class StreamTokenizer():
         `mode` : *(int, default=0)*
             `mode` can be:
         
-        #. `StreamTokenizer.STRICT_MIN_LENGTH`: 
+        1. `StreamTokenizer.STRICT_MIN_LENGTH`: 
         if token *i* is delivered because `max_length`
         is reached, and token *i+1* is immediately adjacent to
         token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
@@ -112,7 +112,7 @@ class StreamTokenizer():
             [(['A', 'A', 'A', 'A'], 3, 6)]
             
            
-        #. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing non-valid frames
+        2. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing non-valid frames
         from a token to be delivered if and only if it is not **truncated**.
         This can be a bit tricky. A token is actually delivered if:
            
@@ -187,16 +187,13 @@ class StreamTokenizer():
             raise ValueError("'max_length' must be > 0 (value={0})".format(max_length))
         
         if min_length <= 0 or min_length > max_length:
-            raise ValueError("'min_length' must be > 0 and <= 'max_length' \
-            (value={0})".format(min_length))
+            raise ValueError("'min_length' must be > 0 and <= 'max_length' (value={0})".format(min_length))
         
         if max_continuous_silence >= max_length:
-            raise ValueError("'max_continuous_silence' must be < \
-            'max_length' (value={0})".format(max_continuous_silence))
+            raise ValueError("'max_continuous_silence' must be < 'max_length' (value={0})".format(max_continuous_silence))
         
         if init_min >= max_length:
-            raise ValueError("'init_min' must be < \
-            'max_length' (value={0})".format(max_continuous_silence))
+            raise ValueError("'init_min' must be < 'max_length' (value={0})".format(max_continuous_silence))
             
         self.validator = validator
         self.min_length = min_length

@@ -6,6 +6,7 @@ auditok, an AUDIo TOKenization tool
 
 **auditok** is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
 
+The latest version of this documentation can be found at `Readthedocs <http://auditok.readthedocs.org/en/latest/>`_.
 
 Requirements
 ------------
@@ -34,18 +35,28 @@ Installation
     sudo python setup.py install
 
 
+
 Getting started
 ---------------
 
 .. toctree::
     :titlesonly:
-    :maxdepth: 3
+    :maxdepth: 2
 
        Command-line Usage Guide <cmdline.rst>
        API Tutorial <apitutorial.rst>
-       API Reference <apireference.rst>
 
 
+API Reference
+-------------
+
+.. toctree::
+    :maxdepth: 3
+
+       auditok.core <core.rst>
+       auditok.util <util.rst>
+       auditok.io <io.rst>
+       auditok.dataset <dataset.rst>
 
 
 Indices and tables
