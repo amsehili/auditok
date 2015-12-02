@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/amsehili/auditok.svg?branch=master)](https://travis-ci.org/amsehili/auditok)
+[![Documentation Status](https://readthedocs.org/projects/auditok/badge/?version=latest)](http://auditok.readthedocs.org/en/latest/?badge=latest)
 AUDIo TOKenizer 
 ===============
 
