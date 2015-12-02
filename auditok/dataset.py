@@ -1,10 +1,5 @@
 """
-.. py:module:: dataset
-   :synopsis: This module contains links to audio files you can use for test purposes.
-
-.. moduleauthor:: Amine SEHILI <amine.sehili@gmail.com>
-
-September 2015
+This module contains links to audio files you can use for test purposes.
 """
 
 import os

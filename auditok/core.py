@@ -1,6 +1,15 @@
+"""
+This module gathers processing (i.e. tokenization) classes.
+
+Class summary
+=============
+
+.. autosummary::
+
+        StreamTokenizer
+"""
+
 from auditok.util import DataValidator
-
-
 
 __all__ = ["StreamTokenizer"]
 
@@ -220,13 +229,13 @@ class StreamTokenizer():
                 New mode, must be one of:
                     
                 
-            - a. `StreamTokenizer.STRICT_MIN_LENGTH`
+            - `StreamTokenizer.STRICT_MIN_LENGTH`
             
-            - b. `StreamTokenizer.DROP_TRAILING_SILENCE`
+            - `StreamTokenizer.DROP_TRAILING_SILENCE`
             
-            - c. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`
+            - `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`
                    
-            - d. `0`
+            - `0`
                        
         See `StreamTokenizer.__init__` for more information about the mode.
         """

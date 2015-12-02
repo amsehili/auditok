@@ -70,7 +70,7 @@ Illustrative examples with strings
 
 Let us look at some examples using the :class:`auditok.util.StringDataSource` class
 created for test and illustration purposes. Imagine that each character of 
-:class:`auditok.util.StringDataSource` data represent an audio slice of 100 ms for
+:class:`auditok.util.StringDataSource` data represents an audio slice of 100 ms for
 example. In the following examples we will use upper case letters to represent
 noisy audio slices (i.e. analysis windows or frames) and lower case letter for
 silent frames.

@@ -1,5 +1,5 @@
 """
-Module for low-level audio input-output operations. 
+Module for low-level audio input-output operations.
 
 Class summary
 =============

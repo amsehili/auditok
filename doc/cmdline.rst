@@ -18,15 +18,17 @@ The following two figures illustrate an audio signal (blue) and regions detected
 
 .. figure:: figures/figure_1.png
     :align: center
-    :alt: alternate text
+    :alt: Output from a detector that tolerates silence periods up to 300 ms
     :figclass: align-center
+    :scale: 40 %
 
 2. the detector splits an audio activity event into many activities if the within activity silence is over 0.2 second:
 
 .. figure:: figures/figure_2.png
     :align: center
-    :alt: alternate text
+    :alt: Output from a detector that tolerates silence periods up to 200 ms
     :figclass: align-center
+    :scale: 40 %
 
 
 ******************
@@ -186,8 +188,8 @@ Output:
     Put some text here...
 
 
-2nd Practical use case example: build ab (very) basic voice control application
-###############################################################################
+2nd Practical use case example: build a (very) basic voice control application
+##############################################################################
 
 `This repository <https://github.com/amsehili/gspeech-rec>`_ supplies a bash script the can send audio data to Google's
 Speech Recognition service and get its transcription. In the following we will use **auditok** as a lower layer component

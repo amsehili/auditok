@@ -34,29 +34,17 @@ Installation
     sudo python setup.py install
 
 
-
 Getting started
 ---------------
 
 .. toctree::
     :titlesonly:
-    :maxdepth: 1
+    :maxdepth: 3
 
        Command-line Usage Guide <cmdline.rst>
        API Tutorial <apitutorial.rst>
+       API Reference <apireference.rst>
 
-
-API Reference
--------------
-
-.. toctree::
-    :titlesonly:
-    :maxdepth: 1
-
-       auditok.core <core.rst>
-       auditok.util <util.rst>
-       auditok.io <io.rst>
-       auditok.dataset <dataset.rst>
 
 
 
