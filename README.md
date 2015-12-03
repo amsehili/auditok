@@ -15,14 +15,16 @@ A more detailed version of this user guide as well as an API tutorial and API re
   - [Play back detections](https://github.com/amsehili/auditok#play-back-detections)
   - [Set detection threshold](https://github.com/amsehili/auditok#set-detection-threshold)
   - [Set format for printed detections information](https://github.com/amsehili/auditok#set-format-for-printed-detections-information)
-  - [Practical use case: generate a subtitles template](https://github.com/amsehili/auditok#practical-use-case-generate-a-subtitles-template)
-  - [Plot signal and detections:](https://github.com/amsehili/auditok#plot-signal-and-detections)
+  - [Plot signal and detections](https://github.com/amsehili/auditok#plot-signal-and-detections)
   - [Save plot as image or PDF](https://github.com/amsehili/auditok#save-plot-as-image-or-pdf)
   - [Read data from file](https://github.com/amsehili/auditok#read-data-from-file)
   - [Limit the length of aquired/read data](https://github.com/amsehili/auditok#limit-the-length-of-aquired-data)
   - [Save the whole acquired audio signal](https://github.com/amsehili/auditok#save-the-whole-acquired-audio-signal)
   - [Save each detection into a separate audio file](https://github.com/amsehili/auditok#save-each-detection-into-a-separate-audio-file)
 - [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
+- [Some practical use cases](https://github.com/amsehili/auditok#some-practical-use-cases)
+  - [1st practical use case: generate a subtitles template](https://github.com/amsehili/auditok#1st-practical-use-case-generate-a-subtitles-template)
+  - [2nd Practical use case example: build a (very) basic voice control application](https://github.com/amsehili/auditok#2nd-Practical-use-case-example-build-a-(very)-basic-voice-control)
 - [License](https://github.com/amsehili/auditok#license)
 - [Author](https://github.com/amsehili/auditok#author)
 
@@ -150,35 +152,7 @@ Output:
 
 Valid time directives are: `%h` (hours) `%m` (minutes) `%s` (seconds) `%i` (milliseconds). Two other directives, `%S` (default) and `%I` can be used for absolute time in seconds and milliseconds respectively.
 
-### Practical use case: generate a subtitles template
-
-Using `--printf ` and `--time-format`, the following command, used with an input audio or video file, will generate and an **srt** file template that can be later edited with a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
-
-    auditok -e 55 -i input.wav -m 10 --printf "{id}\n{start} --> {end}\nPut some text here...\n" --time-format "%h:%m:%s.%i"
-
-Output:
-
-    1
-    00:00:00.730 --> 00:00:01.460
-    Put some text here...
-    
-    2
-    00:00:02.440 --> 00:00:03.900
-    Put some text here...
-
-    3
-    00:00:06.410 --> 00:00:06.970
-    Put some text here...
-
-    4
-    00:00:07.260 --> 00:00:08.340
-    Put some text here...
-
-    5
-    00:00:09.510 --> 00:00:09.820
-    Put some text here...
-
-### Plot signal and detections:
+### Plot signal and detections
 
 use option `-p`. Requires `matplotlib` and `numpy`.
 
@@ -234,6 +208,89 @@ Alongside the threshold option `-e` seen so far, a couple of other options can h
 |        | an accepted audio activity                            |         |                  |
 | `-d`   | Drop trailing silence from an accepted audio activity | boolean |   False          |
 | `-a`   | Analysis window length (default value should be good) | second  |   0.01 (10 ms)   |
+
+Some practical use cases
+------------------------
+
+### 1st practical use case: generate a subtitles template
+
+Using `--printf ` and `--time-format`, the following command, used with an input audio or video file, will generate and an **srt** file template that can be later edited with a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
+
+    auditok -e 55 -i input.wav -m 10 --printf "{id}\n{start} --> {end}\nPut some text here...\n" --time-format "%h:%m:%s.%i"
+
+Output:
+
+    1
+    00:00:00.730 --> 00:00:01.460
+    Put some text here...
+    
+    2
+    00:00:02.440 --> 00:00:03.900
+    Put some text here...
+
+    3
+    00:00:06.410 --> 00:00:06.970
+    Put some text here...
+
+    4
+    00:00:07.260 --> 00:00:08.340
+    Put some text here...
+
+    5
+    00:00:09.510 --> 00:00:09.820
+    Put some text here...
+
+### 2nd Practical use case example: build a (very) basic voice control application
+
+[This repository](https://github.com/amsehili/gspeech-rec) supplies a bash script the can send audio data to Google's
+Speech Recognition service and get its transcription. In the following we will use **auditok** as a lower layer component
+of a voice control application. The basic idea is to tell **auditok** to run, for each detected audio activity, a certain
+number of commands that make up the rest of our voice control application.
+
+Assume you have installed **sox** and downloaded the Speech Recognition script. The sequence of commands to run is:
+
+1- Convert raw audio data to flac using **sox**:
+
+    sox -t raw -r 16000 -c 1 -b 16 -e signed raw_input output.flac
+
+2- Send flac audio data to Google and get its filtered transcription using [speech-rec.sh](https://github.com/amsehili/gspeech-rec/blob/master/speech-rec.sh):
+
+    speech-rec.sh -i output.flac -r 16000
+    
+3- Use **grep** to select lines that contain *transcript*:
+
+    grep transcript
+
+
+4- Launch the following script, giving it the transcription as input:
+
+    #!/bin/bash
+
+    read line
+
+    RES=`echo "$line" | grep -i "open firefox"`
+
+    if [[ $RES ]]
+       then
+         echo "Launch command: 'firefox &' ... "
+         firefox &
+         exit 0
+    fi
+
+    exit 0
+
+As you can see, the script can handle one single voice command. It runs firefox if the text it receives contains **open firefox**.
+Save a script into a file named voice-control.sh (don't forget to run a **chmod u+x voice-control.sh**).
+
+Now, thanks to option `-C`, we will use the four instructions with a pipe and tell **auditok** to run them each time it detects
+an audio activity. Try the following command and say *open firefox*:
+
+    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -M 5 -m 3 -n 1 --debug-file file.log -e 60 -C "sox -t raw -r 16000 -c 1 -b 16 -e signed $ audio.flac ; speech-rec.sh -i audio.flac -r 16000 | grep transcript | ./voice-control.sh"
+
+Here we used option `-M 5` to limit the amount of read audio data to 5 seconds (**auditok** stops if there are no more data) and
+option `-n 1` to tell **auditok** to only accept tokens of 1 second or more and throw any token shorter than 1 second.
+
+With `--debug-file file.log`, all processing steps are written into file.log with their timestamps, including any run command and the file name the command was given.
 
 
 License
