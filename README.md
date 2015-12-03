@@ -41,17 +41,21 @@ using, optionally, the file name of audio activity as an argument for the comman
 
 Requirements
 ------------
-`auditok` can be used with standard Python! 
-However if you want more features, the following packages are needed:
+`auditok` can be used with standard Python!
+
+However, if you want more features, the following packages are needed:
 - [pydub](https://github.com/jiaaro/pydub): read audio files of popular audio formats (ogg, mp3, etc.) or extract audio from a video file
 - [PyAudio](http://people.csail.mit.edu/hubert/pyaudio/): read audio data from the microphone and play back detections
-- `matplotlib`: plot audio signal and detections (see figures above)
-- `numpy`: required by matplotlib. Also used for math operations instead of standard python if available
+- [matplotlib](http://matplotlib.org/): plot audio signal and detections (see figures above)
+- [numpy](http://www.numpy.org): required by matplotlib. Also used for math operations instead of standard python if available
 - Optionnaly, you can use `sox` or `parecord` for data acquisition and feed `auditok` using a pipe.
 
 
 Installation
 ------------
+
+    git clone https://github.com/amsehili/auditok.git
+    cd auditok
     python setup.py install
 
 Command line usage
