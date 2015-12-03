@@ -17,7 +17,7 @@ Requirements
 
 `auditok` can be used with standard Python!
 
-However, if you want more features, the following packages are needed:
+However if you want more features, the following packages are needed:
 
 - `Pydub <https://github.com/jiaaro/pydub>`_ : read audio files of popular audio formats (ogg, mp3, etc.) or extract audio from a video file
 
@@ -43,31 +43,6 @@ Installation
 Getting started
 ---------------
 
-.. toctree::
-    :titlesonly:
-    :maxdepth: 2
-
-       Command-line Usage Guide <cmdline.rst>
-       API Tutorial <apitutorial.rst>
-
-
-API Reference
--------------
-
-.. toctree::
-    :maxdepth: 3
-
-       auditok.core <core.rst>
-       auditok.util <util.rst>
-       auditok.io <io.rst>
-       auditok.dataset <dataset.rst>
-
-
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-
-
+- `Command-line Usage Guide <http://auditok.readthedocs.org/en/latest/cmdline.html>`_ 
+- `API Tutorial <http://auditok.readthedocs.org/en/latest/apitutorial.html>`_
+- `API Reference <http://auditok.readthedocs.org/en/latest/index.html>`_
