@@ -24,7 +24,7 @@ A more detailed version of this user guide as well as an API tutorial and API re
   - [Save each detection into a separate audio file](https://github.com/amsehili/auditok#save-each-detection-into-a-separate-audio-file)
 - [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
 - [License](https://github.com/amsehili/auditok#license)
-- [uthor](https://github.com/amsehili/auditok#author)
+- [Author](https://github.com/amsehili/auditok#author)
 
 Two-figure explanation
 ----------------------
