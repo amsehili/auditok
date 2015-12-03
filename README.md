@@ -24,7 +24,7 @@ A more detailed version of this user guide as well as an API tutorial and API re
 - [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
 - [Some practical use cases](https://github.com/amsehili/auditok#some-practical-use-cases)
   - [1st practical use case: generate a subtitles template](https://github.com/amsehili/auditok#1st-practical-use-case-generate-a-subtitles-template)
-  - [2nd Practical use case example: build a (very) basic voice control application](https://github.com/amsehili/auditok#2nd-Practical-use-case-example-build-a-(very)-basic-voice-control)
+  - [2nd Practical use case example: build a (very) basic voice control application](https://github.com/amsehili/auditok#2nd-practical-use-case-example-build-a-very-basic-voice-control-application)
 - [License](https://github.com/amsehili/auditok#license)
 - [Author](https://github.com/amsehili/auditok#author)
 
