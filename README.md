@@ -5,7 +5,7 @@ AUDIo TOKenizer
 
 `auditok` is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
 
-A more detailed version of this user guide as well as an API tutorial and API reference can be found at [Readthedocs](http://auditok.readthedocs.org/en/latest/)
+A more detailed version of this user-guide, an API tutorial and API reference can be found at [Readthedocs](http://auditok.readthedocs.org/en/latest/)
 
 - [Two-figure explanation](https://github.com/amsehili/auditok#two-figure-explanation)
 - [Requirements](https://github.com/amsehili/auditok#requirements)
@@ -21,7 +21,7 @@ A more detailed version of this user guide as well as an API tutorial and API re
   - [Limit the length of aquired/read data](https://github.com/amsehili/auditok#limit-the-length-of-aquired-data)
   - [Save the whole acquired audio signal](https://github.com/amsehili/auditok#save-the-whole-acquired-audio-signal)
   - [Save each detection into a separate audio file](https://github.com/amsehili/auditok#save-each-detection-into-a-separate-audio-file)
-- [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
+  - [Setting detection parameters](https://github.com/amsehili/auditok#setting-detection-parameters)
 - [Some practical use cases](https://github.com/amsehili/auditok#some-practical-use-cases)
   - [1st practical use case: generate a subtitles template](https://github.com/amsehili/auditok#1st-practical-use-case-generate-a-subtitles-template)
   - [2nd Practical use case example: build a (very) basic voice control application](https://github.com/amsehili/auditok#2nd-practical-use-case-example-build-a-very-basic-voice-control-application)
