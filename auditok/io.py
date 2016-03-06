@@ -162,7 +162,7 @@ class Rewindable():
                 seconds to skip from the start of the stream
         """
         pass
-    
+
     
 
 class BufferAudioSource(AudioSource, Rewindable):
@@ -196,7 +196,6 @@ class BufferAudioSource(AudioSource, Rewindable):
         self.rewind()
     
     def read(self, size):
-        
         if not self._is_open:
             raise IOError("Stream is not open")
         
@@ -272,12 +271,10 @@ class BufferAudioSource(AudioSource, Rewindable):
 
 
     def set_time_position(self, time_position): # time in seconds
-        
         position = int(self.sampling_rate * time_position)
         self.set_position(position)
-        
 
-        
+
 
 class WaveAudioSource(AudioSource):
     """
@@ -316,7 +313,6 @@ class WaveAudioSource(AudioSource):
         
     
     def read(self, size):
-        
         if self._audio_stream is None:
             raise IOError("Stream is not open")
         else:
@@ -366,7 +362,6 @@ class PyAudioSource(AudioSource):
             
     
     def read(self, size):
-        
         if self._audio_stream is None:
             raise IOError("Stream is not open")
         
@@ -422,8 +417,6 @@ class PyAudioPlayer():
     def __init__(self, sampling_rate = DEFAULT_SAMPLE_RATE,
                  sample_width = DEFAULT_SAMPLE_WIDTH,
                  channels = DEFAULT_NB_CHANNELS):
-        
-    
         if not sample_width in (1, 2, 4):
             raise ValueError("Sample width must be one of: 1, 2 or 4 (bytes)")
         
@@ -446,7 +439,6 @@ class PyAudioPlayer():
             
         self.stream.stop_stream()
     
-        
     def  stop(self):
         if not self.stream.is_stopped():
             self.stream.stop_stream()
@@ -463,10 +455,9 @@ class PyAudioPlayer():
         
 
 def from_file(filename):
-    
     """
     Create an `AudioSource` object using the audio file specified by `filename`.
-    The appropriate `AudioSource` class is guessed from file's extension.
+    The appropriate :class:`AudioSource` class is guessed from file's extension.
     
     :Parameters:
     

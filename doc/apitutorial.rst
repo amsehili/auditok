@@ -428,7 +428,7 @@ This is an interesting example because the audio file we're analyzing contains a
 brief noise that occurs within the leading silence. We certainly do want our tokenizer 
 to stop at this point and considers whatever it comes after as a useful signal.
 To force the tokenizer to ignore that brief event we use two other parameters `init_min`
-ans `init_max_silence`. By `init_min` = 3 and `init_max_silence` = 1 we tell the tokenizer
+and `init_max_silence`. By `init_min` = 3 and `init_max_silence` = 1 we tell the tokenizer
 that a valid event must start with at least 3 noisy windows, between which there
 is at most 1 silent window.
 
