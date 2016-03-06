@@ -566,7 +566,7 @@ def main(argv=None):
         group.add_option("-n", "--min-duration", dest="min_duration", help="Min duration of a valid audio event in seconds [default: %default]", type=float, default=0.2, metavar="FLOAT")
         group.add_option("-m", "--max-duration", dest="max_duration", help="Max duration of a valid audio event in seconds [default: %default]", type=float, default=5, metavar="FLOAT")
         group.add_option("-s", "--max-silence", dest="max_silence", help="Max duration of a consecutive silence within a valid audio event in seconds [default: %default]", type=float, default=0.3, metavar="FLOAT")
-        group.add_option("-d", "--drop-trailing-silence", dest="drop_trailing_silence", help="Drop trailing silence from a detection [default: do not play]",  action="store_true", default=False)
+        group.add_option("-d", "--drop-trailing-silence", dest="drop_trailing_silence", help="Drop trailing silence from a detection [default: keep trailing silence]",  action="store_true", default=False)
         group.add_option("-e", "--energy-threshold", dest="energy_threshold", help="Log energy threshold for detection [default: %default]", type=float, default=50, metavar="FLOAT")
         parser.add_option_group(group)
         
@@ -635,7 +635,7 @@ def main(argv=None):
             handler.setLevel(logging.DEBUG)
             logger.addHandler(handler)
         
-        record = opts.output_main is not None or opts.plot
+        record = opts.output_main is not None or opts.plot or opts.save_image is not None
                         
         ads = ADSFactory.ads(audio_source = asource, block_dur = opts.analysis_window, max_time = opts.max_time, record = record)
         validator = AudioEnergyValidator(sample_width=asource.get_sample_width(), energy_threshold=opts.energy_threshold)
@@ -645,9 +645,11 @@ def main(argv=None):
             mode = StreamTokenizer.DROP_TRAILING_SILENCE
         else:
             mode = 0
-        tokenizer = StreamTokenizer(validator=validator, min_length=opts.min_duration * 100,
-                                    max_length=int(opts.max_duration * 100),
-                                    max_continuous_silence=opts.max_silence * 100,
+        
+        analysis_window_per_second = 1. / opts.analysis_window
+        tokenizer = StreamTokenizer(validator=validator, min_length=opts.min_duration * analysis_window_per_second,
+                                    max_length=int(opts.max_duration * analysis_window_per_second),
+                                    max_continuous_silence=opts.max_silence * analysis_window_per_second,
                                     mode = mode)
         
         
@@ -683,7 +685,7 @@ def main(argv=None):
                 player_worker = PlayerWorker(player=player, debug=opts.debug, logger=logger)
                 observers.append(player_worker)
             except Exception:
-                sys.stderr.write("Cannot get a audio player!\n")
+                sys.stderr.write("Cannot get an audio player!\n")
                 sys.stderr.write("You should either install pyaudio or supply a command (-C option) to play audio\n")
                 sys.exit(2)
                 
