@@ -274,7 +274,7 @@ class StreamTokenizer():
         order to detect sequences of frames that make up valid tokens.
         
         :Parameters:
-           `data_source` : instance of the `DataSource` class that implements a 'read' method.
+           `data_source` : instance of the :class:`DataSource` class that implements a `read` method.
                'read' should return a slice of signal, i.e. frame (of whatever \
                type as long as it can be processed by validator) and None if \
                there is no more signal.
@@ -303,7 +303,7 @@ class StreamTokenizer():
         
         while True:
             frame =  data_source.read()
-            if frame == None:
+            if frame is None:
                 break
             self._current_frame += 1
             self._process(frame)
