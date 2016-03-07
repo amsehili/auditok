@@ -1,3 +1,9 @@
+### Install via pip
 
+    sudo pip install auditok
 
-python setup.py install
+### Install the latest version on Github
+
+    git clone https://github.com/amsehili/auditok.git
+    cd auditok
+    sudo python setup.py install

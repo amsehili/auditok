@@ -10,7 +10,7 @@ if sys.version_info >= (3, 0):
    with open('auditok/__init__.py', 'rt') as f:
       version = str(ast.literal_eval(_version_re.search(
       f.read()).group(1)))
-      long_desc = open('quickstart.rst', 'rt').read() 
+      long_desc = open('doc/index.rst', 'rt').read() 
 
 else:
    with open('auditok/__init__.py', 'rb') as f:

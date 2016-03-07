@@ -269,12 +269,10 @@ class ADSFactory:
         `max_time`, `mt` : *(float)*
             maximum time (in seconds) to read. Default behavior: read until there is no more data
             available. 
-        
          
         `record`, `rec` : *(bool)*
             save all read data in cache. Provide a navigable object which boasts a `rewind` method.
             Default = False.
-        
         
         `block_dur`, `bd` : *(float)*
             processing block duration in seconds. This represents the quantity of audio data to return 
@@ -291,12 +289,10 @@ class ADSFactory:
             is given, `hop_dur` will be set to `block_dur` which means that there will be no overlap
             between two consecutively read blocks.
              
-          
         `block_size`, `bs` : *(int)*
             number of samples to read each time the `read` method is called. Default: a block size
             that represents a window of 10ms, so for a sampling rate of 16000, the default `block_size`
             is 160 samples, for a rate of 44100, `block_size` = 441 samples, etc.
-            
         
         `hop_size`, `hs` : *(int)*
             determines the number of overlapping samples between two adjacent read windows. For a
@@ -439,12 +435,12 @@ class ADSFactory:
             ads.close()
             data = b''.join(data)
             assert len(data) == int(ads.get_sampling_rate() * 2.25 * ads.get_sample_width() * ads.get_channels())
-        
         """
         
+        # copy user's dicionary (shallow copy)
+        kwargs = kwargs.copy()
         
-        
-        
+        # check and normalize keyword arguments
         ADSFactory._check_normalize_args(kwargs)
         
         block_dur = kwargs.pop("bd")
@@ -455,9 +451,6 @@ class ADSFactory:
         audio_source = kwargs.pop("asrc")
         filename = kwargs.pop("fn")
         data_buffer = kwargs.pop("db")
-        
-        # normalize db sr, sw and ch
-        
         record = kwargs.pop("rec")
         
         # Case 1: an audio source is supplied
@@ -574,10 +567,8 @@ class ADSFactory:
             
         def read(self):
             return self.audio_source.read(self.block_size)
-        
-        
-    
-    
+
+
     class ADSDecorator(AudioDataSource):
         """
         Base decorator class for AudioDataSource objects.
@@ -597,7 +588,6 @@ class ADSFactory:
             self.get_sample_width = self.ads.get_sample_width
             self.get_channels = self.ads.get_channels
         
-        
         def is_rewindable(self):
             return self.ads.is_rewindable
             
@@ -614,14 +604,12 @@ class ADSFactory:
                 self.ads.open()
                 self._reinit()
             
-        
         @abstractmethod
         def _reinit(self):
             pass            
         
         
     class OverlapADS(ADSDecorator):
-        
         """
         A class for AudioDataSource objects that can read and return overlapping audio frames
         """
@@ -639,8 +627,6 @@ class ADSFactory:
             
             def _get_block_size():
                 return self._actual_block_size
-            
-            #self.get_block_size = _get_block_size
             
             
         def _read_first_block(self):
@@ -675,8 +661,7 @@ class ADSFactory:
                 self._cache = None
                 
             return block
-                
-                    
+
         def read(self):
             pass
         
@@ -690,9 +675,9 @@ class ADSFactory:
                                self.get_sample_width() * \
                                self.get_channels()
             self.read = self._read_first_block
-     
-    
-    
+
+
+
     class LimiterADS(ADSDecorator):
         """
         A class for AudioDataSource objects that can read a fixed amount of data.
@@ -724,10 +709,9 @@ class ADSFactory:
                                   self.get_sample_width() * \
                                   self.get_channels()
             self._total_read_bytes = 0
+
             
-            
-      
-    
+
     class RecorderADS(ADSDecorator):
         """
         A class for AudioDataSource objects that can record all audio data they read,
@@ -739,10 +723,8 @@ class ADSFactory:
             
             self._reinit()
             
-            
         def read(self):
             pass
-        
         
         def _read_and_rec(self):
             # Read and save read data
@@ -756,8 +738,7 @@ class ADSFactory:
         def _read_simple(self):
             # Read without recording
             return self.ads.read()
-            
-        
+
         def rewind(self):
             if self._record:
                 # If has been recording, create a new BufferAudioSource
@@ -798,12 +779,7 @@ class ADSFactory:
             except TypeError:
                 # work for 'str' in python 2 and python 3
                 return ''.join(data)
-                
-        
 
-
-                
-            
 
 class AudioEnergyValidator(DataValidator):
     """
@@ -813,12 +789,13 @@ class AudioEnergyValidator(DataValidator):
     otherwise.
     
     :Parameters:
-    `sample_width` : int
+    
+    `sample_width` : *(int)*
         Number of bytes of one audio sample. This is used to convert data from `basestring` or `Bytes` to
         an array of floats.
         
-    `energy_threshold` : float
-        A threshold used to check whether an input data buffer is valid. 
+    `energy_threshold` : *(float)*
+        A threshold used to check whether an input data buffer is valid.
     """
     
     
@@ -885,15 +862,14 @@ class AudioEnergyValidator(DataValidator):
         
         :Parameters:
         
-            `data` : either a string or a Bytes buffer
-                `data` is converted into a numerical arra using the `sample_width`
-                given in the constructor.
+        `data` : either a *string* or a *Bytes* buffer
+            `data` is converted into a numerical array using the `sample_width`
+            given in the constructor.
         
         :Retruns:
         
-            True if `log_energy` > `energy_threshold`, False otherwise.
+        True if `log_energy` >= `energy_threshold`, False otherwise.
         """
-        
         
         signal = AudioEnergyValidator._convert(data, self.sample_width)
         return AudioEnergyValidator._signal_log_energy(signal) >= self._energy_threshold
@@ -903,7 +879,4 @@ class AudioEnergyValidator(DataValidator):
     
     def set_energy_threshold(self, threshold):
         self._energy_threshold = threshold
-        
-    
-    
-        
+
