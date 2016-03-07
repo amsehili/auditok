@@ -2,7 +2,7 @@
 :author:
 
 Amine SEHILI <amine.sehili@gmail.com>
-September-December, 2015
+2015-2016
 
 :License:
 
@@ -16,6 +16,6 @@ from .util import *
 from . import dataset
 from .exceptions import *
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
