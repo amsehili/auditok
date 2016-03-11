@@ -1,6 +1,16 @@
 auditok Changelog
 =================
 
+Version 0.1.5
+-------------
+
+- Fix description error for --drop-trailing-silence option (wrong default value)
+- Bug fix: cmdline.py, take analysis_window into account when initializing a tokenizer object
+- Bug fix: cmdline.py, --save-image option, set `record` to True when reading from the microphone
+- Bug fix: util.py, method ADSFactory.ads, make a shallow copy of user's `kwargs` before calling _check_normalize_args
+- Update documentation (mainly typos fixes)
+
+
 Version 0.1.4
 -------------
 
