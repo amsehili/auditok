@@ -8,7 +8,7 @@ auditok, an AUDIo TOKenization tool
     :target: http://auditok.readthedocs.org/en/latest/?badge=latest
     :alt: Documentation Status
 
-**auditok** is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
+`auditok` is an **Audio Activity Detection** tool that can process online data (read from an audio device or from standard input) as well as audio files. It can be used as a command line program and offers an easy to use API.
 
 The latest version of this documentation can be found at `Readthedocs <http://auditok.readthedocs.org/en/latest/>`_.
 
@@ -27,15 +27,16 @@ However, if you want more features, the following packages are needed:
 
 - `numpy <http://www.numpy.org>`_ : required by matplotlib. Also used for math operations instead of standard python if available.
 
-- Optionally, you can use **sox** or **parecord** for data acquisition and feed **auditok** using a pipe.
+- Optionally, you can use `sox` or `[p]arecord` for data acquisition and feed `auditok` using a pipe.
 
 Installation
 ------------
 
+Install with pip:
+
 .. code:: bash
 
     sudo pip install auditok
-
 
 or install the latest version on Github:
 
@@ -71,6 +72,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-
