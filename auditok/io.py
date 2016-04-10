@@ -97,7 +97,7 @@ class AudioSource():
             
         :Returns:
             
-            Audio data as a string of length 'N' * 'smaple_width' * 'channels', where 'N' is:
+            Audio data as a string of length 'N' * 'sample_width' * 'channels', where 'N' is:
             
             - `size` if `size` < 'left_samples'
             
