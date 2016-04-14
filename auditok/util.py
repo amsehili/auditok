@@ -866,7 +866,7 @@ class AudioEnergyValidator(DataValidator):
             `data` is converted into a numerical array using the `sample_width`
             given in the constructor.
         
-        :Retruns:
+        :Returns:
         
         True if `log_energy` >= `energy_threshold`, False otherwise.
         """
