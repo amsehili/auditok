@@ -9,12 +9,12 @@ It can read audio data from audio files as well as from built-in device(s) or st
 
 @author:     Mohamed El Amine SEHILI
 
-@copyright:  2015 Mohamed El Amine SEHILI
+@copyright:  2015-2016 Mohamed El Amine SEHILI
 
 @license:    GPL v3
 
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 02 Dec 2015
+@deffield    updated: 13 May 2016
 '''
 
 import sys
@@ -52,7 +52,7 @@ from auditok import __version__ as version
 __all__ = []
 __version__ = version
 __date__ = '2015-11-23'
-__updated__ = '2015-03-11'
+__updated__ = '2016-05-13'
 
 DEBUG = 0
 TESTRUN = 1
@@ -511,6 +511,7 @@ class LogWorker(Worker):
                 end = message.pop("end", None)
                 start_time = message.pop("start_time", None)
                 end_time = message.pop("end_time", None)
+                duration = message.pop("duration", None)
                 if audio_data is not None and len(audio_data) > 0:
                     
                     if self.debug:
@@ -521,7 +522,7 @@ class LogWorker(Worker):
                     if self.print_detections:
                         print(self.output_format.format(id = _id,
                             start = self.time_formatter(start_time),
-                            end = self.time_formatter(end_time)))
+                            end = self.time_formatter(end_time), duration = self.time_formatter(duration)))
                         
                     self.detections.append((_id, start, end, start_time, end_time))
                    
@@ -582,7 +583,7 @@ def main(argv=None):
         group.add_option("-E", "--echo", dest="echo", help="Play back each detection immediately using pyaudio [default: do not play]",  action="store_true", default=False)
         group.add_option("-p", "--plot", dest="plot", help="Plot and show audio signal and detections (requires matplotlib)",  action="store_true", default=False)
         group.add_option("", "--save-image", dest="save_image", help="Save plotted audio signal and detections as a picture or a PDF file (requires matplotlib)",  type=str, default=None, metavar="FILE")
-        group.add_option("", "--printf", dest="printf", help="print detections one per line using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start} and {end}",  type=str, default="{id} {start} {end}", metavar="STRING")
+        group.add_option("", "--printf", dest="printf", help="print detections, one per line, using a user supplied format (e.g. '[{id}]: {start} -- {end}'). Available keywords {id}, {start}, {end} and {duration}",  type=str, default="{id} {start} {end}", metavar="STRING")
         group.add_option("", "--time-format", dest="time_format", help="format used to print {start} and {end}. [Default= %default]. %S: absolute time in sec. %I: absolute time in ms. If at least one of (%h, %m, %s, %i) is used, convert time into hours, minutes, seconds and millis (e.g. %h:%m:%s.%i). Only required fields are printed",  type=str, default="%S", metavar="STRING")
         parser.add_option_group(group)
         
