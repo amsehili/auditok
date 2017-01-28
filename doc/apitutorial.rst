@@ -349,7 +349,7 @@ detect.
      
     validator = AudioEnergyValidator(sample_width=asource.get_sample_width(), energy_threshold=65)
     
-    # Defalut analysis window is 10 ms (float(asource.get_block_size()) / asource.get_sampling_rate())
+    # Default analysis window is 10 ms (float(asource.get_block_size()) / asource.get_sampling_rate())
     # min_length=20 : minimum length of a valid audio activity is 20 * 10 == 200 ms
     # max_length=4000 :  maximum length of a valid audio activity is 400 * 10 == 4000 ms == 4 seconds
     # max_continuous_silence=30 : maximum length of a tolerated  silence within a valid audio activity is 30 * 30 == 300 ms 
