@@ -478,5 +478,33 @@ class TestAudioSourceProperties(unittest.TestCase):
             a_source.channels = 2
 
 
+class TestAudioSourceShortProperties(unittest.TestCase):
+
+    def test_read_short_properties(self):
+
+        data = ""
+        sampling_rate = 8000
+        sample_width = 2
+        channels = 1
+        a_source = BufferAudioSource(data, sampling_rate, sample_width, channels)
+
+        self.assertEqual(a_source.sr, sampling_rate)
+        self.assertEqual(a_source.sw, sample_width)
+        self.assertEqual(a_source.ch, channels)
+
+    def test_set_readonly_short_properties_exception(self):
+
+        data = ""
+        sampling_rate = 8000
+        sample_width = 2
+        channels = 1
+        a_source = BufferAudioSource(data, sampling_rate, sample_width, channels)
+
+        with self.assertRaises(AttributeError):
+            a_source.sr = 16000
+            a_source.sw = 1
+            a_source.ch = 2
+
+
 if __name__ == "__main__":
     unittest.main()
