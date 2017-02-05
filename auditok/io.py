@@ -113,12 +113,22 @@ class AudioSource():
         """ Number of samples per second of audio stream """
         return self._sampling_rate
 
+    @property
+    def sr(self):
+        """ Number of samples per second of audio stream """
+        return self._sampling_rate
+
     def get_sample_width(self):
         """ Return the number of bytes used to represent one audio sample """
         return self.sample_width
 
     @property
     def sample_width(self):
+        """ Number of bytes used to represent one audio sample """
+        return self._sample_width
+
+    @property
+    def sw(self):
         """ Number of bytes used to represent one audio sample """
         return self._sample_width
 
@@ -130,6 +140,11 @@ class AudioSource():
     def channels(self):
         """ Number of channels of this audio source """
         return self._channels
+
+    @property
+    def ch(self):
+        """ Return the number of channels of this audio source """
+        return self.channels
 
 
 class Rewindable():
