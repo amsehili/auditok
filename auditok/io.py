@@ -417,7 +417,10 @@ class StdinAudioSource(AudioSource):
             raise IOError("Stream is not open")
 
         to_read = size * self.sample_width * self.channels
-        data = sys.stdin.read(to_read)
+        if sys.version_info >= (3, 0):
+            data = sys.stdin.buffer.read(to_read)
+        else:
+            data = sys.stdin.read(to_read)
 
         if data is None or len(data) < 1:
             return None
