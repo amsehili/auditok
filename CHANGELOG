@@ -1,6 +1,21 @@
 auditok Changelog
 =================
 
+Version 0.1.7
+-------------
+
+- Add python 3.5/3.6 to test scheme
+- Make source pep8 compliant
+- Add shortcut names for AudioSource object properties
+- Fix Python 3 bug with reading binary data from STDIN
+
+
+Version 0.1.6
+-------------
+
+- Add 'duration' to output keywords
+
+
 Version 0.1.5
 -------------
 
