@@ -576,6 +576,8 @@ def main(argv=None):
         group.add_option("-r", "--rate", dest="sampling_rate", help="Sampling rate of audio data [default: %default]", type=int, default=16000, metavar="INT")
         group.add_option("-c", "--channels", dest="channels", help="Number of channels of audio data [default: %default]", type=int, default=1, metavar="INT")
         group.add_option("-w", "--width", dest="sample_width", help="Number of bytes per audio sample [default: %default]", type=int, default=2, metavar="INT")
+        group.add_option("-A", "--audio-device", dest="input_device_index", help="Audio device index", type=int, default=0, metavar="INT")
+        group.add_option("-F", "--audio-frame-per-buffer", dest="frame_per_buffer", help="Audio frame per buffer", type=int, default=1024, metavar="INT")
         parser.add_option_group(group)
         
         group = OptionGroup(parser, "[Do something with detections]", "Use these options to print, play or plot detections.") 
@@ -609,7 +611,9 @@ def main(argv=None):
             try:
                 asource = PyAudioSource(sampling_rate = opts.sampling_rate,
                                         sample_width = opts.sample_width,
-                                        channels = opts.channels)
+                                        channels = opts.channels,
+                                        frames_per_buffer = opts.frame_per_buffer,
+                                        input_device_index = opts.input_device_index)
             except Exception:
                 sys.stderr.write("Cannot read data from audio device!\n")
                 sys.stderr.write("You should either install pyaudio or read data from STDIN\n")
