@@ -576,8 +576,8 @@ def main(argv=None):
         group.add_option("-r", "--rate", dest="sampling_rate", help="Sampling rate of audio data [default: %default]", type=int, default=16000, metavar="INT")
         group.add_option("-c", "--channels", dest="channels", help="Number of channels of audio data [default: %default]", type=int, default=1, metavar="INT")
         group.add_option("-w", "--width", dest="sample_width", help="Number of bytes per audio sample [default: %default]", type=int, default=2, metavar="INT")
-        group.add_option("-A", "--audio-device", dest="input_device_index", help="Audio device index", type=int, default=0, metavar="INT")
-        group.add_option("-F", "--audio-frame-per-buffer", dest="frame_per_buffer", help="Audio frame per buffer", type=int, default=1024, metavar="INT")
+        group.add_option("-I", "--input-device-index", dest="input_device_index", help="Audio device index [default: %default] - sonly when using PyAudio", type=int, default=None, metavar="INT")
+        group.add_option("-F", "--audio-frame-per-buffer", dest="frame_per_buffer", help="Audio frame per buffer [default: %default] - only when using PyAudio", type=int, default=1024, metavar="INT")
         parser.add_option_group(group)
         
         group = OptionGroup(parser, "[Do something with detections]", "Use these options to print, play or plot detections.") 

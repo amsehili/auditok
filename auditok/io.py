@@ -352,7 +352,7 @@ class PyAudioSource(AudioSource):
                  sample_width=DEFAULT_SAMPLE_WIDTH,
                  channels=DEFAULT_NB_CHANNELS,
                  frames_per_buffer=1024,
-                 input_device_index=0):
+                 input_device_index=None):
 
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer

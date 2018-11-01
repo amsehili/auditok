@@ -88,7 +88,7 @@ According to this table, the previous command can be run as:
 
 ### PyAudio
 
-When capturing input with PyAudio, you may need to adjust the device index with -A if multiple input devices are available. Use `lsusb -t` to get the list of usb devices, or use `arecord -l` if you're using a non-usb input device. If you don't know what index to use, just try `0`, `1`, `2` and so on, outputting the audio using `-E` (echo) until you hear the sound.
+When capturing input with PyAudio, you may need to adjust the device index with -I if multiple input devices are available. Use `lsusb -t` to get the list of usb devices, or use `arecord -l` if you're using a non-usb input device. If you don't know what index to use, just try `0`, `1`, `2` and so on, outputting the audio using `-E` (echo) until you hear the sound.
 
 You may also get an error `[Errno -9981] Input overflowed` from PyAudio. If that's the case, you need a bigger frame buffer.
 Use `-F` with 2048 or 4096 (the default is 1024).
