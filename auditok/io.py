@@ -351,10 +351,12 @@ class PyAudioSource(AudioSource):
     def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
                  sample_width=DEFAULT_SAMPLE_WIDTH,
                  channels=DEFAULT_NB_CHANNELS,
-                 frames_per_buffer=1024):
+                 frames_per_buffer=1024,
+                 input_device_index=None):
 
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer
+        self.input_device_index = input_device_index
 
         import pyaudio
         self._pyaudio_object = pyaudio.PyAudio()
@@ -370,6 +372,7 @@ class PyAudioSource(AudioSource):
                                                        rate=self.sampling_rate,
                                                        input=True,
                                                        output=False,
+                                                       input_device_index=self.input_device_index,
                                                        frames_per_buffer=self._chunk_size)
 
     def close(self):
