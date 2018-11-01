@@ -16,4 +16,4 @@ from .util import *
 from . import dataset
 from .exceptions import *
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
