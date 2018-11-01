@@ -14,7 +14,7 @@ It can read audio data from audio files as well as from built-in device(s) or st
 @license:    GPL v3
 
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 06 Oct 2018
+@deffield    updated: 01 Nov 2018
 '''
 
 import sys

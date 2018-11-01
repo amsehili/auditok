@@ -1,6 +1,13 @@
 auditok Changelog
 =================
 
+Version 0.1.8
+-------------
+
+- Add command line argument to select audio device used by pyaudio
+- Add command line argument to select buffer size for pyaudio
+
+
 Version 0.1.7
 -------------
 
