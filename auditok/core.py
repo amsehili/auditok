@@ -50,6 +50,11 @@ class AudioRegion(object):
         return self._end
 
     @property
+    def duration(self):
+        """Region duration in seconds"""
+        return self._duration
+
+    @property
     def sampling_rate(self):
         return self._sample_width
 
@@ -72,6 +77,10 @@ class AudioRegion(object):
     @property
     def ch(self):
         return self._channels
+
+    def __len__(self):
+        """Region duration in milliseconds"""
+        return int(self._duration * 1000)
 
 
 class StreamTokenizer():
