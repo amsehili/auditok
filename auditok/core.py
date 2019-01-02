@@ -11,7 +11,67 @@ Class summary
 
 from auditok.util import DataValidator
 
-__all__ = ["StreamTokenizer"]
+__all__ = ["AudioRegion", "StreamTokenizer"]
+
+
+class AudioRegion(object):
+
+    def __init__(self, data, start, sampling_rate, sample_width, channels):
+        """
+        A class for detected audio events.
+
+        :Parameters:
+
+            data: bytes
+                audio data
+            start: float
+                start time in seconds
+            samling_rate: int
+                sampling rate of audio data
+            sample_width: int
+                number of bytes of one audio sample
+            channels: int
+                number of channels of audio data
+        """
+        self._data = data
+        self._start = start
+        self._duration = len(data) / (sampling_rate * sample_width * channels)
+        self._end = start + self._duration
+        self._sampling_rate = sampling_rate
+        self._sample_width = sample_width
+        self._channels = channels
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    @property
+    def sampling_rate(self):
+        return self._sample_width
+
+    @property
+    def sr(self):
+        return self._sampling_rate
+
+    @property
+    def sample_width(self):
+        return self._sample_width
+
+    @property
+    def sw(self):
+        return self._sample_width
+
+    @property
+    def channels(self):
+        return self._channels
+
+    @property
+    def ch(self):
+        return self._channels
 
 
 class StreamTokenizer():
