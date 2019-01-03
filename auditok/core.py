@@ -82,6 +82,22 @@ class AudioRegion(object):
         """Region duration in milliseconds"""
         return int(self._duration * 1000)
 
+    def __bytes__(self):
+        return self._data
+
+    def __repr__(self):
+        return  ('AudioRegion(data, start={:.3f}, end={:.3f}, '
+                 'sampling_rate={}, sample_width={}, channels={})'.format(self.start,
+                                                                        self.end,
+                                                                        self.sr,
+                                                                        self.sw,
+                                                                        self.ch))
+
+    def __str__(self):
+        return 'AudioRegion(start={:.3f}, end={:.3f}, duration={:.3f}'.format(self.start,
+                                                                              self.end,
+                                                                              self.duration)
+
 
 class StreamTokenizer():
     """
