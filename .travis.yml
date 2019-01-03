@@ -2,6 +2,7 @@ before_install:
   - sudo apt-get update --fix-missing
 install:
   - pip install six
+  - pip install genty
 language: python
 python:
   - "2.7"
