@@ -35,8 +35,6 @@ class AudioRegion(object):
         """
         self._data = data
         self._start = start
-        self._duration = len(data) / (sampling_rate * sample_width * channels)
-        self._end = start + self._duration
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
         self._channels = channels
@@ -47,16 +45,20 @@ class AudioRegion(object):
 
     @property
     def end(self):
-        return self._end
+        return self.start + self.duration
 
     @property
     def duration(self):
-        """Region duration in seconds"""
-        return self._duration
+        """
+        Returns region duration in seconds.
+        """
+        return len(self._data) / (self.sampling_rate *
+                                  self.sample_width *
+                                  self.channels)
 
     @property
     def sampling_rate(self):
-        return self._sample_width
+        return self._sampling_rate
 
     @property
     def sr(self):
@@ -79,8 +81,10 @@ class AudioRegion(object):
         return self._channels
 
     def __len__(self):
-        """Region duration in milliseconds"""
-        return int(self._duration * 1000)
+        """
+        Rerurns region duration in milliseconds.
+        """
+        return round(self.duration * 1000)
 
     def __bytes__(self):
         return self._data
