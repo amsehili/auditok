@@ -1,6 +1,22 @@
 import unittest
+from random import random
 from genty import genty, genty_dataset
 from auditok import AudioRegion
+
+
+def _make_random_length_regions(
+    byte_seq, sampling_rate, sample_width, channels
+):
+    regions = []
+    for b in byte_seq:
+        duration = round(random() * 10, 6)
+        data = b * int(duration * sampling_rate * sample_width * channels)
+        start = round(random() * 13, 3)
+        region = AudioRegion(
+            data, start, sampling_rate, sample_width, channels
+        )
+        regions.append(region)
+    return regions
 
 
 @genty
@@ -176,3 +192,101 @@ class TestAudioRegion(unittest.TestCase):
         self.assertEqual(region.duration, expected_duration_s)
         self.assertEqual(len(region), expected_duration_ms)
         self.assertEqual(bytes(region), data)
+
+    @genty_dataset(
+        simple=(8000, 1, 1),
+        stereo_sw_2=(8000, 2, 2),
+        arbitray_sr_multichannel=(5413, 2, 3),
+    )
+    def test_concatenation(self, sampling_rate, sample_width, channels):
+
+        region_1, region_2 = _make_random_length_regions(
+            [b"a", b"b"], sampling_rate, sample_width, channels
+        )
+
+        expected_start = region_1.start
+        expected_duration = region_1.duration + region_2.duration
+        expected_end = expected_start + expected_duration
+        expected_data = bytes(region_1) + bytes(region_2)
+        concat_region = region_1 + region_2
+
+        self.assertEqual(concat_region.start, expected_start)
+        self.assertAlmostEqual(concat_region.end, expected_end, places=6)
+        self.assertAlmostEqual(
+            concat_region.duration, expected_duration, places=6
+        )
+        self.assertEqual(bytes(concat_region), expected_data)
+        # due to the behavior of `round` len(concat_region) does not always
+        # equal len(region_1) + len(region_2)
+        # Exmaple if both regions are 1.0005 seconds long, then:
+        # len(region_1) == len(region_2) == round(1.0005) == 1000
+        # and:
+        # region_1.duration + region_2.duration == 1.0005 * 2 = 2.001
+        # and:
+        # len(region_3) == round(2.001 * 1000) = 2001
+        #                                      != len(region_1) + len(region_2)
+        self.assertEqual(len(concat_region), round(expected_duration * 1000))
+
+    @genty_dataset(
+        simple=(8000, 1, 1),
+        stereo_sw_2=(8000, 2, 2),
+        arbitray_sr_multichannel=(5413, 2, 3),
+    )
+    def test_concatenation_many(self, sampling_rate, sample_width, channels):
+
+        regions = _make_random_length_regions(
+            [b"a", b"b", b"c"], sampling_rate, sample_width, channels
+        )
+        expected_start = regions[0].start
+        expected_duration = sum(r.duration for r in regions)
+        expected_end = expected_start + expected_duration
+        expected_data = b"".join(bytes(r) for r in regions)
+        concat_region = sum(regions)
+
+        self.assertEqual(concat_region.start, expected_start)
+        self.assertAlmostEqual(concat_region.end, expected_end, places=6)
+        self.assertAlmostEqual(
+            concat_region.duration, expected_duration, places=6
+        )
+        self.assertEqual(bytes(concat_region), expected_data)
+        # see test_concatenation
+        self.assertEqual(len(concat_region), round(expected_duration * 1000))
+
+    def test_concatenation_different_sampling_rate_error(self):
+
+        region_1 = AudioRegion(b"a" * 100, 0, 8000, 1, 1)
+        region_2 = AudioRegion(b"b" * 100, 0, 3000, 1, 1)
+
+        with self.assertRaises(ValueError) as val_err:
+            region_1 + region_2
+        self.assertEqual(
+            "Can only concatenate AudioRegions of the same "
+            "sampling rate (8000 != 3000)",
+            str(val_err.exception),
+        )
+
+    def test_concatenation_different_sample_width_error(self):
+
+        region_1 = AudioRegion(b"a" * 100, 0, 8000, 2, 1)
+        region_2 = AudioRegion(b"b" * 100, 0, 8000, 4, 1)
+
+        with self.assertRaises(ValueError) as val_err:
+            region_1 + region_2
+        self.assertEqual(
+            "Can only concatenate AudioRegions of the same "
+            "sample width (2 != 4)",
+            str(val_err.exception),
+        )
+
+    def test_concatenation_different_number_of_channels_error(self):
+
+        region_1 = AudioRegion(b"a" * 100, 0, 8000, 1, 1)
+        region_2 = AudioRegion(b"b" * 100, 0, 8000, 1, 2)
+
+        with self.assertRaises(ValueError) as val_err:
+            region_1 + region_2
+        self.assertEqual(
+            "Can only concatenate AudioRegions of the same "
+            "number of channels (1 != 2)",
+            str(val_err.exception),
+        )
