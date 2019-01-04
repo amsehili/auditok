@@ -35,6 +35,13 @@ DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
 DEFAULT_NB_CHANNELS = 1
 
+class AudioIOError(Exception):
+    pass
+
+
+class AudioParameterError(AudioIOError):
+    pass
+
 
 class AudioSource():
     """ 
