@@ -102,6 +102,41 @@ class AudioRegion(object):
                                                                               self.end,
                                                                               self.duration)
 
+    def __add__(self, other):
+        """
+        Concatenates this region and `other` and return a new region.
+        Both regions must have the same sampling rate, sample width
+        and number of channels. If not, raises a `ValueError`.
+        """
+        if not isinstance(other, AudioRegion):
+            raise TypeError('Can only concatenate AudioRegion, '
+                            'not "{}"'.format(type(other)))
+        if other.sr != self.sr:
+            raise ValueError('Can only concatenate AudioRegions of the same '
+                             'sampling rate ({} != {})'.format(self.sr,
+                                                               other.sr))
+        if other.sw != self.sw:
+            raise ValueError('Can only concatenate AudioRegions of the same '
+                             'sample width ({} != {})'.format(self.sw,
+                                                              other.sw))
+        if other.ch != self.ch:
+            raise ValueError('Can only concatenate AudioRegions of the same '
+                             'number of channels ({} != {})'.format(self.ch,
+                                                                    other.ch))
+        data = self._data + other._data
+        return AudioRegion(data, self.start, self.sr, self.sw, self.ch)
+
+    def __radd__(self, other):
+        """
+        Concatenates `other` and this region. `other` should be an
+        `AudioRegion` with the same audio parameters as this region
+        but can exceptionally be `0` to make it possible to concatenate
+        many regions with `sum`.
+        """
+        if other == 0:
+            return self
+        return other.add(self)
+
 
 class StreamTokenizer():
     """
