@@ -11,8 +11,8 @@ from auditok import BufferAudioSource, AudioParameterError
 class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
 
     def setUp(self):
-        self.signal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
-        self.audio_source = BufferAudioSource(data_buffer=self.signal,
+        self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+        self.audio_source = BufferAudioSource(data_buffer=self.data,
                                               sampling_rate=10, sample_width=1, channels=1)
         self.audio_source.open()
 
@@ -22,33 +22,39 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
     def test_sr10_sw1_ch1_read_1(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "A", msg="wrong block, expected: 'A', found: {0} ".format(block))
+        exp = b"A"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr10_sw1_ch1_read_6(self):
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "ABCDEF", msg="wrong block, expected: 'ABCDEF', found: {0} ".format(block))
+        exp = b"ABCDEF"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr10_sw1_ch1_read_multiple(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "A", msg="wrong block, expected: 'A', found: {0} ".format(block))
+        exp = b"A"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "BCDEFG", msg="wrong block, expected: 'BCDEFG', found: {0} ".format(block))
+        exp = b"BCDEFG"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(13)
-        self.assertEqual(block, "HIJKLMNOPQRST", msg="wrong block, expected: 'HIJKLMNOPQRST', found: {0} ".format(block))
+        exp = b"HIJKLMNOPQRST"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "UVWXYZ012345", msg="wrong block, expected: 'UVWXYZ012345', found: {0} ".format(block))
+        exp = b"UVWXYZ012345"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr10_sw1_ch1_read_all(self):
         block = self.audio_source.read(9999)
-        self.assertEqual(block, self.signal, msg="wrong block, expected: {0}, found: {1} ".format(self.signal, block))
+        self.assertEqual(block, self.data, msg="wrong block, expected: {}, found: {} ".format(self.data, block))
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, None, msg="wrong block, expected: {0}, found: {1} ".format(None, block))
+        self.assertEqual(block, None, msg="wrong block, expected: {}, found: {} ".format(None, block))
 
     def test_sr10_sw1_ch1_get_sampling_rate(self):
 
@@ -144,9 +150,9 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
         self.assertEqual(tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp))
 
     def test_sr10_sw1_ch1_set_data(self):
-        self.audio_source.set_data("12345")
+        self.audio_source.set_data(b"12345")
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "12345", msg="wrong block, expected: '12345', found: {0} ".format(block))
+        self.assertEqual(block, b"12345", msg="wrong block, expected: '12345', found: {0} ".format(block))
 
     def test_sr10_sw1_ch1_read_closed(self):
         self.audio_source.close()
@@ -157,8 +163,8 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
 class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     def setUp(self):
-        self.signal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
-        self.audio_source = BufferAudioSource(data_buffer=self.signal,
+        self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+        self.audio_source = BufferAudioSource(data_buffer=self.data,
                                               sampling_rate=16, sample_width=2, channels=1)
         self.audio_source.open()
 
@@ -168,30 +174,36 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
     def test_sr16_sw2_ch1_read_1(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "AB", msg="wrong block, expected: 'AB', found: {0} ".format(block))
+        exp = b"AB"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr16_sw2_ch1_read_6(self):
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "ABCDEFGHIJKL", msg="wrong block, expected: 'ABCDEFGHIJKL', found: {0} ".format(block))
+        exp = b"ABCDEFGHIJKL"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr16_sw2_ch1_read_multiple(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "AB", msg="wrong block, expected: 'AB', found: {0} ".format(block))
+        exp = b"AB"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "CDEFGHIJKLMN", msg="wrong block, expected: 'CDEFGHIJKLMN', found: {0} ".format(block))
+        exp = b"CDEFGHIJKLMN"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(5)
-        self.assertEqual(block, "OPQRSTUVWX", msg="wrong block, expected: 'OPQRSTUVWX', found: {0} ".format(block))
+        exp = b"OPQRSTUVWX"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "YZ012345", msg="wrong block, expected: 'YZ012345', found: {0} ".format(block))
+        exp = b"YZ012345"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr16_sw2_ch1_read_all(self):
         block = self.audio_source.read(9999)
-        self.assertEqual(block, self.signal, msg="wrong block, expected: {0}, found: {1} ".format(self.signal, block))
+        self.assertEqual(block, self.data, msg="wrong block, expected: {0}, found: {1} ".format(self.data, block))
 
         block = self.audio_source.read(1)
         self.assertEqual(block, None, msg="wrong block, expected: {0}, found: {1} ".format(None, block))
@@ -291,9 +303,9 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     def test_sr16_sw2_ch1_set_data(self):
 
-        self.audio_source.set_data("abcdef")
+        self.audio_source.set_data(b"abcdef")
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "abcdef", msg="wrong block, expected: 'abcdef', found: {0} ".format(block))
+        self.assertEqual(block, b"abcdef", msg="wrong block, expected: 'abcdef', found: {0} ".format(block))
 
     def test_sr16_sw2_ch1_set_data_exception(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
@@ -318,8 +330,8 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
 
     def setUp(self):
-        self.signal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefgh"
-        self.audio_source = BufferAudioSource(data_buffer=self.signal,
+        self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefgh"
+        self.audio_source = BufferAudioSource(data_buffer=self.data,
                                               sampling_rate=11, sample_width=4, channels=1)
         self.audio_source.open()
 
@@ -329,32 +341,36 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
     def test_sr11_sw4_ch1_read_1(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "ABCD", msg="wrong block, expected: 'ABCD', found: {0} ".format(block))
+        exp = b"ABCD"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr11_sw4_ch1_read_6(self):
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "ABCDEFGHIJKLMNOPQRSTUVWX",
-                         msg="wrong block, expected: 'ABCDEFGHIJKLMNOPQRSTUVWX', found: {0} ".format(block))
+        exp = b"ABCDEFGHIJKLMNOPQRSTUVWX"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr11_sw4_ch1_read_multiple(self):
 
         block = self.audio_source.read(1)
-        self.assertEqual(block, "ABCD", msg="wrong block, expected: 'AB', found: {0} ".format(block))
+        exp = b"ABCD"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(6)
-        self.assertEqual(block, "EFGHIJKLMNOPQRSTUVWXYZ01",
-                         msg="wrong block, expected: 'EFGHIJKLMNOPQRSTUVWXYZ01', found: {0} ".format(block))
+        exp = b"EFGHIJKLMNOPQRSTUVWXYZ01"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(3)
-        self.assertEqual(block, "23456789abcd", msg="wrong block, expected: '23456789abcd', found: {0} ".format(block))
+        exp = b"23456789abcd"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "efgh", msg="wrong block, expected: 'efgh', found: {0} ".format(block))
+        exp = b"efgh"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr11_sw4_ch1_read_all(self):
         block = self.audio_source.read(9999)
-        self.assertEqual(block, self.signal, msg="wrong block, expected: {0}, found: {1} ".format(self.signal, block))
+        self.assertEqual(block, self.data, msg="wrong block, expected: {0}, found: {1} ".format(self.data, block))
 
         block = self.audio_source.read(1)
         self.assertEqual(block, None, msg="wrong block, expected: {0}, found: {1} ".format(None, block))
@@ -389,7 +405,6 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
 
         self.audio_source.read(5)
         self.audio_source.read(4)
-
         pos = self.audio_source.get_position()
         self.assertEqual(pos, 9, msg="wrong position, expected: 5, found: {0} ".format(pos))
 
@@ -453,14 +468,14 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
         self.assertEqual(tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp))
 
     def test_sr11_sw4_ch1_set_data(self):
-
-        self.audio_source.set_data("abcdefgh")
+        self.audio_source.set_data(b"abcdefgh")
         block = self.audio_source.read(9999)
-        self.assertEqual(block, "abcdefgh", msg="wrong block, expected: 'abcdef', found: {0} ".format(block))
+        exp = b"abcdefgh"
+        self.assertEqual(block, exp, msg="wrong block, expected: {}, found: {} ".format(exp, block))
 
     def test_sr11_sw4_ch1_set_data_exception(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.set_data("abcdef")
+            self.audio_source.set_data(b"abcdef")
         self.assertEqual(
             "The length of audio data must be an integer "
             "multiple of `sample_width * channels`",
@@ -469,7 +484,7 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
     
     def test_sr11_sw4_ch1_append_data_exception(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.append_data("abcdef")
+            self.audio_source.append_data(b"abcdef")
         self.assertEqual(
             "The length of audio data must be an integer "
             "multiple of `sample_width * channels`",
@@ -480,9 +495,8 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
 class TestBufferAudioSourceCreationException(unittest.TestCase):
 
     def test_wrong_sample_width_value(self):
-        data = b"ABCDEFGHI"
         with self.assertRaises(AudioParameterError) as audio_param_err:
-            _ = BufferAudioSource(data_buffer=data,
+            _ = BufferAudioSource(data_buffer=b"ABCDEFGHI",
                                   sampling_rate=9,
                                   sample_width=3,
                                   channels=1)
@@ -519,7 +533,7 @@ class TestAudioSourceProperties(unittest.TestCase):
 
     def test_read_properties(self):
 
-        data = ""
+        data = b""
         sampling_rate = 8000
         sample_width = 2
         channels = 1
@@ -531,7 +545,7 @@ class TestAudioSourceProperties(unittest.TestCase):
 
     def test_set_readonly_properties_exception(self):
 
-        data = ""
+        data = b""
         sampling_rate = 8000
         sample_width = 2
         channels = 1
@@ -547,7 +561,7 @@ class TestAudioSourceShortProperties(unittest.TestCase):
 
     def test_read_short_properties(self):
 
-        data = ""
+        data = b""
         sampling_rate = 8000
         sample_width = 2
         channels = 1
@@ -559,7 +573,7 @@ class TestAudioSourceShortProperties(unittest.TestCase):
 
     def test_set_readonly_short_properties_exception(self):
 
-        data = ""
+        data = b""
         sampling_rate = 8000
         sample_width = 2
         channels = 1
