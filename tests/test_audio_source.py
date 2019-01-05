@@ -5,7 +5,7 @@ September 2015
 '''
 import unittest
 
-from auditok import BufferAudioSource
+from auditok import BufferAudioSource, AudioParameterError
 
 
 class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
@@ -296,9 +296,23 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
         self.assertEqual(block, "abcdef", msg="wrong block, expected: 'abcdef', found: {0} ".format(block))
 
     def test_sr16_sw2_ch1_set_data_exception(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            self.audio_source.set_data("abcde")
+            self.assertEqual(
+                "The length of audio data must be an integer "
+                "multiple of `sample_width * channels`",
+                str(audio_param_err.exception),
+            )
+    
+    def test_sr16_sw2_ch1_append_data_exception(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            self.audio_source.append_data("abcde")
+            self.assertEqual(
+                "The length of audio data must be an integer "
+                "multiple of `sample_width * channels`",
+                str(audio_param_err.exception),
+            )
 
-        with self.assertRaises(Exception):
-            self.assertRaises(ValueError, self.audio_source.set_data("abcde"))
 
 
 class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
@@ -445,9 +459,60 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
         self.assertEqual(block, "abcdefgh", msg="wrong block, expected: 'abcdef', found: {0} ".format(block))
 
     def test_sr11_sw4_ch1_set_data_exception(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            self.audio_source.set_data("abcdef")
+        self.assertEqual(
+            "The length of audio data must be an integer "
+            "multiple of `sample_width * channels`",
+            str(audio_param_err.exception),
+        )
+    
+    def test_sr11_sw4_ch1_append_data_exception(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            self.audio_source.append_data("abcdef")
+        self.assertEqual(
+            "The length of audio data must be an integer "
+            "multiple of `sample_width * channels`",
+            str(audio_param_err.exception),
+        )
 
-        with self.assertRaises(Exception):
-            self.assertRaises(ValueError, self.audio_source.set_data("abcdef"))
+
+class TestBufferAudioSourceCreationException(unittest.TestCase):
+
+    def test_wrong_sample_width_value(self):
+        data = b"ABCDEFGHI"
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            _ = BufferAudioSource(data_buffer=data,
+                                  sampling_rate=9,
+                                  sample_width=3,
+                                  channels=1)
+        self.assertEqual(
+            "Sample width must be one of: 1, 2 or 4 (bytes)",
+            str(audio_param_err.exception),
+        )
+
+    def test_wrong_channels_value(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            _ = BufferAudioSource(data_buffer=b"ABCDEFGH",
+                                  sampling_rate=8,
+                                  sample_width=2,
+                                  channels=2)
+        self.assertEqual(
+            "Only mono audio is currently supported",
+            str(audio_param_err.exception),
+        )
+
+    def test_wrong_data_buffer_size(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            _ = BufferAudioSource(data_buffer=b"ABCDEFGHI",
+                                  sampling_rate=8,
+                                  sample_width=2,
+                                  channels=2)
+        self.assertEqual(
+            "The length of audio data must be an integer "
+            "multiple of `sample_width * channels`",
+            str(audio_param_err.exception),
+        )
 
 
 class TestAudioSourceProperties(unittest.TestCase):
