@@ -28,8 +28,9 @@ from abc import ABCMeta, abstractmethod
 import wave
 import sys
 
-__all__ = ["AudioSource", "Rewindable", "BufferAudioSource", "WaveAudioSource",
-           "PyAudioSource", "StdinAudioSource", "PyAudioPlayer", "from_file", "player_for"]
+__all__ = ["AudioIOError", "AudioParameterError", "AudioSource", "Rewindable",
+           "BufferAudioSource", "WaveAudioSource", "PyAudioSource",
+           "StdinAudioSource", "PyAudioPlayer", "from_file", "player_for"]
 
 DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
@@ -41,6 +42,14 @@ class AudioIOError(Exception):
 
 class AudioParameterError(AudioIOError):
     pass
+
+
+def check_audio_data(data, sample_width, channels):
+    sample_size_bytes = int(sample_width * channels)
+    nb_samples = len(data) // sample_size_bytes
+    if nb_samples * sample_size_bytes != len(data):
+        raise AudioParameterError("The length of audio data must be an integer "
+                                  "multiple of `sample_width * channels`")
 
 
 class AudioSource():
@@ -70,11 +79,11 @@ class AudioSource():
                  sample_width=DEFAULT_SAMPLE_WIDTH,
                  channels=DEFAULT_NB_CHANNELS):
 
-        if not sample_width in (1, 2, 4):
-            raise ValueError("Sample width must be one of: 1, 2 or 4 (bytes)")
+        if sample_width not in (1, 2, 4):
+            raise AudioParameterError("Sample width must be one of: 1, 2 or 4 (bytes)")
 
         if channels != 1:
-            raise ValueError("Only mono audio is currently handled")
+            raise AudioParameterError("Only mono audio is currently supported")
 
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
@@ -210,9 +219,7 @@ class BufferAudioSource(AudioSource, Rewindable):
                  sample_width=DEFAULT_SAMPLE_WIDTH,
                  channels=DEFAULT_NB_CHANNELS):
 
-        if len(data_buffer) % (sample_width * channels) != 0:
-            raise ValueError("length of data_buffer must be a multiple of (sample_width * channels)")
-
+        check_audio_data(data_buffer, sample_width, channels)
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._buffer = data_buffer
         self._index = 0
@@ -259,8 +266,7 @@ class BufferAudioSource(AudioSource, Rewindable):
             `data_buffer` : str, basestring, Bytes
                 a string buffer with a length multiple of (sample_width * channels)
         """
-        if len(data_buffer) % (self.sample_width * self.channels) != 0:
-            raise ValueError("length of data_buffer must be a multiple of (sample_width * channels)")
+        check_audio_data(data_buffer, self.sample_width, self.channels)
         self._buffer = data_buffer
         self._index = 0
         self._left = 0 if self._buffer is None else len(self._buffer)
@@ -273,10 +279,7 @@ class BufferAudioSource(AudioSource, Rewindable):
             `data_buffer` : str, basestring, Bytes
                 a buffer with a length multiple of (sample_width * channels)
         """
-
-        if len(data_buffer) % (self.sample_width * self.channels) != 0:
-            raise ValueError("length of data_buffer must be a multiple of (sample_width * channels)")
-
+        check_audio_data(data_buffer, self.sample_width, self.channels)
         self._buffer += data_buffer
         self._left += len(data_buffer)
 
