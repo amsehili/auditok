@@ -10,6 +10,7 @@ Class summary
 """
 
 from auditok.util import DataValidator
+from auditok.io import check_audio_data
 
 __all__ = ["AudioRegion", "StreamTokenizer"]
 
@@ -33,6 +34,7 @@ class AudioRegion(object):
             channels: int
                 number of channels of audio data
         """
+        check_audio_data(data, sample_width, channels)
         self._data = data
         self._start = start
         self._sampling_rate = sampling_rate
