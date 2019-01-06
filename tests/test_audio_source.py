@@ -738,7 +738,7 @@ class TestBufferAudioSourceCreationException(unittest.TestCase):
                 data_buffer=b"ABCDEFGHI",
                 sampling_rate=8,
                 sample_width=2,
-                channels=2,
+                channels=1,
             )
         self.assertEqual(
             "The length of audio data must be an integer "

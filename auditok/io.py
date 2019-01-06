@@ -218,12 +218,11 @@ class BufferAudioSource(AudioSource, Rewindable):
                  sampling_rate=DEFAULT_SAMPLE_RATE,
                  sample_width=DEFAULT_SAMPLE_WIDTH,
                  channels=DEFAULT_NB_CHANNELS):
-
-        check_audio_data(data_buffer, sample_width, channels)
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        check_audio_data(data_buffer, sample_width, channels)
         self._buffer = data_buffer
-        self._index = 0
-        self._left = 0 if self._buffer is None else len(self._buffer)
+        self._sample_size_all_channels = sample_width * channels
+        self._current_position_bytes = 0
         self._is_open = False
 
     def is_open(self):
@@ -238,20 +237,12 @@ class BufferAudioSource(AudioSource, Rewindable):
 
     def read(self, size):
         if not self._is_open:
-            raise IOError("Stream is not open")
-
-        if self._left > 0:
-
-            to_read = size * self.sample_width * self.channels
-            if to_read > self._left:
-                to_read = self._left
-
-            data = self._buffer[self._index: self._index + to_read]
-            self._index += to_read
-            self._left -= to_read
-
+            raise AudioIOError("Stream is not open")
+        bytes_to_read = self._sample_size_all_channels * size
+        data = self._buffer[self._current_position_bytes: self._current_position_bytes + bytes_to_read]
+        if data:
+            self._current_position_bytes += len(data)
             return data
-
         return None
 
     def get_data_buffer(self):
@@ -268,8 +259,7 @@ class BufferAudioSource(AudioSource, Rewindable):
         """
         check_audio_data(data_buffer, self.sample_width, self.channels)
         self._buffer = data_buffer
-        self._index = 0
-        self._left = 0 if self._buffer is None else len(self._buffer)
+        self._current_position_bytes = 0
 
     def append_data(self, data_buffer):
         """ Append data to this audio stream
@@ -281,29 +271,21 @@ class BufferAudioSource(AudioSource, Rewindable):
         """
         check_audio_data(data_buffer, self.sample_width, self.channels)
         self._buffer += data_buffer
-        self._left += len(data_buffer)
 
     def rewind(self):
         self.set_position(0)
 
     def get_position(self):
-        return self._index / self.sample_width
+        return self._current_position_bytes / self._sample_size_all_channels
 
     def get_time_position(self):
-        return float(self._index) / (self.sample_width * self.sampling_rate)
+        return float(self._current_position_bytes) / (self._sample_size_all_channels * self.sampling_rate)
 
     def set_position(self, position):
         if position < 0:
             raise ValueError("position must be >= 0")
-
-        if self._buffer is None:
-            self._index = 0
-            self._left = 0
-            return
-
-        position *= self.sample_width
-        self._index = position if position < len(self._buffer) else len(self._buffer)
-        self._left = len(self._buffer) - self._index
+        position *= self._sample_size_all_channels
+        self._current_position_bytes = position if position < len(self._buffer) else len(self._buffer)
 
     def set_time_position(self, time_position):  # time in seconds
         position = int(self.sampling_rate * time_position)
