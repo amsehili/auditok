@@ -1,7 +1,7 @@
 import unittest
 from random import random
 from genty import genty, genty_dataset
-from auditok import AudioRegion
+from auditok import AudioRegion, AudioParameterError
 
 
 def _make_random_length_regions(
@@ -192,6 +192,21 @@ class TestAudioRegion(unittest.TestCase):
         self.assertEqual(region.duration, expected_duration_s)
         self.assertEqual(len(region), expected_duration_ms)
         self.assertEqual(bytes(region), data)
+
+    def test_creation_invalid_data_exception(self):
+        with self.assertRaises(AudioParameterError) as audio_param_err:
+            _ = AudioRegion(
+                data=b"ABCDEFGHI",
+                start=0,
+                sampling_rate=8,
+                sample_width=2,
+                channels=1,
+            )
+        self.assertEqual(
+            "The length of audio data must be an integer "
+            "multiple of `sample_width * channels`",
+            str(audio_param_err.exception),
+        )
 
     @genty_dataset(
         simple=(8000, 1, 1),
