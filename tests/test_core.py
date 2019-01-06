@@ -10,7 +10,7 @@ def _make_random_length_regions(
     regions = []
     for b in byte_seq:
         duration = round(random() * 10, 6)
-        data = b * int(duration * sampling_rate * sample_width * channels)
+        data = b * int(duration * sampling_rate) * sample_width * channels
         start = round(random() * 13, 3)
         region = AudioRegion(
             data, start, sampling_rate, sample_width, channels
