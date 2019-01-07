@@ -468,6 +468,18 @@ class PyAudioPlayer():
             start += chunk_size
 
 
+def _save_wave(filename, data, sampling_rate, sample_width, channels):
+    """
+    Save audio data to a wave file.
+    """
+    # use standard python's wave module
+    with wave.open(filename, "w") as fp:
+        fp.setframerate(sampling_rate)
+        fp.setsampwidth(sample_width)
+        fp.setnchannels(channels)
+        fp.writeframes(data)
+
+
 def from_file(filename):
     """
     Create an `AudioSource` object using the audio file specified by `filename`.
