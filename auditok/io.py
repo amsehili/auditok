@@ -468,6 +468,14 @@ class PyAudioPlayer():
             start += chunk_size
 
 
+def _save_raw(filename, data):
+    """
+    Save audio data as a headerless (i.e. raw) file.
+    """
+    with open(filename, "wb") as fp:
+        fp.write(data)
+
+
 def _save_wave(filename, data, sampling_rate, sample_width, channels):
     """
     Save audio data to a wave file.
