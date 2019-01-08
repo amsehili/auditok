@@ -59,6 +59,25 @@ def _guess_audio_format(fmt, filename):
     return fmt.lower()
 
 
+def _normalize_use_channel(use_channel):
+    """
+    Returns a value of `use_channel` as expected by audio read/write fuctions.
+    If `use_channel` is `None`, returns 0. If it's an integer, or the special
+    str 'mix' returns it as is. If it's `left` or `right` returns 0 or 1
+    respectively.
+    """
+    if use_channel is None:
+        return 0
+    if use_channel == "mix" or isinstance(use_channel, int):
+        return use_channel
+    try:
+        return ["left", "right"].index(use_channel)
+    except ValueError:
+        err_message = "'use_channel' parameter must be an integer "
+        "or one of ('left', 'right', 'mix'), found: '{}'".format(use_channel)
+        raise AudioParameterError(err_message)
+
+
 class AudioSource():
     """ 
     Base class for audio source objects.
