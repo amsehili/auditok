@@ -52,6 +52,13 @@ def check_audio_data(data, sample_width, channels):
                                   "multiple of `sample_width * channels`")
 
 
+def _guess_audio_format(fmt, filename):
+    if fmt is None:
+        extension = os.path.splitext(filename.lower())[1][1:]
+        return extension if extension else None
+    return fmt.lower()
+
+
 class AudioSource():
     """ 
     Base class for audio source objects.
