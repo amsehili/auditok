@@ -78,6 +78,53 @@ def _normalize_use_channel(use_channel):
         raise AudioParameterError(err_message)
 
 
+def _get_audio_parameters(param_dict):
+    """
+    Gets audio parameters from a dictionary of parameters.
+    A parameter can have a long name or a short name. If the long name is
+    present, the short name is ignored. In neither is present then
+    `AudioParameterError` is raised  except for the `use_channel` (or `uc`)
+    parameter for which a defalut value of 0 is returned.
+
+    Also raises `AudioParameterError` if sampling rate, sample width or
+    channels is not an integer.
+
+    Expected parameters are:
+
+        `sampling_rate`, `sr`: int, sampling rate.
+        `sample_width`, `sw`: int, sample size in bytes.
+        `channels`, `ch`: int, number of channels.
+        `use_channel`, `us`: int or str, which channel to use from data.
+            Default value is 0 (first channel). The following special str
+            values are also accepted:
+                `left`: alias for 0
+                `right`: alias for 1
+                `mix`: indicates that all channels should be mixed up into one
+                    single channel
+
+    :Returns
+
+        param_dict: tuple
+            audio parameters as a tuple (sampling_rate,
+                                         sample_width,
+                                         channels,
+                                         use_channel)
+    """
+    err_message = ("'{ln}' (or '{sn}') must be an integer, found: '{val}'")
+    parameters = []
+    for (long_name, short_name) in (("sampling_rate", "sr"),
+                                    ("sample_width", "sw"),
+                                    ("channels", "ch")):
+        param = param_dict.get(long_name, None) or param_dict.get(short_name, None)
+        if param is None or not isinstance(param, int):
+            raise AudioParameterError(err_message.format(ln=long_name,
+                                                         sn=short_name,
+                                                         val=param))
+        parameters.append(param)
+    use_channel = param_dict.get("use_channel", param_dict.get("uc", 0))
+    return tuple(parameters) + (_normalize_use_channel(use_channel),)
+
+
 class AudioSource():
     """ 
     Base class for audio source objects.
