@@ -25,8 +25,9 @@ Function summary
 """
 
 from abc import ABCMeta, abstractmethod
-import wave
+import os
 import sys
+import wave
 
 __all__ = ["AudioIOError", "AudioParameterError", "AudioSource", "Rewindable",
            "BufferAudioSource", "WaveAudioSource", "PyAudioSource",
@@ -600,3 +601,51 @@ def player_for(audio_source):
     return PyAudioPlayer(audio_source.get_sampling_rate(),
                          audio_source.get_sample_width(),
                          audio_source.get_channels())
+
+def to_file(data, file, audio_format=None, **kwargs):
+    """
+    Writes audio data to file. If `audio_format` is `None`, output
+    audio format will be guessed from extension. If `audio_format`
+    is `None` and `file` comes without an extension then audio
+    data will be written as a raw audio file.
+
+    :Parameters:
+
+        `data`: buffer of bytes
+            audio data to be written. Can be a `bytes`, `bytearray`,
+            `memoryview`, `array` or `numpy.ndarray` object.
+        `file`: str
+            path to output audio file
+        `audio_format`: str
+            audio format used to save data (e.g. raw, webm, wav, ogg)
+        :kwargs:
+            If an audio format other than raw is used, the following
+            keyword arguments are required:
+            `sampling_rate`, `sr`: int
+                sampling rate of audio data
+            `sample_width`, `sw`: int
+                sample width (i.e., number of bytes of one audio sample)
+            `channels`, `ch`: int
+                number of channels of audio data
+    :Raises:
+
+        `AudioParameterError` if output format is different than raw and one
+        or more audio parameters are missing.
+        `AudioIOError` if audio data cannot be written in the desired format.
+    """
+    audio_format = _guess_audio_format(audio_format, file)
+    if audio_format in (None, "raw"):
+        _save_raw(file, data)
+        return
+    try:
+        params = _get_audio_parameters(kwargs)
+        sampling_rate, sample_width, channels, _ = params
+    except AudioParameterError as exc:
+        err_message = "All audio parameters are required to save formats "
+        "other than raw. Error detail: {}".format(exc)
+        raise AudioParameterError(err_message)
+    if audio_format in ("wav", "wave"):
+        _save_wave(file, data, sampling_rate, sample_width, channels)
+    else:
+        err_message = "cannot write file format {} (file name: {})"
+        raise AudioIOError(err_message.format(audio_format, file))
