@@ -668,6 +668,9 @@ def to_file(data, file, audio_format=None, **kwargs):
         raise AudioParameterError(err_message)
     if audio_format in ("wav", "wave"):
         _save_wave(file, data, sampling_rate, sample_width, channels)
+    elif _WITH_PYDUB:
+        _save_with_pydub(file, data, audio_format, sampling_rate,
+                         sample_width, channels)
     else:
         err_message = "cannot write file format {} (file name: {})"
         raise AudioIOError(err_message.format(audio_format, file))
