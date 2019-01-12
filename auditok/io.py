@@ -42,6 +42,7 @@ __all__ = ["AudioIOError", "AudioParameterError", "AudioSource", "Rewindable",
 DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
 DEFAULT_NB_CHANNELS = 1
+DATA_FORMAT = {1: 'b', 2: 'h', 4: 'i'}
 
 class AudioIOError(Exception):
     pass
