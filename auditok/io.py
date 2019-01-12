@@ -29,6 +29,12 @@ import os
 import sys
 import wave
 
+try:
+    from pydub import AudioSegment
+    _WITH_PYDUB = True
+except ImportError:
+    _WITH_PYDUB = False
+
 __all__ = ["AudioIOError", "AudioParameterError", "AudioSource", "Rewindable",
            "BufferAudioSource", "WaveAudioSource", "PyAudioSource",
            "StdinAudioSource", "PyAudioPlayer", "from_file", "player_for"]
@@ -542,26 +548,6 @@ class PyAudioPlayer():
             start += chunk_size
 
 
-def _save_raw(filename, data):
-    """
-    Save audio data as a headerless (i.e. raw) file.
-    """
-    with open(filename, "wb") as fp:
-        fp.write(data)
-
-
-def _save_wave(filename, data, sampling_rate, sample_width, channels):
-    """
-    Save audio data to a wave file.
-    """
-    # use standard python's wave module
-    with wave.open(filename, "w") as fp:
-        fp.setframerate(sampling_rate)
-        fp.setsampwidth(sample_width)
-        fp.setnchannels(channels)
-        fp.writeframes(data)
-
-
 def from_file(filename):
     """
     Create an `AudioSource` object using the audio file specified by `filename`.
@@ -601,6 +587,42 @@ def player_for(audio_source):
     return PyAudioPlayer(audio_source.get_sampling_rate(),
                          audio_source.get_sample_width(),
                          audio_source.get_channels())
+
+def _save_raw(file, data):
+    """
+    Saves audio data as a headerless (i.e. raw) file.
+    See also :func:`to_file`.
+    """
+    with open(file, "wb") as fp:
+        fp.write(data)
+
+
+def _save_wave(file, data, sampling_rate, sample_width, channels):
+    """
+    Saves audio data to a wave file.
+    See also :func:`to_file`.
+    """
+    # use standard python's wave module
+    with wave.open(file, "w") as fp:
+        fp.setframerate(sampling_rate)
+        fp.setsampwidth(sample_width)
+        fp.setnchannels(channels)
+        fp.writeframes(data)
+
+
+def _save_with_pydub(file, data, audio_format, sampling_rate, sample_width,
+                     channels):
+    """
+    Saves audio data with pydub (https://github.com/jiaaro/pydub).
+    See also :func:`to_file`.
+    """
+    segment = AudioSegment(data,
+                           frame_rate=sampling_rate,
+                           sample_width=sample_width,
+                           channels=channels)
+    with open(file, "wb") as fp:
+        segment.export(fp, format=audio_format)
+
 
 def to_file(data, file, audio_format=None, **kwargs):
     """
