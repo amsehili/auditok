@@ -1,6 +1,8 @@
 import os
 import sys
 import math
+from array import array
+from auditok.io import DATA_FORMAT
 
 
 if sys.version_info >= (3, 0):
@@ -30,3 +32,38 @@ def _array_to_bytes(a):
         return a.tobytes()
     else:
         return a.tostring()
+
+
+def _generate_pure_tone(
+    frequency, duration_sec=1, sampling_rate=16000, sample_width=2, volume=1e4
+):
+    """
+    Generates a pure tone with the given frequency.
+    """
+    assert frequency <= sampling_rate / 2
+    max_value = (2 ** (sample_width * 8) // 2) - 1
+    if volume > max_value:
+        volume = max_value
+    fmt = DATA_FORMAT[sample_width]
+    total_samples = int(sampling_rate * duration_sec)
+    step = frequency / sampling_rate
+    two_pi_step = 2 * math.pi * step
+    data = array(
+        fmt,
+        (
+            int(math.sin(two_pi_step * i) * volume)
+            for i in range(total_samples)
+        ),
+    )
+    return data
+
+
+PURE_TONE_DICT = {
+    freq: _generate_pure_tone(freq, 1, 16000, 2) for freq in (400, 800, 1600)
+}
+PURE_TONE_DICT.update(
+    {
+        freq: _generate_pure_tone(freq, 0.1, 16000, 2)
+        for freq in (600, 1150, 2400, 7220)
+    }
+)
