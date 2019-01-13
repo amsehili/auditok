@@ -2,7 +2,9 @@ import os
 import sys
 import math
 from array import array
-from auditok.io import DATA_FORMAT
+from unittest import TestCase
+from genty import genty, genty_dataset
+from auditok.io import DATA_FORMAT, AudioParameterError, check_audio_data
 
 
 if sys.version_info >= (3, 0):
@@ -67,3 +69,21 @@ PURE_TONE_DICT.update(
         for freq in (600, 1150, 2400, 7220)
     }
 )
+
+
+@genty
+class TestIO(TestCase):
+    @genty_dataset(
+        valid_mono=(b"\0" * 113, 1, 1),
+        valid_stereo=(b"\0" * 160, 1, 2),
+        invalid_mono_sw_2=(b"\0" * 113, 2, 1, False),
+        invalid_stereo_sw_1=(b"\0" * 113, 1, 2, False),
+        invalid_stereo_sw_2=(b"\0" * 158, 2, 2, False),
+    )
+    def test_check_audio_data(self, data, sample_width, channels, valid=True):
+
+        if not valid:
+            with self.assertRaises(AudioParameterError):
+                check_audio_data(data, sample_width, channels)
+        else:
+            self.assertIsNone(check_audio_data(data, sample_width, channels))
