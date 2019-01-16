@@ -10,6 +10,7 @@ from auditok.io import (
     DATA_FORMAT,
     AudioParameterError,
     check_audio_data,
+    _save_raw,
     _save_wave,
 )
 
@@ -94,6 +95,20 @@ class TestIO(TestCase):
                 check_audio_data(data, sample_width, channels)
         else:
             self.assertIsNone(check_audio_data(data, sample_width, channels))
+
+    @genty_dataset(
+        mono=("mono_400Hz.raw", (400,)),
+        three_channel=("3channel_400-800-1600Hz.raw", (400, 800, 1600)),
+    )
+    def test_save_raw(self, filename, frequencies):
+        filename = "tests/data/test_16KHZ_{}".format(filename)
+        sample_width = 2
+        fmt = DATA_FORMAT[sample_width]
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        tmpfile = NamedTemporaryFile()
+        _save_raw(tmpfile.name, data)
+        self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
