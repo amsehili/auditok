@@ -691,6 +691,28 @@ def _load_raw(
         )
 
 
+def _load_wave(filename, large_file=False, use_channel=0):
+    """
+    Load a wave audio file with standard Python.
+    If `large_file` is True, audio data will be lazily
+    loaded to memory.
+
+    See also :func:`to_file`.
+    """
+    if large_file:
+        return WaveAudioSource(filename, use_channel)
+    with wave.open(filename) as fp:
+        channels = fp.getnchannels()
+        srate = fp.getframerate()
+        swidth = fp.getsampwidth()
+        data = fp.readframes(-1)
+    if channels > 1:
+        data = _extract_selected_channel(data, channels, swidth, use_channel)
+    return BufferAudioSource(
+        data, sampling_rate=srate, sample_width=swidth, channels=1
+    )
+
+
 def from_file(filename):
     """
     Create an `AudioSource` object using the audio file specified by `filename`.
