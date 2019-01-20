@@ -31,18 +31,30 @@ import wave
 
 try:
     from pydub import AudioSegment
+
     _WITH_PYDUB = True
 except ImportError:
     _WITH_PYDUB = False
 
-__all__ = ["AudioIOError", "AudioParameterError", "AudioSource", "Rewindable",
-           "BufferAudioSource", "WaveAudioSource", "PyAudioSource",
-           "StdinAudioSource", "PyAudioPlayer", "from_file", "player_for"]
+__all__ = [
+    "AudioIOError",
+    "AudioParameterError",
+    "AudioSource",
+    "Rewindable",
+    "BufferAudioSource",
+    "WaveAudioSource",
+    "PyAudioSource",
+    "StdinAudioSource",
+    "PyAudioPlayer",
+    "from_file",
+    "player_for",
+]
 
 DEFAULT_SAMPLE_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
 DEFAULT_NB_CHANNELS = 1
-DATA_FORMAT = {1: 'b', 2: 'h', 4: 'i'}
+DATA_FORMAT = {1: "b", 2: "h", 4: "i"}
+
 
 class AudioIOError(Exception):
     pass
@@ -56,8 +68,10 @@ def check_audio_data(data, sample_width, channels):
     sample_size_bytes = int(sample_width * channels)
     nb_samples = len(data) // sample_size_bytes
     if nb_samples * sample_size_bytes != len(data):
-        raise AudioParameterError("The length of audio data must be an integer "
-                                  "multiple of `sample_width * channels`")
+        raise AudioParameterError(
+            "The length of audio data must be an integer "
+            "multiple of `sample_width * channels`"
+        )
 
 
 def _guess_audio_format(fmt, filename):
@@ -118,22 +132,26 @@ def _get_audio_parameters(param_dict):
                                          channels,
                                          use_channel)
     """
-    err_message = ("'{ln}' (or '{sn}') must be an integer, found: '{val}'")
+    err_message = "'{ln}' (or '{sn}') must be an integer, found: '{val}'"
     parameters = []
-    for (long_name, short_name) in (("sampling_rate", "sr"),
-                                    ("sample_width", "sw"),
-                                    ("channels", "ch")):
-        param = param_dict.get(long_name, None) or param_dict.get(short_name, None)
+    for (long_name, short_name) in (
+        ("sampling_rate", "sr"),
+        ("sample_width", "sw"),
+        ("channels", "ch"),
+    ):
+        param = param_dict.get(long_name, None) or param_dict.get(
+            short_name, None
+        )
         if param is None or not isinstance(param, int):
-            raise AudioParameterError(err_message.format(ln=long_name,
-                                                         sn=short_name,
-                                                         val=param))
+            raise AudioParameterError(
+                err_message.format(ln=long_name, sn=short_name, val=param)
+            )
         parameters.append(param)
     use_channel = param_dict.get("use_channel", param_dict.get("uc", 0))
     return tuple(parameters) + (_normalize_use_channel(use_channel),)
 
 
-class AudioSource():
+class AudioSource:
     """ 
     Base class for audio source objects.
 
@@ -156,12 +174,17 @@ class AudioSource():
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS):
+    def __init__(
+        self,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+    ):
 
         if sample_width not in (1, 2, 4):
-            raise AudioParameterError("Sample width must be one of: 1, 2 or 4 (bytes)")
+            raise AudioParameterError(
+                "Sample width must be one of: 1, 2 or 4 (bytes)"
+            )
 
         if channels != 1:
             raise AudioParameterError("Only mono audio is currently supported")
@@ -244,7 +267,7 @@ class AudioSource():
         return self.channels
 
 
-class Rewindable():
+class Rewindable:
     """
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
@@ -295,10 +318,13 @@ class BufferAudioSource(AudioSource, Rewindable):
     It implements methods from :class:`Rewindable` and is therefore a navigable :class:`AudioSource`.
     """
 
-    def __init__(self, data_buffer,
-                 sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS):
+    def __init__(
+        self,
+        data_buffer,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+    ):
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         check_audio_data(data_buffer, sample_width, channels)
         self._buffer = data_buffer
@@ -320,7 +346,10 @@ class BufferAudioSource(AudioSource, Rewindable):
         if not self._is_open:
             raise AudioIOError("Stream is not open")
         bytes_to_read = self._sample_size_all_channels * size
-        data = self._buffer[self._current_position_bytes: self._current_position_bytes + bytes_to_read]
+        data = self._buffer[
+            self._current_position_bytes : self._current_position_bytes
+            + bytes_to_read
+        ]
         if data:
             self._current_position_bytes += len(data)
             return data
@@ -360,13 +389,17 @@ class BufferAudioSource(AudioSource, Rewindable):
         return self._current_position_bytes / self._sample_size_all_channels
 
     def get_time_position(self):
-        return float(self._current_position_bytes) / (self._sample_size_all_channels * self.sampling_rate)
+        return float(self._current_position_bytes) / (
+            self._sample_size_all_channels * self.sampling_rate
+        )
 
     def set_position(self, position):
         if position < 0:
             raise ValueError("position must be >= 0")
         position *= self._sample_size_all_channels
-        self._current_position_bytes = position if position < len(self._buffer) else len(self._buffer)
+        self._current_position_bytes = (
+            position if position < len(self._buffer) else len(self._buffer)
+        )
 
     def set_time_position(self, time_position):  # time in seconds
         position = int(self.sampling_rate * time_position)
@@ -389,16 +422,19 @@ class WaveAudioSource(AudioSource):
         self._audio_stream = None
 
         stream = wave.open(self._filename)
-        AudioSource.__init__(self, stream.getframerate(),
-                             stream.getsampwidth(),
-                             stream.getnchannels())
+        AudioSource.__init__(
+            self,
+            stream.getframerate(),
+            stream.getsampwidth(),
+            stream.getnchannels(),
+        )
         stream.close()
 
     def is_open(self):
         return self._audio_stream is not None
 
     def open(self):
-        if(self._audio_stream is None):
+        if self._audio_stream is None:
             self._audio_stream = wave.open(self._filename)
 
     def close(self):
@@ -421,32 +457,40 @@ class PyAudioSource(AudioSource):
     A class for an `AudioSource` that reads data the built-in microphone using PyAudio. 
     """
 
-    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS,
-                 frames_per_buffer=1024,
-                 input_device_index=None):
+    def __init__(
+        self,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+        frames_per_buffer=1024,
+        input_device_index=None,
+    ):
 
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer
         self.input_device_index = input_device_index
 
         import pyaudio
+
         self._pyaudio_object = pyaudio.PyAudio()
-        self._pyaudio_format = self._pyaudio_object.get_format_from_width(self.sample_width)
+        self._pyaudio_format = self._pyaudio_object.get_format_from_width(
+            self.sample_width
+        )
         self._audio_stream = None
 
     def is_open(self):
         return self._audio_stream is not None
 
     def open(self):
-        self._audio_stream = self._pyaudio_object.open(format=self._pyaudio_format,
-                                                       channels=self.channels,
-                                                       rate=self.sampling_rate,
-                                                       input=True,
-                                                       output=False,
-                                                       input_device_index=self.input_device_index,
-                                                       frames_per_buffer=self._chunk_size)
+        self._audio_stream = self._pyaudio_object.open(
+            format=self._pyaudio_format,
+            channels=self.channels,
+            rate=self.sampling_rate,
+            input=True,
+            output=False,
+            input_device_index=self.input_device_index,
+            frames_per_buffer=self._chunk_size,
+        )
 
     def close(self):
         if self._audio_stream is not None:
@@ -472,9 +516,12 @@ class StdinAudioSource(AudioSource):
     A class for an :class:`AudioSource` that reads data from standard input.
     """
 
-    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS):
+    def __init__(
+        self,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+    ):
 
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._is_open = False
@@ -504,14 +551,17 @@ class StdinAudioSource(AudioSource):
         return data
 
 
-class PyAudioPlayer():
+class PyAudioPlayer:
     """
     A class for audio playback using Pyaudio
     """
 
-    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS):
+    def __init__(
+        self,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+    ):
         if not sample_width in (1, 2, 4):
             raise ValueError("Sample width must be one of: 1, 2 or 4 (bytes)")
 
@@ -520,10 +570,15 @@ class PyAudioPlayer():
         self.channels = channels
 
         import pyaudio
+
         self._p = pyaudio.PyAudio()
-        self.stream = self._p.open(format=self._p.get_format_from_width(self.sample_width),
-                                   channels=self.channels, rate=self.sampling_rate,
-                                   input=False, output=True)
+        self.stream = self._p.open(
+            format=self._p.get_format_from_width(self.sample_width),
+            channels=self.channels,
+            rate=self.sampling_rate,
+            input=False,
+            output=True,
+        )
 
     def play(self, data):
         if self.stream.is_stopped():
@@ -542,11 +597,98 @@ class PyAudioPlayer():
 
     def _chunk_data(self, data):
         # make audio chunks of 100 ms to allow interruption (like ctrl+c)
-        chunk_size = int((self.sampling_rate * self.sample_width * self.channels) / 10)
+        chunk_size = int(
+            (self.sampling_rate * self.sample_width * self.channels) / 10
+        )
         start = 0
         while start < len(data):
-            yield data[start: start + chunk_size]
+            yield data[start : start + chunk_size]
             start += chunk_size
+
+
+def player_for(audio_source):
+    """
+    Return a :class:`PyAudioPlayer` that can play data from `audio_source`.
+
+    :Parameters:
+
+        `audio_source` : 
+            an `AudioSource` object.
+
+    :Returns:
+
+        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
+        as `audio_source`.
+    """
+
+    return PyAudioPlayer(
+        audio_source.get_sampling_rate(),
+        audio_source.get_sample_width(),
+        audio_source.get_channels(),
+    )
+
+
+def _load_raw(
+    file,
+    sampling_rate,
+    sample_width,
+    channels,
+    use_channel=0,
+    large_file=False,
+):
+    """
+    Load a raw audio file with standard Python.
+    If `large_file` is True, audio data will be lazily
+    loaded to memory.
+
+    See also :func:`from_file`.
+
+    :Parameters:
+        `file` : filelike object or str
+            raw audio file to open
+        `sampling_rate`: int
+            sampling rate of audio data
+        `sample_width`: int
+            sample width of audio data
+        `channels`: int
+            number of channels of audio data
+        `use_channel`: int
+            audio channel to read if file is not mono audio. This must be an integer
+            0 >= and < channels, or one of 'left' (treated as 0 or first channel), or
+            right (treated as 1 or second channels). 
+
+    :Returns:
+
+        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
+        as `audio_source`.
+    """
+    if None in (sampling_rate, sample_width, channels):
+        raise AudioParameterError(
+            "All audio parameters are required for raw audio files"
+        )
+
+    if large_file:
+        return RawAudioSource(
+            file,
+            sampling_rate=sampling_rate,
+            sample_width=sample_width,
+            channels=channels,
+            use_channel=use_channel,
+        )
+    else:
+        with open(file, "rb") as fp:
+            data = fp.read()
+        if channels != 1:
+            # TODO check if striding with mmap doesn't load all data to memory
+            data = _extract_selected_channel(
+                data, channels, sample_width, use_channel
+            )
+        return BufferAudioSource(
+            data,
+            sampling_rate=sampling_rate,
+            sample_width=sample_width,
+            channels=1,
+        )
 
 
 def from_file(filename):
@@ -567,27 +709,10 @@ def from_file(filename):
     if filename.lower().endswith(".wav"):
         return WaveAudioSource(filename)
 
-    raise Exception("Can not create an AudioSource object from '%s'" % (filename))
+    raise Exception(
+        "Can not create an AudioSource object from '%s'" % (filename)
+    )
 
-
-def player_for(audio_source):
-    """
-    Return a :class:`PyAudioPlayer` that can play data from `audio_source`.
-
-    :Parameters:
-
-        `audio_source` : 
-            an `AudioSource` object.
-
-    :Returns:
-
-        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
-        as `audio_source`.
-    """
-
-    return PyAudioPlayer(audio_source.get_sampling_rate(),
-                         audio_source.get_sample_width(),
-                         audio_source.get_channels())
 
 def _save_raw(file, data):
     """
@@ -611,16 +736,19 @@ def _save_wave(file, data, sampling_rate, sample_width, channels):
         fp.writeframes(data)
 
 
-def _save_with_pydub(file, data, audio_format, sampling_rate, sample_width,
-                     channels):
+def _save_with_pydub(
+    file, data, audio_format, sampling_rate, sample_width, channels
+):
     """
     Saves audio data with pydub (https://github.com/jiaaro/pydub).
     See also :func:`to_file`.
     """
-    segment = AudioSegment(data,
-                           frame_rate=sampling_rate,
-                           sample_width=sample_width,
-                           channels=channels)
+    segment = AudioSegment(
+        data,
+        frame_rate=sampling_rate,
+        sample_width=sample_width,
+        channels=channels,
+    )
     with open(file, "wb") as fp:
         segment.export(fp, format=audio_format)
 
@@ -670,8 +798,9 @@ def to_file(data, file, audio_format=None, **kwargs):
     if audio_format in ("wav", "wave"):
         _save_wave(file, data, sampling_rate, sample_width, channels)
     elif _WITH_PYDUB:
-        _save_with_pydub(file, data, audio_format, sampling_rate,
-                         sample_width, channels)
+        _save_with_pydub(
+            file, data, audio_format, sampling_rate, sample_width, channels
+        )
     else:
         err_message = "cannot write file format {} (file name: {})"
         raise AudioIOError(err_message.format(audio_format, file))
