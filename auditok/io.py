@@ -713,6 +713,39 @@ def _load_wave(filename, large_file=False, use_channel=0):
     )
 
 
+def _load_with_pydub(filename, audio_format, use_channel=0):
+    """Open compressed audio file using pydub. If a video file
+    is passed, its audio track(s) are extracted and loaded.
+    This function should not be called directely, use :func:`from_file`
+    instead.
+
+    :Parameters:
+
+    `filename`:
+        path to audio file.
+    `audio_format`:
+        string, audio file format (e.g. raw, webm, wav, ogg)
+    """
+    func_dict = {
+        "mp3": AudioSegment.from_mp3,
+        "ogg": AudioSegment.from_ogg,
+        "flv": AudioSegment.from_flv,
+    }
+    open_function = func_dict.get(audio_format, AudioSegment.from_file)
+    segment = open_function(filename)
+    data = segment._data
+    if segment.channels > 1:
+        data = _extract_selected_channel(
+            data, segment.channels, segment.sample_width, use_channel
+        )
+    return BufferAudioSource(
+        data_buffer=data,
+        sampling_rate=segment.frame_rate,
+        sample_width=segment.sample_width,
+        channels=1,
+    )
+
+
 def from_file(filename):
     """
     Create an `AudioSource` object using the audio file specified by `filename`.
