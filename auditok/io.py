@@ -746,27 +746,83 @@ def _load_with_pydub(filename, audio_format, use_channel=0):
     )
 
 
-def from_file(filename):
+def from_file(
+    filename, audio_format=None, use_channel=None, large_file=False, **kwargs
+):
     """
-    Create an `AudioSource` object using the audio file specified by `filename`.
-    The appropriate :class:`AudioSource` class is guessed from file's extension.
+    Read audio data from `filename` and return an `AudioSource` object.
+    if `audio_format` is None, the appropriate :class:`AudioSource` class is
+    guessed from file's extension. `filename` can be a compressed audio or
+    video file. This will require installing pydub:
+    (https://github.com/jiaaro/pydub).
+
+    The normal behavior is to load all audio data to memory from which a
+    :class:`BufferAudioSource` object is created. This should be convenient
+    most     of the time unless audio file is very large. In that case, and
+    in order to load audio data in lazy manner (i.e. read data from disk each
+    time :func:`AudioSource.read` is called), `large_file` should be True.
+
+    Note that the current implementation supports only wave and raw formats for
+    lazy audio loading.
+
+    See also :func:`to_file`.
 
     :Parameters:
 
-        `filename` :
-            path to an audio file.
+    `filename`: str
+        path to input audio or video file.
+    `audio_format`: str
+        audio format used to save data  (e.g. raw, webm, wav, ogg)
+    `use_channel`: int
+        audio channel to extract from input file if file is not mono audio.
+        This must be an integer >= 0 and < channels, or one of the special
+        values `left` and `right` (treated as 0 and 1 respectively).
+    `large_file`: bool
+        If True, audio won't fully be loaded to memory but only when a window
+        is read disk.
+
+    :kwargs:
+
+    If an audio format other than `raw` is used, the following keyword
+    arguments are required:
+
+    `sampling_rate`, `sr`: int
+        sampling rate of audio data
+    `sample_width`: int
+        sample width (i.e. number of bytes used to represent one audio sample)
+    `channels`: int
+        number of channels of audio data
 
     :Returns:
 
-        an `AudioSource` object that reads data from the given file.
+    An `AudioSource` object that reads data from input file.
+
+    :Raises:
+
+    An `AudioIOError` is raised if audio data cannot be read in the given
+    format; or if format is `raw` and one or more audio parameters are missing.
     """
+    audio_format = _guess_audio_format(audio_format, filename)
 
-    if filename.lower().endswith(".wav"):
-        return WaveAudioSource(filename)
+    if audio_format == "raw":
+        srate, swidth, channels, use_channel = _get_audio_parameters(kwargs)
+        return _load_raw(
+            filename, srate, swidth, channels, use_channel, large_file
+        )
 
-    raise Exception(
-        "Can not create an AudioSource object from '%s'" % (filename)
-    )
+    use_channel = _normalize_use_channel(kwargs.get("use_channel", None))
+    if audio_format in ["wav", "wave"]:
+        return _load_wave(filename, large_file, use_channel)
+    if large_file:
+        raise AudioIOError("Large file format should be raw or wav")
+    if _WITH_PYDUB:
+        return _load_with_pydub(
+            filename, audio_format=audio_format, use_channel=use_channel
+        )
+    else:
+        raise AudioIOError(
+            "pydub is required for audio formats other than raw or wav"
+        )
 
 
 def _save_raw(file, data):
