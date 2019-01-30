@@ -23,11 +23,16 @@ Function summary
         from_file
         player_for
 """
-
 from abc import ABCMeta, abstractmethod
 import os
 import sys
 import wave
+from array import array
+
+if sys.version_info >= (3, 0):
+    PYTHON_3 = True
+else:
+    PYTHON_3 = False
 
 try:
     from pydub import AudioSegment
@@ -149,6 +154,32 @@ def _get_audio_parameters(param_dict):
         parameters.append(param)
     use_channel = param_dict.get("use_channel", param_dict.get("uc", 0))
     return tuple(parameters) + (_normalize_use_channel(use_channel),)
+
+
+def _array_to_bytes(a):
+    """
+    Converts an `array.array` to `bytes`.
+    """
+    if PYTHON_3:
+        return a.tobytes()
+    else:
+        return a.tostring()
+
+
+def _extract_selected_channel(data, channels, sample_width, use_channel):
+    if use_channel == "mix":
+        return _mix_audio_channels(data, channels, sample_width)
+    elif use_channel >= channels or use_channel < -channels:
+        err_message = "use_channel == {} but audio data has only {} channel{}."
+        err_message += " Selected channel must be 'mix' or an integer >= "
+        err_message += "-channels and < channels"
+        err_message = err_message.format(
+            use_channel, channels, "s" if channels > 1 else ""
+        )
+        raise AudioParameterError(err_message)
+    fmt = DATA_FORMAT[sample_width]
+    buffer = array(fmt, data)
+    return _array_to_bytes(buffer[use_channel::channels])
 
 
 class AudioSource:
