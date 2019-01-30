@@ -10,6 +10,7 @@ from auditok.io import (
     DATA_FORMAT,
     AudioParameterError,
     check_audio_data,
+    _array_to_bytes,
     _save_raw,
     _save_wave,
 )
@@ -32,16 +33,6 @@ def _sample_generator(*data_buffers):
     """
     frame_gen = zip(*data_buffers)
     return (sample for frame in frame_gen for sample in frame)
-
-
-def _array_to_bytes(a):
-    """
-    Converts an `array.array` to `bytes`.
-    """
-    if PYTHON_3:
-        return a.tobytes()
-    else:
-        return a.tostring()
 
 
 def _generate_pure_tone(
