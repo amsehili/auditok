@@ -27,6 +27,7 @@ from abc import ABCMeta, abstractmethod
 import os
 import sys
 import wave
+import audioop
 from array import array
 
 if sys.version_info >= (3, 0):
@@ -164,6 +165,22 @@ def _array_to_bytes(a):
         return a.tobytes()
     else:
         return a.tostring()
+
+
+def _mix_audio_channels(data, channels, sample_width):
+    if channels == 1:
+        return data
+    if channels == 2:
+        return audioop.tomono(data, sample_width, 0.5, 0.5)
+    fmt = DATA_FORMAT[sample_width]
+    buffer = array(fmt, data)
+    mono_channels = [
+        array(fmt, buffer[ch::channels]) for ch in range(channels)
+    ]
+    avg_arr = array(
+        fmt, (sum(samples) // channels for samples in zip(*mono_channels))
+    )
+    return _array_to_bytes(avg_arr)
 
 
 def _extract_selected_channel(data, channels, sample_width, use_channel):
