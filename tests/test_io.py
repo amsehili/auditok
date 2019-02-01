@@ -11,6 +11,7 @@ from auditok.io import (
     AudioParameterError,
     check_audio_data,
     _array_to_bytes,
+    _mix_audio_channels,
     _save_raw,
     _save_wave,
 )
@@ -86,6 +87,41 @@ class TestIO(TestCase):
                 check_audio_data(data, sample_width, channels)
         else:
             self.assertIsNone(check_audio_data(data, sample_width, channels))
+
+    @genty_dataset(
+        mono_1byte=([400], 1),
+        stereo_1byte=([400, 600], 1),
+        three_channel_1byte=([400, 600, 2400], 1),
+        mono_2byte=([400], 2),
+        stereo_2byte=([400, 600], 2),
+        three_channel_2byte=([400, 600, 1150], 2),
+        mono_4byte=([400], 4),
+        stereo_4byte=([400, 600], 4),
+        four_channel_2byte=([400, 600, 1150, 7220], 4),
+    )
+    def test_mix_audio_channels(self, frequencies, sample_width):
+        sampling_rate = 16000
+        sample_width = 2
+        channels = len(frequencies)
+        mono_channels = [
+            _generate_pure_tone(
+                freq,
+                duration_sec=0.1,
+                sampling_rate=sampling_rate,
+                sample_width=sample_width,
+            )
+            for freq in frequencies
+        ]
+        fmt = DATA_FORMAT[sample_width]
+        expected = _array_to_bytes(
+            array(
+                fmt,
+                (sum(samples) // channels for samples in zip(*mono_channels)),
+            )
+        )
+        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        mixed = _mix_audio_channels(data, channels, sample_width)
+        self.assertEqual(mixed, expected)
 
     @genty_dataset(
         mono=("mono_400Hz.raw", (400,)),
