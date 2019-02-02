@@ -13,6 +13,7 @@ from auditok.io import (
     _array_to_bytes,
     _mix_audio_channels,
     _extract_selected_channel,
+    from_file,
     _save_raw,
     _save_wave,
 )
@@ -20,8 +21,12 @@ from auditok.io import (
 
 if sys.version_info >= (3, 0):
     PYTHON_3 = True
+    from unittest.mock import patch
 else:
     PYTHON_3 = False
+    from mock import patch
+
+AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
 
 
 def _sample_generator(*data_buffers):
@@ -157,6 +162,38 @@ class TestIO(TestCase):
             data, channels, sample_width, use_channel
         )
         self.assertEqual(selected_channel, expected)
+
+    @genty_dataset(
+        raw_with_audio_format=(
+            "audio",
+            "raw",
+            "_load_raw",
+            AUDIO_PARAMS_SHORT,
+        ),
+        raw_with_extension=(
+            "audio.raw",
+            None,
+            "_load_raw",
+            AUDIO_PARAMS_SHORT,
+        ),
+        wave_with_audio_format=("audio", "wave", "_load_wave"),
+        wav_with_audio_format=("audio", "wave", "_load_wave"),
+        wav_with_extension=("audio.wav", None, "_load_wave"),
+        format_and_extension_both_given=("audio.dat", "wav", "_load_wave"),
+        format_and_extension_both_given_b=("audio.raw", "wave", "_load_wave"),
+        no_format_nor_extension=("audio", None, "_load_with_pydub"),
+        other_formats_ogg=("audio.ogg", None, "_load_with_pydub"),
+        other_formats_webm=("audio", "webm", "_load_with_pydub"),
+    )
+    def test_from_file(
+        self, filename, audio_format, funtion_name, kwargs=None
+    ):
+        funtion_name = "auditok.io." + funtion_name
+        if kwargs is None:
+            kwargs = {}
+        with patch(funtion_name) as patch_function:
+            from_file(filename, audio_format, **kwargs)
+        self.assertTrue(patch_function.called)
 
     @genty_dataset(
         mono=("mono_400Hz.raw", (400,)),
