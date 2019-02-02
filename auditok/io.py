@@ -194,6 +194,8 @@ def _extract_selected_channel(data, channels, sample_width, use_channel):
             use_channel, channels, "s" if channels > 1 else ""
         )
         raise AudioParameterError(err_message)
+    elif use_channel < 0:
+        use_channel += channels
     fmt = DATA_FORMAT[sample_width]
     buffer = array(fmt, data)
     return _array_to_bytes(buffer[use_channel::channels])
