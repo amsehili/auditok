@@ -12,6 +12,7 @@ from auditok.io import (
     check_audio_data,
     _array_to_bytes,
     _mix_audio_channels,
+    _extract_selected_channel,
     _save_raw,
     _save_wave,
 )
@@ -122,6 +123,40 @@ class TestIO(TestCase):
         data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
         mixed = _mix_audio_channels(data, channels, sample_width)
         self.assertEqual(mixed, expected)
+
+    @genty_dataset(
+        mono_1byte=([400], 1, 0),
+        stereo_1byte_2st_channel=([400, 600], 1, 1),
+        mono_2byte=([400], 2, 0),
+        stereo_2byte_1st_channel=([400, 600], 2, 0),
+        stereo_2byte_2nd_channel=([400, 600], 2, 1),
+        three_channel_2byte_last_negative_idx=([400, 600, 1150], 2, -1),
+        three_channel_2byte_2nd_negative_idx=([400, 600, 1150], 2, -2),
+        three_channel_2byte_1st_negative_idx=([400, 600, 1150], 2, -3),
+        three_channel_4byte_1st=([400, 600, 1150], 4, 0),
+        three_channel_4byte_last_negative_idx=([400, 600, 1150], 4, -1),
+    )
+    def test_extract_selected_channel(
+        self, frequencies, sample_width, use_channel
+    ):
+
+        mono_channels = [
+            _generate_pure_tone(
+                freq,
+                duration_sec=0.1,
+                sampling_rate=16000,
+                sample_width=sample_width,
+            )
+            for freq in frequencies
+        ]
+        channels = len(frequencies)
+        fmt = DATA_FORMAT[sample_width]
+        expected = _array_to_bytes(mono_channels[use_channel])
+        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        selected_channel = _extract_selected_channel(
+            data, channels, sample_width, use_channel
+        )
+        self.assertEqual(selected_channel, expected)
 
     @genty_dataset(
         mono=("mono_400Hz.raw", (400,)),
