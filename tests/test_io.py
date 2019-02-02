@@ -7,6 +7,7 @@ import filecmp
 from unittest import TestCase
 from genty import genty, genty_dataset
 from auditok.io import (
+    AudioIOError,
     DATA_FORMAT,
     AudioParameterError,
     check_audio_data,
@@ -208,6 +209,11 @@ class TestIO(TestCase):
         tmpfile = NamedTemporaryFile()
         _save_raw(tmpfile.name, data)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
+
+    def test_from_file_no_pydub(self):
+        with patch("auditok.io._WITH_PYDUB", False):
+            with self.assertRaises(AudioIOError):
+                from_file("audio", "mp3")
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
