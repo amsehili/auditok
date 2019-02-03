@@ -22,10 +22,10 @@ from auditok.io import (
 
 if sys.version_info >= (3, 0):
     PYTHON_3 = True
-    from unittest.mock import patch
+    from unittest.mock import patch, Mock
 else:
     PYTHON_3 = False
-    from mock import patch
+    from mock import patch, Mock
 
 AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
 
@@ -279,6 +279,57 @@ class TestIO(TestCase):
         )
         mixed = audio_source._buffer
         self.assertEqual((mixed), expected)
+
+    @patch("auditok.io._WITH_PYDUB", True)
+    @patch("auditok.io.BufferAudioSource")
+    @genty_dataset(
+        ogg_first_channel=("ogg", 0, "from_ogg"),
+        ogg_second_channel=("ogg", 1, "from_ogg"),
+        ogg_mix=("ogg", "mix", "from_ogg"),
+        ogg_default=("ogg", None, "from_ogg"),
+        mp3_left_channel=("mp3", "left", "from_mp3"),
+        mp3_right_channel=("mp3", "right", "from_mp3"),
+        flac_first_channel=("flac", 0, "from_file"),
+        flac_second_channel=("flac", 1, "from_file"),
+        flv_left_channel=("flv", "left", "from_flv"),
+        webm_right_channel=("webm", "right", "from_file"),
+    )
+    def test_from_file_multichannel_audio_compressed(
+        self, audio_format, use_channel, function, *mocks
+    ):
+        filename = "audio.{}".format(audio_format)
+        segment_mock = Mock()
+        segment_mock.sample_width = 2
+        segment_mock.channels = 2
+        segment_mock._data = b"abcd"
+        with patch("auditok.io._extract_selected_channel") as ext_mock:
+            with patch(
+                "auditok.io.AudioSegment.{}".format(function)
+            ) as open_func:
+                open_func.return_value = segment_mock
+                from_file(filename, use_channel=use_channel)
+                self.assertTrue(open_func.called)
+                self.assertTrue(ext_mock.called)
+
+                use_channel = {"left": 0, "right": 1, None: 0}.get(
+                    use_channel, use_channel
+                )
+                ext_mock.assert_called_with(
+                    segment_mock._data,
+                    segment_mock.channels,
+                    segment_mock.sample_width,
+                    use_channel,
+                )
+
+        with patch("auditok.io._extract_selected_channel") as ext_mock:
+            with patch(
+                "auditok.io.AudioSegment.{}".format(function)
+            ) as open_func:
+                segment_mock.channels = 1
+                open_func.return_value = segment_mock
+                from_file(filename, use_channel=use_channel)
+                self.assertTrue(open_func.called)
+                self.assertFalse(ext_mock.called)
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
