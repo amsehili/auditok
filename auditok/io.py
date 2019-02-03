@@ -796,9 +796,7 @@ def _load_with_pydub(filename, audio_format, use_channel=0):
     )
 
 
-def from_file(
-    filename, audio_format=None, use_channel=None, large_file=False, **kwargs
-):
+def from_file(filename, audio_format=None, large_file=False, **kwargs):
     """
     Read audio data from `filename` and return an `AudioSource` object.
     if `audio_format` is None, the appropriate :class:`AudioSource` class is
@@ -823,10 +821,6 @@ def from_file(
         path to input audio or video file.
     `audio_format`: str
         audio format used to save data  (e.g. raw, webm, wav, ogg)
-    `use_channel`: int
-        audio channel to extract from input file if file is not mono audio.
-        This must be an integer >= 0 and < channels, or one of the special
-        values `left` and `right` (treated as 0 and 1 respectively).
     `large_file`: bool
         If True, audio won't fully be loaded to memory but only when a window
         is read disk.
@@ -842,6 +836,10 @@ def from_file(
         sample width (i.e. number of bytes used to represent one audio sample)
     `channels`: int
         number of channels of audio data
+    `use_channel`: int, str
+        audio channel to extract from input file if file is not mono audio.
+        This must be an integer >= 0 and < channels, or one of the special
+        values `left` and `right` (treated as 0 and 1 respectively).
 
     :Returns:
 
@@ -860,7 +858,7 @@ def from_file(
             filename, srate, swidth, channels, use_channel, large_file
         )
 
-    use_channel = _normalize_use_channel(kwargs.get("use_channel", None))
+    use_channel = _normalize_use_channel(kwargs.get("use_channel"))
     if audio_format in ["wav", "wave"]:
         return _load_wave(filename, large_file, use_channel)
     if large_file:
