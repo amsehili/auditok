@@ -216,6 +216,37 @@ class TestIO(TestCase):
                 from_file("audio", "mp3")
 
     @genty_dataset(
+        raw_first_channel=("raw", 0, 400),
+        raw_second_channel=("raw", 1, 800),
+        raw_third_channel=("raw", 2, 1600),
+        raw_left_channel=("raw", "left", 400),
+        raw_right_channel=("raw", "right", 800),
+        wav_first_channel=("wav", 0, 400),
+        wav_second_channel=("wav", 1, 800),
+        wav_third_channel=("wav", 2, 1600),
+        wav_left_channel=("wav", "left", 400),
+        wav_right_channel=("wav", "right", 800),
+    )
+    def test_from_file_multichannel_audio(
+        self, audio_format, use_channel, frequency
+    ):
+        expected = PURE_TONE_DICT[frequency]
+        filename = "tests/data/test_16KHZ_3channel_400-800-1600Hz.{}".format(
+            audio_format
+        )
+        sample_width = 2
+        audio_source = from_file(
+            filename,
+            sampling_rate=16000,
+            sample_width=sample_width,
+            channels=3,
+            use_channel=use_channel,
+        )
+        fmt = DATA_FORMAT[sample_width]
+        data = array(fmt, audio_source._buffer)
+        self.assertEqual(data, expected)
+
+    @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
         three_channel=("3channel_400-800-1600Hz.wav", (400, 800, 1600)),
     )
