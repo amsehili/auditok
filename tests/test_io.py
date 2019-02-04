@@ -331,6 +331,34 @@ class TestIO(TestCase):
                 self.assertTrue(open_func.called)
                 self.assertFalse(ext_mock.called)
 
+    @patch("auditok.io._WITH_PYDUB", True)
+    @patch("auditok.io.BufferAudioSource")
+    @genty_dataset(
+        ogg=("ogg", "from_ogg"),
+        mp3=("mp3", "from_mp3"),
+        flac=("flac", "from_file"),
+    )
+    def test_from_file_multichannel_audio_mix_compressed(
+        self, audio_format, function, *mocks
+    ):
+        filename = "audio.{}".format(audio_format)
+        segment_mock = Mock()
+        segment_mock.sample_width = 2
+        segment_mock.channels = 2
+        segment_mock._data = b"abcd"
+        with patch("auditok.io._mix_audio_channels") as mix_mock:
+            with patch(
+                "auditok.io.AudioSegment.{}".format(function)
+            ) as open_func:
+                open_func.return_value = segment_mock
+                from_file(filename, use_channel="mix")
+                self.assertTrue(open_func.called)
+                mix_mock.assert_called_with(
+                    segment_mock._data,
+                    segment_mock.channels,
+                    segment_mock.sample_width,
+                )
+
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
         three_channel=("3channel_400-800-1600Hz.wav", (400, 800, 1600)),
