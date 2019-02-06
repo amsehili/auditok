@@ -396,6 +396,38 @@ class TestIO(TestCase):
         self.assertEqual(data, expected)
 
     @genty_dataset(
+        mono=("mono_400Hz", (400,)),
+        three_channel=("3channel_400-800-1600Hz", (400, 800, 1600)),
+    )
+    def test_load_raw_mix(self, filename_suffix, frequencies):
+        sampling_rate = 16000
+        sample_width = 2
+        channels = len(frequencies)
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+
+        fmt = DATA_FORMAT[sample_width]
+        expected = _array_to_bytes(
+            array(
+                fmt,
+                (sum(samples) // channels for samples in zip(*mono_channels)),
+            )
+        )
+        filename = "tests/data/test_16KHZ_{}.raw".format(filename_suffix)
+        audio_source = _load_raw(
+            filename,
+            use_channel="mix",
+            sampling_rate=sampling_rate,
+            sample_width=2,
+            channels=channels,
+        )
+        mixed = audio_source._buffer
+        self.assertEqual(mixed, expected)
+        self.assertIsInstance(audio_source, BufferAudioSource)
+        self.assertEqual(audio_source.sampling_rate, sampling_rate)
+        self.assertEqual(audio_source.sample_width, sample_width)
+        self.assertEqual(audio_source.channels, 1)
+
+    @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
         three_channel=("3channel_400-800-1600Hz.wav", (400, 800, 1600)),
     )
