@@ -12,6 +12,7 @@ from auditok.io import (
     AudioParameterError,
     BufferAudioSource,
     check_audio_data,
+    _get_audio_parameters,
     _array_to_bytes,
     _mix_audio_channels,
     _extract_selected_channel,
@@ -426,6 +427,18 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.sampling_rate, sampling_rate)
         self.assertEqual(audio_source.sample_width, sample_width)
         self.assertEqual(audio_source.channels, 1)
+
+    @genty_dataset(
+        missing_sampling_rate=("sr",),
+        missing_sample_width=("sw",),
+        missing_channels=("ch",),
+    )
+    def test_load_raw_missing_audio_param(self, missing_param):
+        with self.assertRaises(AudioParameterError):
+            params = AUDIO_PARAMS_SHORT.copy()
+            del params[missing_param]
+            srate, swidth, channels, _ = _get_audio_parameters(params)
+            _load_raw("audio", srate, swidth, channels)
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
