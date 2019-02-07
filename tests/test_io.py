@@ -17,6 +17,7 @@ from auditok.io import (
     _mix_audio_channels,
     _extract_selected_channel,
     _load_raw,
+    _load_wave,
     from_file,
     _save_raw,
     _save_wave,
@@ -439,6 +440,32 @@ class TestIO(TestCase):
             del params[missing_param]
             srate, swidth, channels, _ = _get_audio_parameters(params)
             _load_raw("audio", srate, swidth, channels)
+
+    @genty_dataset(
+        dafault_first_channel=(None, 400),
+        first_channel=(0, 400),
+        second_channel=(1, 800),
+        third_channel=(2, 1600),
+        negative_first_channel=(-3, 400),
+        negative_second_channel=(-2, 800),
+        negative_third_channel=(-1, 1600),
+    )
+    def test_load_wave(self, use_channel, frequency):
+        filename = "tests/data/test_16KHZ_3channel_400-800-1600Hz.wav"
+        if use_channel is not None:
+            audio_source = _load_wave(filename, use_channel=use_channel)
+        else:
+            audio_source = _load_wave(filename)
+        self.assertIsInstance(audio_source, BufferAudioSource)
+        self.assertEqual(audio_source.sampling_rate, 16000)
+        self.assertEqual(audio_source.sample_width, 2)
+        self.assertEqual(audio_source.channels, 1)
+        # generate a pure sine wave tone of the given frequency
+        expected = PURE_TONE_DICT[frequency]
+        # compre with data read from file
+        fmt = DATA_FORMAT[2]
+        data = array(fmt, audio_source._buffer)
+        self.assertEqual(data, expected)
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
