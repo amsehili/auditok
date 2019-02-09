@@ -887,7 +887,10 @@ def _save_wave(file, data, sampling_rate, sample_width, channels):
     Saves audio data to a wave file.
     See also :func:`to_file`.
     """
-    # use standard python's wave module
+    if None in (sampling_rate, sample_width, channels):
+        raise AudioParameterError(
+            "All audio parameters are required to save wave audio files"
+        )
     with wave.open(file, "w") as fp:
         fp.setframerate(sampling_rate)
         fp.setsampwidth(sample_width)
