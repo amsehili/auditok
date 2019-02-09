@@ -201,20 +201,6 @@ class TestIO(TestCase):
             from_file(filename, audio_format, **kwargs)
         self.assertTrue(patch_function.called)
 
-    @genty_dataset(
-        mono=("mono_400Hz.raw", (400,)),
-        three_channel=("3channel_400-800-1600Hz.raw", (400, 800, 1600)),
-    )
-    def test_save_raw(self, filename, frequencies):
-        filename = "tests/data/test_16KHZ_{}".format(filename)
-        sample_width = 2
-        fmt = DATA_FORMAT[sample_width]
-        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
-        tmpfile = NamedTemporaryFile()
-        _save_raw(tmpfile.name, data)
-        self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
-
     def test_from_file_no_pydub(self):
         with patch("auditok.io._WITH_PYDUB", False):
             with self.assertRaises(AudioIOError):
@@ -539,6 +525,20 @@ class TestIO(TestCase):
                     self.assertFalse(ext_mock.called)
 
     @genty_dataset(
+        mono=("mono_400Hz.raw", (400,)),
+        three_channel=("3channel_400-800-1600Hz.raw", (400, 800, 1600)),
+    )
+    def test_save_raw(self, filename, frequencies):
+        filename = "tests/data/test_16KHZ_{}".format(filename)
+        sample_width = 2
+        fmt = DATA_FORMAT[sample_width]
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        tmpfile = NamedTemporaryFile()
+        _save_raw(tmpfile.name, data)
+        self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
+
+    @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
         three_channel=("3channel_400-800-1600Hz.wav", (400, 800, 1600)),
     )
@@ -553,3 +553,15 @@ class TestIO(TestCase):
         tmpfile = NamedTemporaryFile()
         _save_wave(tmpfile.name, data, sampling_rate, sample_width, channels)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
+
+    @genty_dataset(
+        missing_sampling_rate=("sr",),
+        missing_sample_width=("sw",),
+        missing_channels=("ch",),
+    )
+    def test_save_wave_missing_audio_param(self, missing_param):
+        with self.assertRaises(AudioParameterError):
+            params = AUDIO_PARAMS_SHORT.copy()
+            del params[missing_param]
+            srate, swidth, channels, _ = _get_audio_parameters(params)
+            _save_wave("audio", b"\0\0", srate, swidth, channels)
