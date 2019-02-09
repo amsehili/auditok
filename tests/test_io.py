@@ -18,6 +18,7 @@ from auditok.io import (
     _extract_selected_channel,
     _load_raw,
     _load_wave,
+    _load_with_pydub,
     from_file,
     _save_raw,
     _save_wave,
@@ -491,6 +492,51 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.sampling_rate, sampling_rate)
         self.assertEqual(audio_source.sample_width, sample_width)
         self.assertEqual(audio_source.channels, 1)
+
+    @patch("auditok.io._WITH_PYDUB", True)
+    @patch("auditok.io.BufferAudioSource")
+    @genty_dataset(
+        ogg_default_first_channel=("ogg", 2, None, "from_ogg"),
+        ogg_first_channel=("ogg", 1, 0, "from_ogg"),
+        ogg_second_channel=("ogg", 2, 1, "from_ogg"),
+        ogg_mix_channels=("ogg", 3, "mix", "from_ogg"),
+        mp3_left_channel=("mp3", 1, "left", "from_mp3"),
+        mp3_right_channel=("mp3", 2, "right", "from_mp3"),
+        mp3_mix_channels=("mp3", 3, "mix", "from_mp3"),
+        flac_first_channel=("flac", 2, 0, "from_file"),
+        flac_second_channel=("flac", 2, 1, "from_file"),
+        flv_left_channel=("flv", 1, "left", "from_flv"),
+        webm_right_channel=("webm", 2, "right", "from_file"),
+        webm_mix_channels=("webm", 4, "mix", "from_file"),
+    )
+    def test_load_with_pydub(
+        self, audio_format, channels, use_channel, function, *mocks
+    ):
+        filename = "audio.{}".format(audio_format)
+        segment_mock = Mock()
+        segment_mock.sample_width = 2
+        segment_mock.channels = channels
+        segment_mock._data = b"abcdefgh"
+        with patch("auditok.io._extract_selected_channel") as ext_mock:
+            with patch(
+                "auditok.io.AudioSegment.{}".format(function)
+            ) as open_func:
+                open_func.return_value = segment_mock
+                use_channel = {"left": 0, "right": 1, None: 0}.get(
+                    use_channel, use_channel
+                )
+                _load_with_pydub(filename, audio_format, use_channel)
+                self.assertTrue(open_func.called)
+                if channels > 1:
+                    self.assertTrue(ext_mock.called)
+                    ext_mock.assert_called_with(
+                        segment_mock._data,
+                        segment_mock.channels,
+                        segment_mock.sample_width,
+                        use_channel,
+                    )
+                else:
+                    self.assertFalse(ext_mock.called)
 
     @genty_dataset(
         mono=("mono_400Hz.wav", (400,)),
