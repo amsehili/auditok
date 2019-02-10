@@ -2,7 +2,7 @@ import os
 import sys
 import math
 from array import array
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 import filecmp
 from unittest import TestCase
 from genty import genty, genty_dataset
@@ -565,3 +565,18 @@ class TestIO(TestCase):
             del params[missing_param]
             srate, swidth, channels, _ = _get_audio_parameters(params)
             _save_wave("audio", b"\0\0", srate, swidth, channels)
+
+    @genty_dataset(
+        raw_with_audio_format=("audio", "raw"),
+        raw_with_extension=("audio.raw", None),
+        raw_with_audio_format_and_extension=("audio.mp3", "raw"),
+        raw_no_audio_format_nor_extension=("audio", None),
+    )
+    def test_to_file_raw(self, filename, audio_format):
+        exp_filename = "tests/data/test_16KHZ_mono_400Hz.raw"
+        tmpdir = TemporaryDirectory()
+        filename = os.path.join(tmpdir.name, filename)
+        data = _array_to_bytes(PURE_TONE_DICT[400])
+        _save_raw(filename, data)
+        self.assertTrue(filecmp.cmp(filename, exp_filename, shallow=False))
+        tmpdir.cleanup()
