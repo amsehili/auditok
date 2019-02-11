@@ -22,6 +22,7 @@ from auditok.io import (
     from_file,
     _save_raw,
     _save_wave,
+    to_file,
 )
 
 
@@ -577,7 +578,7 @@ class TestIO(TestCase):
         tmpdir = TemporaryDirectory()
         filename = os.path.join(tmpdir.name, filename)
         data = _array_to_bytes(PURE_TONE_DICT[400])
-        _save_raw(filename, data)
+        to_file(data, filename, audio_format=audio_format)
         self.assertTrue(filecmp.cmp(filename, exp_filename, shallow=False))
         tmpdir.cleanup()
 
@@ -589,13 +590,18 @@ class TestIO(TestCase):
         wave_with_extension=("audio.wave", None),
         wave_with_audio_format_and_extension=("audio.mp3", "wave"),
     )
-    def test_to_file_wav(self, filename, audio_format):
+    def test_to_file_wave(self, filename, audio_format):
         exp_filename = "tests/data/test_16KHZ_mono_400Hz.wav"
         tmpdir = TemporaryDirectory()
         filename = os.path.join(tmpdir.name, filename)
         data = _array_to_bytes(PURE_TONE_DICT[400])
-        _save_wave(
-            filename, data, sampling_rate=16000, sample_width=2, channels=1
+        to_file(
+            data,
+            filename,
+            audio_format=audio_format,
+            sampling_rate=16000,
+            sample_width=2,
+            channels=1,
         )
         self.assertTrue(filecmp.cmp(filename, exp_filename, shallow=False))
         tmpdir.cleanup()
