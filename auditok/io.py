@@ -873,7 +873,7 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
         )
 
 
-def _save_raw(file, data):
+def _save_raw(data, file):
     """
     Saves audio data as a headerless (i.e. raw) file.
     See also :func:`to_file`.
@@ -882,7 +882,7 @@ def _save_raw(file, data):
         fp.write(data)
 
 
-def _save_wave(file, data, sampling_rate, sample_width, channels):
+def _save_wave(data, file, sampling_rate, sample_width, channels):
     """
     Saves audio data to a wave file.
     See also :func:`to_file`.
@@ -899,7 +899,7 @@ def _save_wave(file, data, sampling_rate, sample_width, channels):
 
 
 def _save_with_pydub(
-    file, data, audio_format, sampling_rate, sample_width, channels
+    data, file, audio_format, sampling_rate, sample_width, channels
 ):
     """
     Saves audio data with pydub (https://github.com/jiaaro/pydub).
@@ -948,7 +948,7 @@ def to_file(data, file, audio_format=None, **kwargs):
     """
     audio_format = _guess_audio_format(audio_format, file)
     if audio_format in (None, "raw"):
-        _save_raw(file, data)
+        _save_raw(data, file)
         return
     try:
         params = _get_audio_parameters(kwargs)
@@ -958,7 +958,7 @@ def to_file(data, file, audio_format=None, **kwargs):
         "other than raw. Error detail: {}".format(exc)
         raise AudioParameterError(err_message)
     if audio_format in ("wav", "wave"):
-        _save_wave(file, data, sampling_rate, sample_width, channels)
+        _save_wave(data, file, sampling_rate, sample_width, channels)
     elif _WITH_PYDUB:
         _save_with_pydub(
             file, data, audio_format, sampling_rate, sample_width, channels
