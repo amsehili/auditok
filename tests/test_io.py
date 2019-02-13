@@ -536,7 +536,7 @@ class TestIO(TestCase):
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
         tmpfile = NamedTemporaryFile()
-        _save_raw(tmpfile.name, data)
+        _save_raw(data, tmpfile.name)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
 
     @genty_dataset(
@@ -552,7 +552,7 @@ class TestIO(TestCase):
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
         tmpfile = NamedTemporaryFile()
-        _save_wave(tmpfile.name, data, sampling_rate, sample_width, channels)
+        _save_wave(data, tmpfile.name, sampling_rate, sample_width, channels)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
 
     @genty_dataset(
@@ -565,7 +565,7 @@ class TestIO(TestCase):
             params = AUDIO_PARAMS_SHORT.copy()
             del params[missing_param]
             srate, swidth, channels, _ = _get_audio_parameters(params)
-            _save_wave("audio", b"\0\0", srate, swidth, channels)
+            _save_wave(b"\0\0", "audio", srate, swidth, channels)
 
     @genty_dataset(
         raw_with_audio_format=("audio", "raw"),
