@@ -202,6 +202,17 @@ class TestIO(TestCase):
             from_file(filename, audio_format, **kwargs)
         self.assertTrue(patch_function.called)
 
+    @genty_dataset(
+        missing_sampling_rate=("sr",),
+        missing_sample_width=("sw",),
+        missing_channels=("ch",),
+    )
+    def test_from_file_missing_audio_param(self, missing_param):
+        with self.assertRaises(AudioParameterError):
+            params = AUDIO_PARAMS_SHORT.copy()
+            del params[missing_param]
+            from_file("audio", audio_format="raw", **params)
+
     def test_from_file_no_pydub(self):
         with patch("auditok.io._WITH_PYDUB", False):
             with self.assertRaises(AudioIOError):
