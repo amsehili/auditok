@@ -629,3 +629,8 @@ class TestIO(TestCase):
             to_file(b"\0\0", "audio", audio_format="wav", **params)
         with self.assertRaises(AudioParameterError):
             to_file(b"\0\0", "audio", audio_format="mp3", **params)
+
+    def test_to_file_no_pydub(self):
+        with patch("auditok.io._WITH_PYDUB", False):
+            with self.assertRaises(AudioIOError):
+                to_file("audio", b"", "mp3")
