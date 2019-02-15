@@ -616,3 +616,16 @@ class TestIO(TestCase):
         )
         self.assertTrue(filecmp.cmp(filename, exp_filename, shallow=False))
         tmpdir.cleanup()
+
+    @genty_dataset(
+        missing_sampling_rate=("sr",),
+        missing_sample_width=("sw",),
+        missing_channels=("ch",),
+    )
+    def test_to_file_missing_audio_param(self, missing_param):
+        params = AUDIO_PARAMS_SHORT.copy()
+        del params[missing_param]
+        with self.assertRaises(AudioParameterError):
+            to_file(b"\0\0", "audio", audio_format="wav", **params)
+        with self.assertRaises(AudioParameterError):
+            to_file(b"\0\0", "audio", audio_format="mp3", **params)
