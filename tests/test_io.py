@@ -634,3 +634,14 @@ class TestIO(TestCase):
         with patch("auditok.io._WITH_PYDUB", False):
             with self.assertRaises(AudioIOError):
                 to_file("audio", b"", "mp3")
+
+    @patch("auditok.io._WITH_PYDUB", True)
+    @genty_dataset(
+        ogg_with_extension=("audio.ogg", None),
+        ogg_with_audio_format=("audio", "ogg"),
+        ogg_format_with_wrong_extension=("audio.wav", "ogg"),
+    )
+    def test_to_file_compressed(self, filename, audio_format, *mocks):
+        with patch("auditok.io.AudioSegment.export") as export:
+            to_file(b"\0\0", filename, audio_format, **AUDIO_PARAMS_SHORT)
+            self.assertTrue(export.called)
