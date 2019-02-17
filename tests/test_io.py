@@ -581,8 +581,11 @@ class TestIO(TestCase):
 
     def test_save_with_pydub(self):
         with patch("auditok.io.AudioSegment.export") as export:
-            _save_with_pydub(b"\0\0", "audio.org", "ogg", 16000, 2, 1)
+            tmpdir = TemporaryDirectory()
+            filename = os.path.join(tmpdir.name, "audio.ogg")
+            _save_with_pydub(b"\0\0", filename, "ogg", 16000, 2, 1)
             self.assertTrue(export.called)
+            tmpdir.cleanup()
 
     @genty_dataset(
         raw_with_audio_format=("audio", "raw"),
@@ -649,5 +652,8 @@ class TestIO(TestCase):
     )
     def test_to_file_compressed(self, filename, audio_format, *mocks):
         with patch("auditok.io.AudioSegment.export") as export:
+            tmpdir = TemporaryDirectory()
+            filename = os.path.join(tmpdir.name, filename)
             to_file(b"\0\0", filename, audio_format, **AUDIO_PARAMS_SHORT)
             self.assertTrue(export.called)
+            tmpdir.cleanup()
