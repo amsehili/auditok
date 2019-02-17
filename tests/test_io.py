@@ -22,6 +22,7 @@ from auditok.io import (
     from_file,
     _save_raw,
     _save_wave,
+    _save_with_pydub,
     to_file,
 )
 
@@ -577,6 +578,11 @@ class TestIO(TestCase):
             del params[missing_param]
             srate, swidth, channels, _ = _get_audio_parameters(params)
             _save_wave(b"\0\0", "audio", srate, swidth, channels)
+
+    def test_save_with_pydub(self):
+        with patch("auditok.io.AudioSegment.export") as export:
+            _save_with_pydub(b"\0\0", "audio.org", "ogg", 16000, 2, 1)
+            self.assertTrue(export.called)
 
     @genty_dataset(
         raw_with_audio_format=("audio", "raw"),
