@@ -12,6 +12,7 @@ from auditok.io import (
     AudioParameterError,
     BufferAudioSource,
     check_audio_data,
+    _guess_audio_format,
     _get_audio_parameters,
     _array_to_bytes,
     _mix_audio_channels,
@@ -101,6 +102,17 @@ class TestIO(TestCase):
                 check_audio_data(data, sample_width, channels)
         else:
             self.assertIsNone(check_audio_data(data, sample_width, channels))
+
+    @genty_dataset(
+        extention_and_format_same=("wav", "filename.wav", "wav"),
+        extention_and_format_different=("wav", "filename.mp3", "wav"),
+        extention_no_format=(None, "filename.wav", "wav"),
+        format_no_extension=("wav", "filename", "wav"),
+        no_format_no_extension=(None, "filename", None),
+    )
+    def test_guess_audio_format(self, fmt, filename, expected):
+        result = _guess_audio_format(fmt, filename)
+        self.assertEqual(result, expected)
 
     @genty_dataset(
         mono_1byte=([400], 1),
