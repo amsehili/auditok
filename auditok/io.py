@@ -138,7 +138,9 @@ def _get_audio_parameters(param_dict):
                                          channels,
                                          use_channel)
     """
-    err_message = "'{ln}' (or '{sn}') must be an integer, found: '{val}'"
+    err_message = (
+        "'{ln}' (or '{sn}') must be a positive integer, found: '{val}'"
+    )
     parameters = []
     for (long_name, short_name) in (
         ("sampling_rate", "sr"),
@@ -146,7 +148,7 @@ def _get_audio_parameters(param_dict):
         ("channels", "ch"),
     ):
         param = param_dict.get(long_name, param_dict.get(short_name))
-        if param is None or not isinstance(param, int):
+        if param is None or not isinstance(param, int) or param <= 0:
             raise AudioParameterError(
                 err_message.format(ln=long_name, sn=short_name, val=param)
             )
