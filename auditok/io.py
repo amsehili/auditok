@@ -145,9 +145,7 @@ def _get_audio_parameters(param_dict):
         ("sample_width", "sw"),
         ("channels", "ch"),
     ):
-        param = param_dict.get(long_name, None) or param_dict.get(
-            short_name, None
-        )
+        param = param_dict.get(long_name, param_dict.get(short_name))
         if param is None or not isinstance(param, int):
             raise AudioParameterError(
                 err_message.format(ln=long_name, sn=short_name, val=param)

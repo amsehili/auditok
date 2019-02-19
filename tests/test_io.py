@@ -128,6 +128,54 @@ class TestIO(TestCase):
         self.assertEqual(result, expected)
 
     @genty_dataset(
+        simple=((8000, 2, 1, 0), (8000, 2, 1, 0)),
+        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
+        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
+        use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
+        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, 0)),
+        no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
+    )
+    def test_get_audio_parameters_short_params(self, values, expected):
+        params = {k: v for k, v in zip(("sr", "sw", "ch", "uc"), values)}
+        result = _get_audio_parameters(params)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(
+        simple=((8000, 2, 1, 0), (8000, 2, 1, 0)),
+        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
+        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
+        use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
+        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, 0)),
+        no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
+    )
+    def test_get_audio_parameters_long_params(self, values, expected):
+        params = {
+            k: v
+            for k, v in zip(
+                ("sampling_rate", "sample_width", "channels", "use_channel"),
+                values,
+            )
+        }
+        result = _get_audio_parameters(params)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(simple=((8000, 2, 1, 0), (8000, 2, 1, 0)))
+    def test_get_audio_parameters_short_and_long_params(
+        self, values, expected
+    ):
+        params = {
+            k: v
+            for k, v in zip(
+                ("sampling_rate", "sample_width", "channels", "use_channel"),
+                values,
+            )
+        }
+
+        params.update({k: v for k, v in zip(("sr", "sw", "ch", "uc"), "xxxx")})
+        result = _get_audio_parameters(params)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(
         mono_1byte=([400], 1),
         stereo_1byte=([400, 600], 1),
         three_channel_1byte=([400, 600, 2400], 1),
