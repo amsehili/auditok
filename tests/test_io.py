@@ -263,6 +263,22 @@ class TestIO(TestCase):
         )
         self.assertEqual(selected_channel, expected)
 
+    @genty_dataset(mono=([400],), three_channel=([600, 1150, 2400],))
+    def test_extract_selected_channel_mix(self, frequencies):
+
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+        channels = len(frequencies)
+        fmt = DATA_FORMAT[2]
+        expected = _array_to_bytes(
+            array(
+                fmt,
+                (sum(samples) // channels for samples in zip(*mono_channels)),
+            )
+        )
+        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        selected_channel = _extract_selected_channel(data, channels, 2, "mix")
+        self.assertEqual(selected_channel, expected)
+
     @genty_dataset(
         raw_with_audio_format=(
             "audio",
