@@ -153,8 +153,10 @@ def _get_audio_parameters(param_dict):
                 err_message.format(ln=long_name, sn=short_name, val=param)
             )
         parameters.append(param)
+    sampling_rate, sample_width, channels = parameters
     use_channel = param_dict.get("use_channel", param_dict.get("uc", 0))
-    return tuple(parameters) + (_normalize_use_channel(use_channel),)
+    use_channel = _normalize_use_channel(use_channel)
+    return sampling_rate, sample_width, channels, use_channel
 
 
 def _array_to_bytes(a):
