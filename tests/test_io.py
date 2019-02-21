@@ -279,6 +279,11 @@ class TestIO(TestCase):
         selected_channel = _extract_selected_channel(data, channels, 2, "mix")
         self.assertEqual(selected_channel, expected)
 
+    @genty_dataset(positive=(2,), negative=(-3,))
+    def test_extract_selected_channel_invalid_use_channel(self, use_channel):
+        with self.assertRaises(AudioParameterError):
+            _extract_selected_channel(b"\0\0", 2, 2, use_channel)
+
     @genty_dataset(
         raw_with_audio_format=(
             "audio",
