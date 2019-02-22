@@ -203,7 +203,7 @@ def _extract_selected_channel(data, channels, sample_width, use_channel):
     return _array_to_bytes(buffer[use_channel::channels])
 
 
-class AudioSource:
+class AudioSource():
     """ 
     Base class for audio source objects.
 
@@ -220,44 +220,32 @@ class AudioSource:
             Default = 2.
 
         `channels` : int
-            Number of channels of audio stream. The current version supports
-            only mono audio streams (i.e. one channel).
+            Number of channels of audio stream.
     """
 
-    __metaclass__ = ABCMeta
+    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
+                 sample_width=DEFAULT_SAMPLE_WIDTH,
+                 channels=DEFAULT_NB_CHANNELS):
 
-    def __init__(
-        self,
-        sampling_rate=DEFAULT_SAMPLE_RATE,
-        sample_width=DEFAULT_SAMPLE_WIDTH,
-        channels=DEFAULT_NB_CHANNELS,
-    ):
-
-        if sample_width not in (1, 2, 4):
-            raise AudioParameterError(
-                "Sample width must be one of: 1, 2 or 4 (bytes)"
-            )
-
-        if channels != 1:
-            raise AudioParameterError("Only mono audio is currently supported")
+        if not sample_width in (1, 2, 4):
+            raise AudioParameterError("Sample width must be one of: 1, 2 or 4 (bytes)")
 
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
         self._channels = channels
 
-    @abstractmethod
     def is_open(self):
         """ Return True if audio source is open, False otherwise """
+        raise NotImplementedError
 
-    @abstractmethod
     def open(self):
         """ Open audio source """
+        raise NotImplementedError
 
-    @abstractmethod
     def close(self):
         """ Close audio source """
+        raise NotImplementedError
 
-    @abstractmethod
     def read(self, size):
         """
         Read and return `size` audio samples at most.
@@ -269,12 +257,14 @@ class AudioSource:
 
         :Returns:
 
-            Audio data as a string of length 'N' * 'sample_width' * 'channels', where 'N' is:
+            Audio data as a string of length `N * sample_width * channels`,
+            where `N` is:
 
             - `size` if `size` < 'left_samples'
 
             - 'left_samples' if `size` > 'left_samples' 
         """
+        raise NotImplementedError
 
     def get_sampling_rate(self):
         """ Return the number of samples per second of audio stream """
