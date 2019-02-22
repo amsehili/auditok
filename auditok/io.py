@@ -309,30 +309,30 @@ class AudioSource():
         return self.channels
 
 
-class Rewindable:
+class Rewindable():
     """
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
     audio stream as well as method to move to an absolute audio position
     expressed in time or in number of samples. 
     """
+    @property
+    def rewindable(self):
+        return True
 
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
     def rewind(self):
         """ Go back to the beginning of audio stream """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
+
     def get_position(self):
         """ Return the total number of already read samples """
+        raise NotImplementedError
 
-    @abstractmethod
     def get_time_position(self):
         """ Return the total duration in seconds of already read data """
+        raise NotImplementedError
 
-    @abstractmethod
     def set_position(self, position):
         """ Move to an absolute position 
 
@@ -341,8 +341,9 @@ class Rewindable:
             `position` : int
                 number of samples to skip from the start of the stream
         """
+        raise NotImplementedError
 
-    @abstractmethod
+
     def set_time_position(self, time_position):
         """ Move to an absolute position expressed in seconds
 
@@ -351,7 +352,7 @@ class Rewindable:
             `time_position` : float
                 seconds to skip from the start of the stream
         """
-        pass
+        raise NotImplementedError
 
 
 class BufferAudioSource(AudioSource, Rewindable):
