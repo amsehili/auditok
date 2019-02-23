@@ -719,19 +719,6 @@ class TestBufferAudioSourceCreationException(unittest.TestCase):
             str(audio_param_err.exception),
         )
 
-    def test_wrong_channels_value(self):
-        with self.assertRaises(AudioParameterError) as audio_param_err:
-            _ = BufferAudioSource(
-                data_buffer=b"ABCDEFGH",
-                sampling_rate=8,
-                sample_width=2,
-                channels=2,
-            )
-        self.assertEqual(
-            "Only mono audio is currently supported",
-            str(audio_param_err.exception),
-        )
-
     def test_wrong_data_buffer_size(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
             _ = BufferAudioSource(
