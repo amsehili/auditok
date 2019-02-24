@@ -604,7 +604,7 @@ class PyAudioSource(AudioSource):
         return None
 
 
-class StdinAudioSource(AudioSource):
+class StdinAudioSource(_FileAudioSource):
     """
     A class for an :class:`AudioSource` that reads data from standard input.
     """
@@ -614,10 +614,18 @@ class StdinAudioSource(AudioSource):
         sampling_rate=DEFAULT_SAMPLE_RATE,
         sample_width=DEFAULT_SAMPLE_WIDTH,
         channels=DEFAULT_NB_CHANNELS,
+        use_channel=0,
     ):
 
-        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        _FileAudioSource.__init__(
+            self, sampling_rate, sample_width, channels, use_channel
+        )
         self._is_open = False
+        self._sample_size = sample_width * channels
+        if PYTHON_3:
+            self._stream = sys.stdin.buffer
+        else:
+            self._stream = sys.stdin
 
     def is_open(self):
         return self._is_open
@@ -628,20 +636,12 @@ class StdinAudioSource(AudioSource):
     def close(self):
         self._is_open = False
 
-    def read(self, size):
-        if not self._is_open:
-            raise IOError("Stream is not open")
-
-        to_read = size * self.sample_width * self.channels
-        if sys.version_info >= (3, 0):
-            data = sys.stdin.buffer.read(to_read)
-        else:
-            data = sys.stdin.read(to_read)
-
-        if data is None or len(data) < 1:
-            return None
-
-        return data
+    def _read_from_stream(self, size):
+        bytes_to_read = size * self._sample_size
+        data = self._stream.read(bytes_to_read)
+        if data:
+            return data
+        return None
 
 
 class PyAudioPlayer:
