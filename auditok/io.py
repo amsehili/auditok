@@ -491,6 +491,27 @@ class _FileAudioSource(AudioSource):
         return None
 
 
+class RawAudioSource(_FileAudioSource, Rewindable):
+    def __init__(
+        self, file, sampling_rate, sample_width, channels, use_channel=0
+    ):
+        _FileAudioSource.__init__(
+            self, sampling_rate, sample_width, channels, use_channel
+        )
+        self._file = file
+        self._audio_stream = None
+        self._sample_size = sample_width * channels
+
+    def open(self):
+        if self._audio_stream is None:
+            self._audio_stream = open(self._file)
+
+    def _read_from_stream(self, size):
+        bytes_to_read = size * self._sample_size
+        data = self._audio_stream.read(bytes_to_read)
+        return data
+
+
 class WaveAudioSource(AudioSource):
     """
     A class for an `AudioSource` that reads data from a wave file.
