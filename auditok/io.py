@@ -23,12 +23,12 @@ Function summary
         from_file
         player_for
 """
-from abc import ABCMeta, abstractmethod
 import os
 import sys
 import wave
 import audioop
 from array import array
+from functools import partial
 
 if sys.version_info >= (3, 0):
     PYTHON_3 = True
@@ -203,7 +203,7 @@ def _extract_selected_channel(data, channels, sample_width, use_channel):
     return _array_to_bytes(buffer[use_channel::channels])
 
 
-class AudioSource():
+class AudioSource:
     """ 
     Base class for audio source objects.
 
@@ -223,12 +223,17 @@ class AudioSource():
             Number of channels of audio stream.
     """
 
-    def __init__(self, sampling_rate=DEFAULT_SAMPLE_RATE,
-                 sample_width=DEFAULT_SAMPLE_WIDTH,
-                 channels=DEFAULT_NB_CHANNELS):
+    def __init__(
+        self,
+        sampling_rate=DEFAULT_SAMPLE_RATE,
+        sample_width=DEFAULT_SAMPLE_WIDTH,
+        channels=DEFAULT_NB_CHANNELS,
+    ):
 
         if not sample_width in (1, 2, 4):
-            raise AudioParameterError("Sample width must be one of: 1, 2 or 4 (bytes)")
+            raise AudioParameterError(
+                "Sample width must be one of: 1, 2 or 4 (bytes)"
+            )
 
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
@@ -309,13 +314,14 @@ class AudioSource():
         return self.channels
 
 
-class Rewindable():
+class Rewindable:
     """
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
     audio stream as well as method to move to an absolute audio position
     expressed in time or in number of samples. 
     """
+
     @property
     def rewindable(self):
         return True
@@ -323,7 +329,6 @@ class Rewindable():
     def rewind(self):
         """ Go back to the beginning of audio stream """
         raise NotImplementedError
-
 
     def get_position(self):
         """ Return the total number of already read samples """
@@ -342,7 +347,6 @@ class Rewindable():
                 number of samples to skip from the start of the stream
         """
         raise NotImplementedError
-
 
     def set_time_position(self, time_position):
         """ Move to an absolute position expressed in seconds
@@ -447,6 +451,44 @@ class BufferAudioSource(AudioSource, Rewindable):
     def set_time_position(self, time_position):  # time in seconds
         position = int(self.sampling_rate * time_position)
         self.set_position(position)
+
+
+class _FileAudioSource(AudioSource):
+    def __init__(self, sampling_rate, sample_width, channels, use_channel):
+        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        self._audio_stream = None
+        if channels > 1:
+            self._extract_selected_channel = partial(
+                _extract_selected_channel,
+                channels=channels,
+                sample_width=sample_width,
+                use_channel=use_channel,
+            )
+        else:
+            self._extract_selected_channel = lambda x: x
+
+    def __del__(self):
+        if self.is_open():
+            self.close()
+
+    def is_open(self):
+        return self._audio_stream is not None
+
+    def close(self):
+        if self._audio_stream is not None:
+            self._audio_stream.close()
+            self._audio_stream = None
+
+    def _read_from_stream(self, size):
+        raise NotImplementedError
+
+    def read(self, size):
+        if not self.is_open():
+            raise AudioIOError("Audio stream is not open")
+        data = self._read_from_stream(size)
+        if data:
+            return self._extract_selected_channel(data)
+        return None
 
 
 class WaveAudioSource(AudioSource):
