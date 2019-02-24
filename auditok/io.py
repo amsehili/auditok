@@ -512,50 +512,37 @@ class RawAudioSource(_FileAudioSource, Rewindable):
         return data
 
 
-class WaveAudioSource(AudioSource):
+class WaveAudioSource(_FileAudioSource, Rewindable):
     """
     A class for an `AudioSource` that reads data from a wave file.
+    This class should be used for large wave files to avoid loading
+    the whole data to memory.
 
     :Parameters:
 
         `filename` :
-            path to a valid wave file
+            path to a valid wave file.
     """
 
-    def __init__(self, filename):
-
+    def __init__(self, filename, use_channel=0):
         self._filename = filename
         self._audio_stream = None
-
         stream = wave.open(self._filename)
-        AudioSource.__init__(
+        _FileAudioSource.__init__(
             self,
             stream.getframerate(),
             stream.getsampwidth(),
             stream.getnchannels(),
+            use_channel,
         )
         stream.close()
-
-    def is_open(self):
-        return self._audio_stream is not None
 
     def open(self):
         if self._audio_stream is None:
             self._audio_stream = wave.open(self._filename)
 
-    def close(self):
-        if self._audio_stream is not None:
-            self._audio_stream.close()
-            self._audio_stream = None
-
-    def read(self, size):
-        if self._audio_stream is None:
-            raise IOError("Stream is not open")
-        else:
-            data = self._audio_stream.readframes(size)
-            if data is None or len(data) < 1:
-                return None
-            return data
+    def _read_from_stream(self, size):
+        return self._audio_stream.readframes(size)
 
 
 class PyAudioSource(AudioSource):
