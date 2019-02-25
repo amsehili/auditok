@@ -504,7 +504,7 @@ class RawAudioSource(_FileAudioSource, Rewindable):
 
     def open(self):
         if self._audio_stream is None:
-            self._audio_stream = open(self._file)
+            self._audio_stream = open(self._file, "rb")
 
     def _read_from_stream(self, size):
         bytes_to_read = size * self._sample_size
@@ -527,7 +527,7 @@ class WaveAudioSource(_FileAudioSource, Rewindable):
     def __init__(self, filename, use_channel=0):
         self._filename = filename
         self._audio_stream = None
-        stream = wave.open(self._filename)
+        stream = wave.open(self._filename, "rb")
         _FileAudioSource.__init__(
             self,
             stream.getframerate(),
