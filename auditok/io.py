@@ -457,12 +457,13 @@ class _FileAudioSource(AudioSource):
     def __init__(self, sampling_rate, sample_width, channels, use_channel):
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._audio_stream = None
+        self._use_channel = _normalize_use_channel(use_channel)
         if channels > 1:
             self._extract_selected_channel = partial(
                 _extract_selected_channel,
                 channels=channels,
                 sample_width=sample_width,
-                use_channel=use_channel,
+                use_channel=self._use_channel,
             )
         else:
             self._extract_selected_channel = lambda x: x
@@ -470,6 +471,10 @@ class _FileAudioSource(AudioSource):
     def __del__(self):
         if self.is_open():
             self.close()
+
+    @property
+    def use_channel(self):
+        return self._use_channel
 
     def is_open(self):
         return self._audio_stream is not None
