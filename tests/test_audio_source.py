@@ -63,6 +63,38 @@ class TestAudioSource(unittest.TestCase):
         expected = expected
         self.assertEqual(data, expected)
 
+    @genty_dataset(
+        mono_default=("mono_400Hz", 1, None, 400),
+        mono_mix=("mono_400Hz", 1, "mix", 400),
+        mono_channel_selection=("mono_400Hz", 1, 2, 400),
+        multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
+        multichannel_channel_selection=("3channel_400-800-1600Hz", 3, 1, 800),
+    )
+    def test_WaveAudioSource(
+        self, file_suffix, channels, use_channel, frequency
+    ):
+        file = "tests/data/test_16KHZ_{}.wav".format(file_suffix)
+        audio_source = WaveAudioSource(file, use_channel)
+        audio_source.open()
+        data = b"".join(audio_source_read_all_gen(audio_source))
+        audio_source.close()
+        expected = _array_to_bytes(PURE_TONE_DICT[frequency])
+        self.assertEqual(data, expected)
+
+    def test_WaveAudioSource_mix(self):
+        file = "tests/data/test_16KHZ_3channel_400-800-1600Hz.wav"
+        audio_source = WaveAudioSource(file, use_channel="mix")
+        audio_source.open()
+        data = b"".join(audio_source_read_all_gen(audio_source))
+        audio_source.close()
+
+        mono_channels = [PURE_TONE_DICT[freq] for freq in [400, 800, 1600]]
+        fmt = DATA_FORMAT[2]
+        expected = _array_to_bytes(
+            array(fmt, (sum(samples) // 3 for samples in zip(*mono_channels)))
+        )
+        self.assertEqual(data, expected)
+
 
 class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
     def setUp(self):
