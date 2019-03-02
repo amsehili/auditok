@@ -283,6 +283,12 @@ class TestIO(TestCase):
         filename = "tests/data/test_16KHZ_mono_400Hz.wav"
         audio_source = from_file(filename, large_file=True)
         self.assertIsInstance(audio_source, WaveAudioSource)
+    
+
+    def test_from_file_large_file_compressed(self, ):
+        filename = "tests/data/test_16KHZ_mono_400Hz.ogg"
+        with self.assertRaises(AudioIOError):
+            from_file(filename, large_file=True)
 
     @genty_dataset(
         missing_sampling_rate=("sr",),
