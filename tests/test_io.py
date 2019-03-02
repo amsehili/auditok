@@ -12,6 +12,8 @@ from auditok.io import (
     AudioIOError,
     AudioParameterError,
     BufferAudioSource,
+    RawAudioSource,
+    WaveAudioSource,
     check_audio_data,
     _guess_audio_format,
     _normalize_use_channel,
@@ -268,6 +270,19 @@ class TestIO(TestCase):
         with patch(funtion_name) as patch_function:
             from_file(filename, audio_format, **kwargs)
         self.assertTrue(patch_function.called)
+
+    def test_from_file_large_file_raw(self, ):
+        filename = "tests/data/test_16KHZ_mono_400Hz.raw"
+        audio_source = from_file(filename, large_file=True,
+                                 sampling_rate=16000,
+                                 sample_width=2,
+                                 channels=1)
+        self.assertIsInstance(audio_source, RawAudioSource)
+
+    def test_from_file_large_file_wave(self, ):
+        filename = "tests/data/test_16KHZ_mono_400Hz.wav"
+        audio_source = from_file(filename, large_file=True)
+        self.assertIsInstance(audio_source, WaveAudioSource)
 
     @genty_dataset(
         missing_sampling_rate=("sr",),
