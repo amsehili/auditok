@@ -402,6 +402,10 @@ class BufferAudioSource(AudioSource, Rewindable):
             return data
         return None
 
+    @property
+    def data(self):
+        return self._buffer
+
     def get_data_buffer(self):
         """ Return all audio data as one string buffer. """
         return self._buffer
@@ -431,6 +435,42 @@ class BufferAudioSource(AudioSource, Rewindable):
 
     def rewind(self):
         self.set_position(0)
+
+    @property
+    def position(self):
+        """Stream position in number of samples"""
+        return self._current_position_bytes // self._sample_size_all_channels
+
+    @position.setter
+    def position(self, position):
+        position *= self._sample_size_all_channels
+        if position < 0:
+            position += len(self.data)
+        if position < 0 or position > len(self.data):
+            raise IndexError("Position out of range")
+        self._current_position_bytes = position
+
+    @property
+    def position_s(self):
+        """Stream position in seconds"""
+        return self.position / self.sampling_rate
+
+    @position_s.setter
+    def position_s(self, position_s):
+        self.position = int(self.sampling_rate * position_s)
+
+    @property
+    def position_ms(self):
+        """Stream position in milliseconds"""
+        return (self._current_position_bytes * 1000) // (
+            self._sample_size_all_channels * self.sampling_rate
+        )
+
+    @position_ms.setter
+    def position_ms(self, position_ms):
+        if not isinstance(position_ms, int):
+            raise ValueError("position_ms should be an int")
+        self.position = int(self.sampling_rate * position_ms / 1000)
 
     def get_position(self):
         return self._current_position_bytes / self._sample_size_all_channels
