@@ -96,6 +96,7 @@ class TestAudioSource(unittest.TestCase):
         self.assertEqual(data, expected)
 
 
+@genty
 class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
     def setUp(self):
         self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
@@ -223,6 +224,44 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             pos, 25, msg="wrong position, expected: 5, found: {0} ".format(pos)
         )
 
+    @genty_dataset(
+        empty=([], 0, 0, 0),
+        zero=([0], 0, 0, 0),
+        five=([5], 5, 0.5, 500),
+        multiple=([5, 20], 25, 2.5, 2500),
+    )
+    def test_position(
+        self, block_sizes, expected_sample, expected_second, expected_ms
+    ):
+        for block_size in block_sizes:
+            self.audio_source.read(block_size)
+        position = self.audio_source.position
+        self.assertEqual(
+            position,
+            expected_sample,
+            msg="wrong stream position, expected: {}, found: {}".format(
+                expected_sample, position
+            ),
+        )
+
+        position_s = self.audio_source.position_s
+        self.assertEqual(
+            position_s,
+            expected_second,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_second, position_s
+            ),
+        )
+
+        position_ms = self.audio_source.position_ms
+        self.assertEqual(
+            position_ms,
+            expected_ms,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_ms, position_ms
+            ),
+        )
+
     def test_sr10_sw1_ch1_set_position_0(self):
         self.audio_source.read(10)
         self.audio_source.set_position(0)
@@ -239,6 +278,138 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             10,
             msg="wrong position, expected: 10, found: {0} ".format(pos),
         )
+
+    @genty_dataset(
+        zero=(0, 0, 0, 0),
+        one=(1, 1, 0.1, 100),
+        ten=(10, 10, 1, 1000),
+        negative_1=(-1, 31, 3.1, 3100),
+        negative_2=(-7, 25, 2.5, 2500),
+    )
+    def test_position_setter(
+        self, position, expected_sample, expected_second, expected_ms
+    ):
+        self.audio_source.position = position
+
+        position = self.audio_source.position
+        self.assertEqual(
+            position,
+            expected_sample,
+            msg="wrong stream position, expected: {}, found: {}".format(
+                expected_sample, position
+            ),
+        )
+
+        position_s = self.audio_source.position_s
+        self.assertEqual(
+            position_s,
+            expected_second,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_second, position_s
+            ),
+        )
+
+        position_ms = self.audio_source.position_ms
+        self.assertEqual(
+            position_ms,
+            expected_ms,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_ms, position_ms
+            ),
+        )
+
+    @genty_dataset(
+        zero=(0, 0, 0, 0),
+        one=(0.1, 1, 0.1, 100),
+        ten=(1, 10, 1, 1000),
+        negative_1=(-0.1, 31, 3.1, 3100),
+        negative_2=(-0.7, 25, 2.5, 2500),
+    )
+    def test_position_s_setter(
+        self, position_s, expected_sample, expected_second, expected_ms
+    ):
+        self.audio_source.position_s = position_s
+
+        position = self.audio_source.position
+        self.assertEqual(
+            position,
+            expected_sample,
+            msg="wrong stream position, expected: {}, found: {}".format(
+                expected_sample, position
+            ),
+        )
+
+        position_s = self.audio_source.position_s
+        self.assertEqual(
+            position_s,
+            expected_second,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_second, position_s
+            ),
+        )
+
+        position_ms = self.audio_source.position_ms
+        self.assertEqual(
+            position_ms,
+            expected_ms,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_ms, position_ms
+            ),
+        )
+
+    @genty_dataset(
+        zero=(0, 0, 0, 0),
+        one=(100, 1, 0.1, 100),
+        ten=(1000, 10, 1, 1000),
+        negative_1=(-100, 31, 3.1, 3100),
+        negative_2=(-700, 25, 2.5, 2500),
+    )
+    def test_position_ms_setter(
+        self, position_ms, expected_sample, expected_second, expected_ms
+    ):
+        self.audio_source.position_ms = position_ms
+
+        position = self.audio_source.position
+        self.assertEqual(
+            position,
+            expected_sample,
+            msg="wrong stream position, expected: {}, found: {}".format(
+                expected_sample, position
+            ),
+        )
+
+        position_s = self.audio_source.position_s
+        self.assertEqual(
+            position_s,
+            expected_second,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_second, position_s
+            ),
+        )
+
+        position_ms = self.audio_source.position_ms
+        self.assertEqual(
+            position_ms,
+            expected_ms,
+            msg="wrong stream position_s, expected: {}, found: {}".format(
+                expected_ms, position_ms
+            ),
+        )
+
+    @genty_dataset(positive=((100,)), negative=(-100,))
+    def test_position_setter_out_of_range(self, position):
+        with self.assertRaises(IndexError):
+            self.audio_source.position = position
+
+    @genty_dataset(positive=((100,)), negative=(-100,))
+    def test_position_s_setter_out_of_range(self, position_s):
+        with self.assertRaises(IndexError):
+            self.audio_source.position_s = position_s
+
+    @genty_dataset(positive=((10000,)), negative=(-10000,))
+    def test_position_ms_setter_out_of_range(self, position_ms):
+        with self.assertRaises(IndexError):
+            self.audio_source.position_ms = position_ms
 
     def test_sr10_sw1_ch1_get_time_position_0(self):
         tp = self.audio_source.get_time_position()
