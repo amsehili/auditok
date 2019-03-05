@@ -314,7 +314,7 @@ class AudioSource:
         return self.channels
 
 
-class Rewindable:
+class Rewindable(AudioSource):
     """
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
@@ -330,13 +330,42 @@ class Rewindable:
         """ Go back to the beginning of audio stream """
         raise NotImplementedError
 
+    @property
+    def position(self):
+        """Stream position in number of samples"""
+        raise NotImplementedError
+
+    @position.setter
+    def position(self, position):
+        raise NotImplementedError
+
+    @property
+    def position_s(self):
+        """Stream position in seconds"""
+        return self.position / self.sampling_rate
+
+    @position_s.setter
+    def position_s(self, position_s):
+        self.position = int(self.sampling_rate * position_s)
+
+    @property
+    def position_ms(self):
+        """Stream position in milliseconds"""
+        return (self.position * 1000) // self.sampling_rate
+
+    @position_ms.setter
+    def position_ms(self, position_ms):
+        if not isinstance(position_ms, int):
+            raise ValueError("position_ms should be an int")
+        self.position = int(self.sampling_rate * position_ms / 1000)
+
     def get_position(self):
         """ Return the total number of already read samples """
-        raise NotImplementedError
+        return self.position
 
     def get_time_position(self):
         """ Return the total duration in seconds of already read data """
-        raise NotImplementedError
+        return self.position_s
 
     def set_position(self, position):
         """ Move to an absolute position 
@@ -346,7 +375,7 @@ class Rewindable:
             `position` : int
                 number of samples to skip from the start of the stream
         """
-        raise NotImplementedError
+        self.position = position
 
     def set_time_position(self, time_position):
         """ Move to an absolute position expressed in seconds
@@ -356,10 +385,10 @@ class Rewindable:
             `time_position` : float
                 seconds to skip from the start of the stream
         """
-        raise NotImplementedError
+        self.position_s = time_position
 
 
-class BufferAudioSource(AudioSource, Rewindable):
+class BufferAudioSource(Rewindable):
     """
     An :class:`AudioSource` that encapsulates and reads data from a memory buffer.
     It implements methods from :class:`Rewindable` and is therefore a navigable :class:`AudioSource`.
@@ -451,15 +480,6 @@ class BufferAudioSource(AudioSource, Rewindable):
         self._current_position_bytes = position
 
     @property
-    def position_s(self):
-        """Stream position in seconds"""
-        return self.position / self.sampling_rate
-
-    @position_s.setter
-    def position_s(self, position_s):
-        self.position = int(self.sampling_rate * position_s)
-
-    @property
     def position_ms(self):
         """Stream position in milliseconds"""
         return (self._current_position_bytes * 1000) // (
@@ -471,26 +491,6 @@ class BufferAudioSource(AudioSource, Rewindable):
         if not isinstance(position_ms, int):
             raise ValueError("position_ms should be an int")
         self.position = int(self.sampling_rate * position_ms / 1000)
-
-    def get_position(self):
-        return self._current_position_bytes / self._sample_size_all_channels
-
-    def get_time_position(self):
-        return float(self._current_position_bytes) / (
-            self._sample_size_all_channels * self.sampling_rate
-        )
-
-    def set_position(self, position):
-        if position < 0:
-            raise ValueError("position must be >= 0")
-        position *= self._sample_size_all_channels
-        self._current_position_bytes = (
-            position if position < len(self._buffer) else len(self._buffer)
-        )
-
-    def set_time_position(self, time_position):  # time in seconds
-        position = int(self.sampling_rate * time_position)
-        self.set_position(position)
 
 
 class _FileAudioSource(AudioSource):
