@@ -459,15 +459,6 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             msg="wrong time position, expected: 1.0, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_set_time_position_end(self):
-        self.audio_source.set_time_position(100)
-        tp = self.audio_source.get_time_position()
-        self.assertEqual(
-            tp,
-            3.2,
-            msg="wrong time position, expected: 3.2, found: {0} ".format(tp),
-        )
-
     def test_sr10_sw1_ch1_rewind(self):
         self.audio_source.read(10)
         self.audio_source.rewind()
@@ -676,15 +667,6 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     def test_sr16_sw2_ch1_set_time_position_1(self):
         self.audio_source.set_time_position(1)
-        tp = self.audio_source.get_time_position()
-        self.assertEqual(
-            tp,
-            1.0,
-            msg="wrong time position, expected: 1.0, found: {0} ".format(tp),
-        )
-
-    def test_sr16_sw2_ch1_set_time_position_end(self):
-        self.audio_source.set_time_position(100)
         tp = self.audio_source.get_time_position()
         self.assertEqual(
             tp,
@@ -914,15 +896,6 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
     def test_sr11_sw4_ch1_set_time_position_1(self):
 
         self.audio_source.set_time_position(1)
-        tp = self.audio_source.get_time_position()
-        self.assertEqual(
-            tp,
-            1.0,
-            msg="wrong time position, expected: 1.0, found: {0} ".format(tp),
-        )
-
-    def test_sr11_sw4_ch1_set_time_position_end(self):
-        self.audio_source.set_time_position(100)
         tp = self.audio_source.get_time_position()
         self.assertEqual(
             tp,
