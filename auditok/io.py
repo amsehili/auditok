@@ -26,6 +26,7 @@ Function summary
 import os
 import sys
 import wave
+import warnings
 import audioop
 from array import array
 from functools import partial
@@ -361,10 +362,18 @@ class Rewindable(AudioSource):
 
     def get_position(self):
         """ Return the total number of already read samples """
+        warnings.warn(
+            "'get_position' is deprecated, use 'position' property instead",
+            DeprecationWarning
+        )
         return self.position
 
     def get_time_position(self):
         """ Return the total duration in seconds of already read data """
+        warnings.warn(
+            "'get_time_position' is deprecated, use 'position_s' or 'position_ms' properties instead",
+            DeprecationWarning
+        )
         return self.position_s
 
     def set_position(self, position):
@@ -375,6 +384,10 @@ class Rewindable(AudioSource):
             `position` : int
                 number of samples to skip from the start of the stream
         """
+        warnings.warn(
+            "'set_position' is deprecated, set 'position' property instead",
+            DeprecationWarning
+        )
         self.position = position
 
     def set_time_position(self, time_position):
@@ -385,6 +398,10 @@ class Rewindable(AudioSource):
             `time_position` : float
                 seconds to skip from the start of the stream
         """
+        warnings.warn(
+            "'set_time_position' is deprecated, set 'position_s' or 'position_ms' properties instead",
+            DeprecationWarning
+        )
         self.position_s = time_position
 
 
