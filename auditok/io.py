@@ -782,6 +782,27 @@ def player_for(audio_source):
         audio_source.get_channels(),
     )
 
+def get_audio_source(input=None, **kwargs):
+
+    # read data from standard input
+    if input == "-":
+        return StdinAudioSource(**kwargs)
+
+    # create AudioSource from raw data
+    if isinstance(input, bytes):
+        return BufferAudioSource(input, **kwargs)
+
+    # read data from a file
+    if input is not None:
+        return from_file(filename=input,
+                         audio_format=kwargs.get('audio_format'),
+                         large_file=kwargs.get('large_file', False),
+                         **kwargs)
+
+    # read data from microphone via pyaudio
+    else:
+        return PyAudioSource(**kwargs)
+
 
 def _load_raw(
     file,
