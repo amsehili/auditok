@@ -342,6 +342,7 @@ class StreamTokenizer():
         self._current_frame = 0
 
     def set_mode(self, mode):
+        # TODO: use properties and make these deprecated
         """
         :Parameters:
 
@@ -355,7 +356,7 @@ class StreamTokenizer():
 
             - `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`
 
-            - `0`
+            - `0` TODO: this mode should have a name
 
         See `StreamTokenizer.__init__` for more information about the mode.
         """
@@ -389,7 +390,7 @@ class StreamTokenizer():
         self._current_frame = -1
         self._deliver = self._append_token
 
-    def tokenize(self, data_source, callback=None):
+    def tokenize(self, data_source, callback=None, generator=False):
         """
         Read data from `data_source`, one frame a time, and process the read frames in
         order to detect sequences of frames that make up valid tokens.
@@ -416,25 +417,28 @@ class StreamTokenizer():
            original data and `end` : index of the last frame. 
 
         """
+        token_gen = self._iter_tokens(data_source)
+        if callback:
+            for token in token_gen:
+                callback(*token)
+            return
+        if generator:
+            return token_gen
+        return list(token_gen)
 
+    def _iter_tokens(self, data_source):
         self._reinitialize()
-
-        if callback is not None:
-            self._deliver = callback
-
         while True:
             frame = data_source.read()
-            if frame is None:
-                break
             self._current_frame += 1
-            self._process(frame)
-
-        self._post_process()
-
-        if callback is None:
-            _ret = self._tokens
-            self._tokens = None
-            return _ret
+            if frame is None:
+                token = self._post_process()
+                if token is not None:
+                    yield token
+                break
+            token = self._process(frame)
+            if token is not None:
+                yield token
 
     def _process(self, frame):
 
@@ -452,7 +456,7 @@ class StreamTokenizer():
                 if self._init_count >= self.init_min:
                     self._state = self.NOISE
                     if len(self._data) >= self.max_length:
-                        self._process_end_of_detection(True)
+                        return self._process_end_of_detection(True)
                 else:
                     self._state = self.POSSIBLE_NOISE
 
@@ -465,7 +469,7 @@ class StreamTokenizer():
                 if self._init_count >= self.init_min:
                     self._state = self.NOISE
                     if len(self._data) >= self.max_length:
-                        self._process_end_of_detection(True)
+                        return self._process_end_of_detection(True)
 
             else:
                 self._silence_length += 1
@@ -483,14 +487,13 @@ class StreamTokenizer():
             if frame_is_valid:
                 self._data.append(frame)
                 if len(self._data) >= self.max_length:
-                    self._process_end_of_detection(True)
+                    return self._process_end_of_detection(True)
 
             elif self.max_continuous_silence <= 0:
                 # max token reached at this frame will _deliver if _contiguous_token
                 # and not _strict_min_length
-                self._process_end_of_detection()
                 self._state = self.SILENCE
-
+                return self._process_end_of_detection()
             else:
                 # this is the first silent frame following a valid one
                 # and it is tolerated
@@ -498,7 +501,7 @@ class StreamTokenizer():
                 self._data.append(frame)
                 self._state = self.POSSIBLE_SILENCE
                 if len(self._data) == self.max_length:
-                    self._process_end_of_detection(True)
+                    return self._process_end_of_detection(True)
                     # don't reset _silence_length because we still
                     # need to know the total number of silent frames
 
@@ -509,29 +512,28 @@ class StreamTokenizer():
                 self._silence_length = 0
                 self._state = self.NOISE
                 if len(self._data) >= self.max_length:
-                    self._process_end_of_detection(True)
+                    return self._process_end_of_detection(True)
 
             else:
                 if self._silence_length >= self.max_continuous_silence:
+                    self._state = self.SILENCE
                     if self._silence_length < len(self._data):
                         # _deliver only gathered frames aren't all silent
-                        self._process_end_of_detection()
-                    else:
-                        self._data = []
-                    self._state = self.SILENCE
+                        return self._process_end_of_detection()
+                    self._data = []
                     self._silence_length = 0
                 else:
                     self._data.append(frame)
                     self._silence_length += 1
                     if len(self._data) >= self.max_length:
-                        self._process_end_of_detection(True)
+                        return self._process_end_of_detection(True)
                         # don't reset _silence_length because we still
                         # need to know the total number of silent frames
 
     def _post_process(self):
         if self._state == self.NOISE or self._state == self.POSSIBLE_SILENCE:
             if len(self._data) > 0 and len(self._data) > self._silence_length:
-                self._process_end_of_detection()
+                return self._process_end_of_detection()
 
     def _process_end_of_detection(self, truncated=False):
 
@@ -544,8 +546,11 @@ class StreamTokenizer():
            (len(self._data) > 0 and
                 not self._strict_min_length and self._contiguous_token):
 
-            _end_frame = self._start_frame + len(self._data) - 1
-            self._deliver(self._data, self._start_frame, _end_frame)
+            start_frame = self._start_frame
+            end_frame = self._start_frame + len(self._data) - 1
+            data = self._data
+            self._data = []
+            token = (data, start_frame, end_frame)
 
             if truncated:
                 # next token (if any) will start at _current_frame + 1
@@ -554,6 +559,7 @@ class StreamTokenizer():
                 self._contiguous_token = True
             else:
                 self._contiguous_token = False
+            return token
         else:
             self._contiguous_token = False
 
