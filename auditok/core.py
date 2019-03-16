@@ -16,7 +16,6 @@ __all__ = ["AudioRegion", "StreamTokenizer"]
 
 
 class AudioRegion(object):
-
     def __init__(self, data, start, sampling_rate, sample_width, channels):
         """
         A class for detected audio events.
@@ -54,9 +53,9 @@ class AudioRegion(object):
         """
         Returns region duration in seconds.
         """
-        return len(self._data) / (self.sampling_rate *
-                                  self.sample_width *
-                                  self.channels)
+        return len(self._data) / (
+            self.sampling_rate * self.sample_width * self.channels
+        )
 
     @property
     def sampling_rate(self):
@@ -92,17 +91,17 @@ class AudioRegion(object):
         return self._data
 
     def __repr__(self):
-        return  ('AudioRegion(data, start={:.3f}, end={:.3f}, '
-                 'sampling_rate={}, sample_width={}, channels={})'.format(self.start,
-                                                                        self.end,
-                                                                        self.sr,
-                                                                        self.sw,
-                                                                        self.ch))
+        return (
+            "AudioRegion(data, start={:.3f}, end={:.3f}, "
+            "sampling_rate={}, sample_width={}, channels={})".format(
+                self.start, self.end, self.sr, self.sw, self.ch
+            )
+        )
 
     def __str__(self):
-        return 'AudioRegion(start={:.3f}, end={:.3f}, duration={:.3f}'.format(self.start,
-                                                                              self.end,
-                                                                              self.duration)
+        return "AudioRegion(start={:.3f}, end={:.3f}, duration={:.3f}".format(
+            self.start, self.end, self.duration
+        )
 
     def __add__(self, other):
         """
@@ -111,20 +110,24 @@ class AudioRegion(object):
         and number of channels. If not, raises a `ValueError`.
         """
         if not isinstance(other, AudioRegion):
-            raise TypeError('Can only concatenate AudioRegion, '
-                            'not "{}"'.format(type(other)))
+            raise TypeError(
+                "Can only concatenate AudioRegion, " 'not "{}"'.format(type(other))
+            )
         if other.sr != self.sr:
-            raise ValueError('Can only concatenate AudioRegions of the same '
-                             'sampling rate ({} != {})'.format(self.sr,
-                                                               other.sr))
+            raise ValueError(
+                "Can only concatenate AudioRegions of the same "
+                "sampling rate ({} != {})".format(self.sr, other.sr)
+            )
         if other.sw != self.sw:
-            raise ValueError('Can only concatenate AudioRegions of the same '
-                             'sample width ({} != {})'.format(self.sw,
-                                                              other.sw))
+            raise ValueError(
+                "Can only concatenate AudioRegions of the same "
+                "sample width ({} != {})".format(self.sw, other.sw)
+            )
         if other.ch != self.ch:
-            raise ValueError('Can only concatenate AudioRegions of the same '
-                             'number of channels ({} != {})'.format(self.ch,
-                                                                    other.ch))
+            raise ValueError(
+                "Can only concatenate AudioRegions of the same "
+                "number of channels ({} != {})".format(self.ch, other.ch)
+            )
         data = self._data + other._data
         return AudioRegion(data, self.start, self.sr, self.sw, self.ch)
 
@@ -140,7 +143,7 @@ class AudioRegion(object):
         return other.add(self)
 
 
-class StreamTokenizer():
+class StreamTokenizer:
     """
     Class for stream tokenizers. It implements a 4-state automaton scheme
     to extract sub-sequences of interest on the fly.
@@ -298,10 +301,16 @@ class StreamTokenizer():
     # alias
     DROP_TAILING_SILENCE = 4
 
-    def __init__(self, validator,
-                 min_length, max_length, max_continuous_silence,
-                 init_min=0, init_max_silence=0,
-                 mode=0):
+    def __init__(
+        self,
+        validator,
+        min_length,
+        max_length,
+        max_continuous_silence,
+        init_min=0,
+        init_max_silence=0,
+        mode=0,
+    ):
 
         if not isinstance(validator, DataValidator):
             raise TypeError("'validator' must be an instance of 'DataValidator'")
@@ -310,13 +319,25 @@ class StreamTokenizer():
             raise ValueError("'max_length' must be > 0 (value={0})".format(max_length))
 
         if min_length <= 0 or min_length > max_length:
-            raise ValueError("'min_length' must be > 0 and <= 'max_length' (value={0})".format(min_length))
+            raise ValueError(
+                "'min_length' must be > 0 and <= 'max_length' (value={0})".format(
+                    min_length
+                )
+            )
 
         if max_continuous_silence >= max_length:
-            raise ValueError("'max_continuous_silence' must be < 'max_length' (value={0})".format(max_continuous_silence))
+            raise ValueError(
+                "'max_continuous_silence' must be < 'max_length' (value={0})".format(
+                    max_continuous_silence
+                )
+            )
 
         if init_min >= max_length:
-            raise ValueError("'init_min' must be < 'max_length' (value={0})".format(max_continuous_silence))
+            raise ValueError(
+                "'init_min' must be < 'max_length' (value={0})".format(
+                    max_continuous_silence
+                )
+            )
 
         self.validator = validator
         self.min_length = min_length
@@ -361,8 +382,12 @@ class StreamTokenizer():
         See `StreamTokenizer.__init__` for more information about the mode.
         """
 
-        if not mode in [self.STRICT_MIN_LENGTH, self.DROP_TRAILING_SILENCE,
-                        self.STRICT_MIN_LENGTH | self.DROP_TRAILING_SILENCE, 0]:
+        if not mode in [
+            self.STRICT_MIN_LENGTH,
+            self.DROP_TRAILING_SILENCE,
+            self.STRICT_MIN_LENGTH | self.DROP_TRAILING_SILENCE,
+            0,
+        ]:
 
             raise ValueError("Wrong value for mode")
 
@@ -473,8 +498,10 @@ class StreamTokenizer():
 
             else:
                 self._silence_length += 1
-                if self._silence_length > self.init_max_silent or \
-                        len(self._data) + 1 >= self.max_length:
+                if (
+                    self._silence_length > self.init_max_silent
+                    or len(self._data) + 1 >= self.max_length
+                ):
                     # either init_max_silent or max_length is reached
                     # before _init_count, back to silence
                     self._data = []
@@ -540,11 +567,13 @@ class StreamTokenizer():
         if not truncated and self._drop_tailing_silence and self._silence_length > 0:
             # happens if max_continuous_silence is reached
             # or max_length is reached at a silent frame
-            self._data = self._data[0: - self._silence_length]
+            self._data = self._data[0 : -self._silence_length]
 
-        if (len(self._data) >= self.min_length) or \
-           (len(self._data) > 0 and
-                not self._strict_min_length and self._contiguous_token):
+        if (len(self._data) >= self.min_length) or (
+            len(self._data) > 0
+            and not self._strict_min_length
+            and self._contiguous_token
+        ):
 
             start_frame = self._start_frame
             end_frame = self._start_frame + len(self._data) - 1
