@@ -9,10 +9,188 @@ Class summary
         StreamTokenizer
 """
 
-from auditok.util import DataValidator
+from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data
 
-__all__ = ["AudioRegion", "StreamTokenizer"]
+__all__ = ["split", "AudioRegion", "StreamTokenizer"]
+
+
+DEFAULT_ANALYSIS_WINDOW = 0.05
+DEFAULT_ENERGY_THRESHOLD = 50
+
+
+def split(
+    input,
+    min_dur=0.2,
+    max_dur=5,
+    max_silence=0.3,
+    drop_trailing_silence=False,
+    strict_min_length=False,
+    analysis_window=0.01,
+    **kwargs
+):
+    """Splits audio data and returns a generator of `AudioRegion`s
+    TODO: implement max_trailing_silence
+
+    :Parameters:
+
+    input: str, bytes, AudioSource, AudioRegion, AudioDataSource
+        input audio data. If str, it should be a path to an existing audio
+        file. If bytes, input is considered as raw audio data.
+    audio_format: str
+        type of audio date (e.g., wav, ogg, raw, etc.). This will only be used
+        if ´input´ is a string path to audio file. If not given, audio type
+        will be guessed from file name extension or from file header.
+    min_dur: float
+        minimun duration in seconds of a detected audio event. Default: 0.2.
+        Using large values, very short audio events (e.g., very short 1-word
+        utterances like 'yes' or 'no') can be missed.
+        Using very short values might result in a high number of short,
+        unuseful audio events.
+    max_dur: float
+        maximum duration in seconds of a detected audio event. Default: 5.
+    max_silence: float
+        maximum duration of consecutive silence within an audio event. There
+        might be many silent gaps of this duration within an audio event.
+    drop_trailing_silence: bool
+        drop trailing silence from detected events
+    strict_min_length: bool
+        strict minimum length. Drop an event if it is shorter than ´min_length´
+        even if it is continguous to the latest valid event. This happens if
+        the the latest event had reached ´max_length´.
+    analysis_window: float
+        duration of analysis window in seconds. Default: 0.05 second (50 ms).
+        A value up to 0.1 second (100 ms) should be good for most use-cases.
+        You might need a different value, especially if you use a custom
+        validator.
+    sampling_rate, sr: int
+        sampling rate of audio data. Only needed for raw audio files/data.
+    sample_width, sw: int
+        number of bytes used to encode an audio sample, typically 1, 2 or 4.
+        Only needed for raw audio files/data.
+    channels, ch: int
+        nuumber of channels of audio data. Only needed for raw audio files.
+    use_channel, uc: int, str
+        which channel to use if input has multichannel audio data. Can be an
+        int (0 being the first channel), or one of the following special str
+        values:
+        - 'left': first channel (equivalent to 0)
+        - 'right': second channel (equivalent to 1)
+        - 'mix': compute average channel
+        Default: 0, use the first channel.
+    max_read: float
+        maximum data to read in seconds. Default: `None`, read until there is no more
+        data to read.
+    validator: DataValidator
+        custom data validator. If ´None´ (default), an `AudioEnergyValidor` is
+        used with the given energy threshold.
+    energy_threshold: float
+        energy threshlod for audio activity detection, default: 50. If a custom
+        validator is given, this argumemt will be ignored.
+    """
+    print(
+        "split:", min_dur, max_dur, max_silence, drop_trailing_silence, analysis_window
+    )
+
+    if isinstance(input, AudioDataSource):
+        source = input
+    else:
+        block_dur = kwargs.get("analysis_window", DEFAULT_ANALYSIS_WINDOW)
+        max_read = kwargs.get("max_read")
+        params = kwargs.copy()
+        if isinstance(input, AudioRegion):
+            params["sampling_rate"] = input.sr
+            params["sample_width"] = input.sw
+            params["channels"] = input.ch
+            input = bytes(input)
+
+        source = AudioDataSource(
+            input, block_dur=block_dur, max_read=max_read, **params
+        )
+
+    validator = kwargs.get("validator")
+    if validator is None:
+        energy_threshold = kwargs.get("energy_threshold", DEFAULT_ENERGY_THRESHOLD)
+        validator = AudioEnergyValidator(source.sw, energy_threshold)
+
+    mode = StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
+    if strict_min_length:
+        mode |= StreamTokenizer.STRICT_MIN_LENGTH
+
+    min_length = _duration_to_nb_windows(min_dur, analysis_window)
+    max_length = _duration_to_nb_windows(max_dur, analysis_window)
+    max_continuous_silence = _duration_to_nb_windows(max_silence, analysis_window)
+
+    print(min_length, max_length, max_continuous_silence)
+    tokenizer = StreamTokenizer(
+        validator, min_length, max_length, max_continuous_silence, mode=mode
+    )
+    source.open()
+    token_gen = tokenizer.tokenize(source, generator=True)
+    region_gen = (
+        _make_audio_region(
+            source.block_dur, token[1], token[0], source.sr, source.sw, source.ch
+        )
+        for token in token_gen
+    )
+    return region_gen
+
+
+def _duration_to_nb_windows(duration, analysis_window):
+    """
+    Converts a given duration into a positive integer on analysis windows.
+    if `duration / analysis_window` is not an integer, the result will be
+    rounded to the closest bigger integer. If `duration == 0`, returns `0`.
+    `duration` and `analysis_window` can be in seconds or milliseconds but
+    must be in the same unit.
+
+    :Parameters:
+
+    duration: float
+        a given duration in seconds or ms
+    analysis_window: float
+        size of analysis window, in the same unit as `duration`
+
+    Returns:
+    --------
+    nb_windows: int
+        minimum number of `analysis_window`'s to cover `durartion`. That means
+        that `analysis_window * nb_windows >= duration`.
+    """
+    if duration == 0:
+        return 0
+    if duration > analysis_window:
+        nb_windows, rest = divmod(duration, analysis_window)
+        if rest > 0:
+            nb_windows += 1
+        return int(nb_windows)
+
+
+def _make_audio_region(
+    frame_duration, start_frame, data_frames, sampling_rate, sample_width, channels
+):
+    """Create and return an `AudioRegion`.
+
+    :Parameters:
+
+    frame_duration: float
+        duration of analysis window in seconds
+    start_frame: int
+        index of the fisrt analysis window
+    samling_rate: int
+        sampling rate of audio data
+    sample_width: int
+        number of bytes of one audio sample
+    channels: int
+        number of channels of audio data
+
+    Returns:
+    audio_region: AudioRegion
+        AudioRegion whose start time is calculeted as `1000 * start_frame * frame_duration`
+    """
+    start = start_frame * frame_duration
+    data = b"".join(data_frames)
+    return AudioRegion(data, start, sampling_rate, sample_width, channels)
 
 
 class AudioRegion(object):
