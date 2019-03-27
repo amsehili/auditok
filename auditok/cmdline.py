@@ -88,6 +88,16 @@ def main(argv=None):
             metavar="FLOAT",
         )
         group.add_argument(
+            "-L",
+            "--large-file",
+            dest="large_file",
+            action="store_true",
+            default=False,
+            help="Whether input file should be treated as a large file. "
+            "If True, data will be read from file on demand, otherwise all "
+            "audio data is loaded to memory before tokenization.",
+        )
+        group.add_argument(
             "-O",
             "--output-main",
             dest="output_main",
@@ -181,7 +191,6 @@ def main(argv=None):
             help="Drop trailing silence from a detection [default: keep "
             "trailing silence]",
         )
-
         group.add_argument(
             "-R",
             "--strict-min-duration",
@@ -192,7 +201,6 @@ def main(argv=None):
             "adjacent to the latest valid event that reached max-duration "
             "[default: keep such events]",
         )
-
         group.add_argument(
             "-e",
             "--energy-threshold",
@@ -298,7 +306,6 @@ def main(argv=None):
             "fields are printed. Note that %%S and %%I can only be used alone",
             metavar="STRING",
         )
-
         group.add_argument(
             "--timestamp-format",
             dest="timestamp_format",
@@ -307,7 +314,6 @@ def main(argv=None):
             help="format used to print {timestamp}. Should be a format accepted by "
             "datetime Default %%Y/%%m/%%D %%H:%%M:%%S",
         )
-
         parser.add_argument(
             "-q",
             "--quiet",
