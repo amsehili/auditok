@@ -305,7 +305,7 @@ def main(argv=None):
             type=str,
             default="%Y/%m/%D %H:%M:%S",
             help="format used to print {timestamp}. Should be a format accepted by "
-            "datetime Default %Y/%m/%D %H:%M:%S",
+            "datetime Default %%Y/%%m/%%D %%H:%%M:%%S",
         )
 
         parser.add_argument(
