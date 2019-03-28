@@ -15,7 +15,7 @@ def make_kwargs(args_namespace):
         "max_dur": args_namespace.max_duration,
         "max_silence": args_namespace.max_silence,
         "drop_trailing_silence": args_namespace.drop_trailing_silence,
-        "strict_min_length": args_namespace.strict_min_length,
+        "strict_min_dur": args_namespace.strict_min_duration,
         "energy_threshold": args_namespace.energy_threshold,
         "max_read_time": args_namespace.max_time,
         "analysis_window": args_namespace.analysis_window,
