@@ -25,7 +25,7 @@ def split(
     max_dur=5,
     max_silence=0.3,
     drop_trailing_silence=False,
-    strict_min_length=False,
+    strict_min_dur=False,
     analysis_window=0.01,
     **kwargs
 ):
@@ -54,10 +54,10 @@ def split(
         might be many silent gaps of this duration within an audio event.
     drop_trailing_silence: bool
         drop trailing silence from detected events
-    strict_min_length: bool
-        strict minimum length. Drop an event if it is shorter than ´min_length´
+    strict_min_dur: bool
+        strict minimum duration. Drop an event if it is shorter than ´min_dur´
         even if it is continguous to the latest valid event. This happens if
-        the the latest event had reached ´max_length´.
+        the the latest event had reached ´max_dur´.
     analysis_window: float
         duration of analysis window in seconds. Default: 0.05 second (50 ms).
         A value up to 0.1 second (100 ms) should be good for most use-cases.
@@ -114,7 +114,7 @@ def split(
         validator = AudioEnergyValidator(source.sw, energy_threshold)
 
     mode = StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
-    if strict_min_length:
+    if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
 
     min_length = _duration_to_nb_windows(min_dur, analysis_window)
