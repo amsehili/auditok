@@ -371,13 +371,13 @@ def main(argv=None):
             worker = workers.PrintWorker(print_format, time_format, timestamp_format)
             observers.append(worker)
 
-        reader = AudioDataSource(args.input, **kwargs.io_kwargs)
+        reader = AudioDataSource(args.input, **kwargs.io)
         if args.output_main is not None:
             reader = workers.StreamSaverWorker(reader, args.output_main)
             reader.start()
 
         tokenizer_worker = workers.TokenizerWorker(
-            reader, observers, logger=logger, **kwargs.split_kwargs
+            reader, observers, logger=logger, **kwargs.split
         )
         tokenizer_worker.start_all()
 
