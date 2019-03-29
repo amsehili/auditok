@@ -1,35 +1,44 @@
 import sys
 import logging
-
+from collections import namedtuple
 
 LOGGER_NAME = "AUDITOK_LOGGER"
+KeywordArguments = namedtuple("KeywordArguments", ["io", "split"])
 
 
 class TimeFormatError(Exception):
     pass
 
 
-def make_kwargs(args_namespace):
-    kwargs = {
-        "min_dur": args_namespace.min_duration,
-        "max_dur": args_namespace.max_duration,
-        "max_silence": args_namespace.max_silence,
-        "drop_trailing_silence": args_namespace.drop_trailing_silence,
-        "strict_min_dur": args_namespace.strict_min_duration,
-        "energy_threshold": args_namespace.energy_threshold,
-        "max_read_time": args_namespace.max_time,
-        "analysis_window": args_namespace.analysis_window,
-        "sampling_rate": args_namespace.sampling_rate,
-        "sample_with": args_namespace.sample_width,
-        "channels": args_namespace.channels,
-        "use_channel": args_namespace.use_channel,
-        "input_type": args_namespace.input_type,
-        "output_type": args_namespace.output_type,
-        "large_file": args_namespace.large_file,
-        "frames_per_buffer": args_namespace.frame_per_buffer,
-        "input_device_index": args_namespace.input_device_index,
+def make_kwargs(args_ns):
+    if args_ns.output_main is None:
+        record = args_ns.plot or (args_ns.save_image is not None)
+    else:
+        record = False
+    io_kwargs = {
+        "max_read_time": args_ns.max_time,
+        "block_dur": args_ns.analysis_window,
+        "sampling_rate": args_ns.sampling_rate,
+        "sample_width": args_ns.sample_width,
+        "channels": args_ns.channels,
+        "use_channel": args_ns.use_channel,
+        "input_type": args_ns.input_type,
+        "output_type": args_ns.output_type,
+        "large_file": args_ns.large_file,
+        "frames_per_buffer": args_ns.frame_per_buffer,
+        "input_device_index": args_ns.input_device_index,
+        "record": record,
     }
-    return kwargs
+
+    split_kwargs = {
+        "min_dur": args_ns.min_duration,
+        "max_dur": args_ns.max_duration,
+        "max_silence": args_ns.max_silence,
+        "drop_trailing_silence": args_ns.drop_trailing_silence,
+        "strict_min_length": args_ns.strict_min_length,
+        "energy_threshold": args_ns.energy_threshold,
+    }
+    return KeywordArguments(io_kwargs, split_kwargs)
 
 
 def make_duration_fromatter(fmt):
