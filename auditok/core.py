@@ -79,8 +79,8 @@ def split(
         - 'mix': compute average channel
         Default: 0, use the first channel.
     max_read: float
-        maximum data to read in seconds. Default: `None`, read until there is no more
-        data to read.
+        maximum data to read in seconds. Default: `None`, read until there is
+        no more data to read.
     validator: DataValidator
         custom data validator. If ´None´ (default), an `AudioEnergyValidor` is
         used with the given energy threshold.
@@ -88,10 +88,6 @@ def split(
         energy threshlod for audio activity detection, default: 50. If a custom
         validator is given, this argumemt will be ignored.
     """
-    print(
-        "split:", min_dur, max_dur, max_silence, drop_trailing_silence, analysis_window
-    )
-
     if isinstance(input, AudioDataSource):
         source = input
     else:
@@ -110,16 +106,22 @@ def split(
 
     validator = kwargs.get("validator")
     if validator is None:
-        energy_threshold = kwargs.get("energy_threshold", DEFAULT_ENERGY_THRESHOLD)
+        energy_threshold = kwargs.get(
+            "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
+        )
         validator = AudioEnergyValidator(source.sw, energy_threshold)
 
-    mode = StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
+    mode = (
+        StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
+    )
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
 
     min_length = _duration_to_nb_windows(min_dur, analysis_window)
     max_length = _duration_to_nb_windows(max_dur, analysis_window)
-    max_continuous_silence = _duration_to_nb_windows(max_silence, analysis_window)
+    max_continuous_silence = _duration_to_nb_windows(
+        max_silence, analysis_window
+    )
 
     print(min_length, max_length, max_continuous_silence)
     tokenizer = StreamTokenizer(
@@ -129,7 +131,12 @@ def split(
     token_gen = tokenizer.tokenize(source, generator=True)
     region_gen = (
         _make_audio_region(
-            source.block_dur, token[1], token[0], source.sr, source.sw, source.ch
+            source.block_dur,
+            token[1],
+            token[0],
+            source.sr,
+            source.sw,
+            source.ch,
         )
         for token in token_gen
     )
@@ -167,7 +174,12 @@ def _duration_to_nb_windows(duration, analysis_window):
 
 
 def _make_audio_region(
-    frame_duration, start_frame, data_frames, sampling_rate, sample_width, channels
+    frame_duration,
+    start_frame,
+    data_frames,
+    sampling_rate,
+    sample_width,
+    channels,
 ):
     """Create and return an `AudioRegion`.
 
@@ -186,7 +198,8 @@ def _make_audio_region(
 
     Returns:
     audio_region: AudioRegion
-        AudioRegion whose start time is calculeted as `1000 * start_frame * frame_duration`
+        AudioRegion whose start time is calculeted as:
+        `1000 * start_frame * frame_duration`
     """
     start = start_frame * frame_duration
     data = b"".join(data_frames)
@@ -289,7 +302,8 @@ class AudioRegion(object):
         """
         if not isinstance(other, AudioRegion):
             raise TypeError(
-                "Can only concatenate AudioRegion, " 'not "{}"'.format(type(other))
+                "Can only concatenate AudioRegion, "
+                'not "{}"'.format(type(other))
             )
         if other.sr != self.sr:
             raise ValueError(
@@ -491,10 +505,14 @@ class StreamTokenizer:
     ):
 
         if not isinstance(validator, DataValidator):
-            raise TypeError("'validator' must be an instance of 'DataValidator'")
+            raise TypeError(
+                "'validator' must be an instance of 'DataValidator'"
+            )
 
         if max_length <= 0:
-            raise ValueError("'max_length' must be > 0 (value={0})".format(max_length))
+            raise ValueError(
+                "'max_length' must be > 0 (value={0})".format(max_length)
+            )
 
         if min_length <= 0 or min_length > max_length:
             raise ValueError(
@@ -742,7 +760,11 @@ class StreamTokenizer:
 
     def _process_end_of_detection(self, truncated=False):
 
-        if not truncated and self._drop_tailing_silence and self._silence_length > 0:
+        if (
+            not truncated
+            and self._drop_tailing_silence
+            and self._silence_length > 0
+        ):
             # happens if max_continuous_silence is reached
             # or max_length is reached at a silent frame
             self._data = self._data[0 : -self._silence_length]
