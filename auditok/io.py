@@ -102,9 +102,9 @@ def _normalize_use_channel(use_channel):
     try:
         return ["left", "right"].index(use_channel)
     except ValueError:
-        err_message = "'use_channel' parameter must be an integer "
-        "or one of ('left', 'right', 'mix'), found: '{}'".format(use_channel)
-        raise AudioParameterError(err_message)
+        err_message = "'use_channel' parameter must be an integer or one of "
+        err_message += "('left', 'right', 'mix'), found: '{}'"
+        raise AudioParameterError(err_message.format(use_channel))
 
 
 def _get_audio_parameters(param_dict):
@@ -796,7 +796,6 @@ def get_audio_source(input=None, **kwargs):
     if input is not None:
         return from_file(filename=input,
                          audio_format=kwargs.get('audio_format'),
-                         large_file=kwargs.get('large_file', False),
                          **kwargs)
 
     # read data from microphone via pyaudio
