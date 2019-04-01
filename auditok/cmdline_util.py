@@ -15,13 +15,18 @@ def make_kwargs(args_ns):
         record = args_ns.plot or (args_ns.save_image is not None)
     else:
         record = False
+    try:
+        use_channel = int(args_ns.use_channel)
+    except ValueError:
+        use_channel = args_ns.use_channel
+
     io_kwargs = {
-        "max_read_time": args_ns.max_time,
+        "max_read": args_ns.max_time,
         "block_dur": args_ns.analysis_window,
         "sampling_rate": args_ns.sampling_rate,
         "sample_width": args_ns.sample_width,
         "channels": args_ns.channels,
-        "use_channel": args_ns.use_channel,
+        "use_channel": use_channel,
         "input_type": args_ns.input_type,
         "output_type": args_ns.output_type,
         "large_file": args_ns.large_file,
@@ -35,7 +40,7 @@ def make_kwargs(args_ns):
         "max_dur": args_ns.max_duration,
         "max_silence": args_ns.max_silence,
         "drop_trailing_silence": args_ns.drop_trailing_silence,
-        "strict_min_length": args_ns.strict_min_length,
+        "strict_min_dur": args_ns.strict_min_duration,
         "energy_threshold": args_ns.energy_threshold,
     }
     return KeywordArguments(io_kwargs, split_kwargs)
@@ -45,8 +50,6 @@ def make_duration_fromatter(fmt):
     """
     Accepted format directives: %i %s %m %h
     """
-    # check directives are correct
-
     if fmt == "%S":
 
         def fromatter(seconds):
