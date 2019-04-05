@@ -8,9 +8,9 @@ Class summary
 
         StreamTokenizer
 """
-
+import os
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
-from auditok.io import check_audio_data
+from auditok.io import check_audio_data, to_file
 
 __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
@@ -271,6 +271,71 @@ class AudioRegion(object):
     @property
     def ch(self):
         return self._channels
+
+    def save(self, file, format=None, exists_ok=True, **audio_parameters):
+        """Save audio region to file.
+
+        :Parameters:
+
+        file: str, file-like object
+            path to output file or a file-like object. If ´str´, it may contain
+            ´{start}´, ´{end}´ and ´{duration}´ place holders, they'll be
+            replaced by region's ´start´, ´end´ and ´duration´ respectively.
+            Example:
+
+            .. code:: python
+                region = AudioRegion(b'\0' * 2 * 24000,
+                                     start=2.25,
+                                     sampling_rate=16000,
+                                     sample_width=2,
+                                     channels=1)
+                region.duration
+                1.5
+                region.end
+                3.75
+                region.save('audio_{start}-{end}.wav')
+                audio_2.25-3.75.wav
+                region.save('audio_{duration:.3f}_{start:.3f}-{end:.3f}.wav')
+                audio_1.500_2.250-3.750.wav
+
+        format: str
+            type of audio file. If None (default), file type is guessed from
+            `file`'s extension. If `file` is not a ´str´ or does not have
+            an extension, audio data is as a raw (headerless) audio file.
+        exists_ok: bool, default: True
+            If True, overwrite ´file´ if a file with the same name exists.
+            If False, raise an ´IOError´ if the file exists.
+        audio_parameters: dict
+            any keyword arguments to be passed to audio saving backend
+            (e.g. bitrate, etc.)
+
+        :Returns:
+
+        file: str, file-like object
+            name of the file of file-like object to which audio data was
+            written. If parameter ´file´ was a ´str´ with at least one {start},
+            {end} or {duration} place holders.
+
+        :Raises:
+
+        IOError if ´file´ exists and ´exists_ok´ is False.
+        """
+        if isinstance(file, str):
+            file = file.format(
+                start=self.start, end=self.end, duration=self.duration
+            )
+            if not exists_ok and os.path.exists(file):
+                raise IOError("file '{file}' exists".format(file=file))
+        to_file(
+            file,
+            self._data,
+            format,
+            sr=self.sr,
+            sw=self.sw,
+            ch=self.ch,
+            **audio_parameters
+        )
+        return file
 
     def __len__(self):
         """
