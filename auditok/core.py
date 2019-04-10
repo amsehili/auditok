@@ -399,6 +399,36 @@ class AudioRegion(object):
             return self
         return other.add(self)
 
+    def __getitem__(self, index):
+        err_message = "AudioRegion index must a slice object without a step"
+        if not isinstance(index, slice):
+            raise TypeError(err_message)
+        if index.step is not None:
+            raise ValueError(err_message)
+
+        start_ms = index.start if index.start is not None else 0
+        stop_ms = index.stop if index.stop is not None else len(self)
+        if not (isinstance(start_ms, int) and isinstance(stop_ms, int)):
+            raise TypeError("Slicing Audioregion requires integers")
+
+        if start_ms < 0:
+            start_ms += len(self)
+        if stop_ms < 0:
+            stop_ms += len(self)
+
+        samples_per_ms = self.sr / 1000
+        bytes_per_ms = samples_per_ms * self.sw * self.channels
+        # if a fraction of a sample is covered, return the whole sample
+        onset = int(start_ms * bytes_per_ms)
+        offset = round(stop_ms * bytes_per_ms + 0.5)
+        # recompute start_ms based on actual onset
+        actual_start_s = onset / bytes_per_ms / 1000
+        new_start = (
+            self.start + actual_start_s
+        )  # TODO deal with negative indices
+        data = self._data[onset:offset]
+        return AudioRegion(data, new_start, self.sr, self.sw, self.ch)
+
 
 class StreamTokenizer:
     """
