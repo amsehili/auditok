@@ -14,6 +14,7 @@ from auditok.io import (
     BufferAudioSource,
     RawAudioSource,
     WaveAudioSource,
+    StdinAudioSource,
     check_audio_data,
     _guess_audio_format,
     _normalize_use_channel,
@@ -24,6 +25,7 @@ from auditok.io import (
     _load_raw,
     _load_wave,
     _load_with_pydub,
+    get_audio_source,
     from_file,
     _save_raw,
     _save_wave,
@@ -271,21 +273,23 @@ class TestIO(TestCase):
             from_file(filename, audio_format, **kwargs)
         self.assertTrue(patch_function.called)
 
-    def test_from_file_large_file_raw(self, ):
+    def test_from_file_large_file_raw(self,):
         filename = "tests/data/test_16KHZ_mono_400Hz.raw"
-        audio_source = from_file(filename, large_file=True,
-                                 sampling_rate=16000,
-                                 sample_width=2,
-                                 channels=1)
+        audio_source = from_file(
+            filename,
+            large_file=True,
+            sampling_rate=16000,
+            sample_width=2,
+            channels=1,
+        )
         self.assertIsInstance(audio_source, RawAudioSource)
 
-    def test_from_file_large_file_wave(self, ):
+    def test_from_file_large_file_wave(self,):
         filename = "tests/data/test_16KHZ_mono_400Hz.wav"
         audio_source = from_file(filename, large_file=True)
         self.assertIsInstance(audio_source, WaveAudioSource)
-    
 
-    def test_from_file_large_file_compressed(self, ):
+    def test_from_file_large_file_compressed(self,):
         filename = "tests/data/test_16KHZ_mono_400Hz.ogg"
         with self.assertRaises(AudioIOError):
             from_file(filename, large_file=True)
@@ -744,3 +748,29 @@ class TestIO(TestCase):
             to_file(b"\0\0", filename, audio_format, **AUDIO_PARAMS_SHORT)
             self.assertTrue(export.called)
             tmpdir.cleanup()
+
+    @genty_dataset(
+        string_wave=(
+            "tests/data/test_16KHZ_mono_400Hz.wav",
+            BufferAudioSource,
+        ),
+        string_wave_large_file=(
+            "tests/data/test_16KHZ_mono_400Hz.wav",
+            WaveAudioSource,
+            {"large_file": True},
+        ),
+        stdin=("-", StdinAudioSource),
+        string_raw=("tests/data/test_16KHZ_mono_400Hz.raw", BufferAudioSource),
+        string_raw_large_file=(
+            "tests/data/test_16KHZ_mono_400Hz.raw",
+            RawAudioSource,
+            {"large_file": True},
+        ),
+        bytes_=(b"0" * 8000, BufferAudioSource),
+    )
+    def test_get_audio_source(self, input, expected_type, extra_args=None):
+        kwargs = {"sampling_rate": 16000, "sample_width": 2, "channels": 1}
+        if extra_args is not None:
+            kwargs.update(extra_args)
+        audio_source = get_audio_source(input, **kwargs)
+        self.assertIsInstance(audio_source, expected_type)
