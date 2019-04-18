@@ -322,13 +322,15 @@ class AudioRegion(object):
         """
         if isinstance(file, str):
             file = file.format(
-                start=self.start, end=self.end, duration=self.duration
+                start=round(self.start, 6),
+                end=round(self.end, 6),
+                duration=round(self.duration, 6)
             )
             if not exists_ok and os.path.exists(file):
-                raise IOError("file '{file}' exists".format(file=file))
+                raise FileExistsError("file '{file}' exists".format(file=file))
         to_file(
-            file,
             self._data,
+            file,
             format,
             sr=self.sr,
             sw=self.sw,
