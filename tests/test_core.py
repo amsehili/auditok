@@ -231,16 +231,6 @@ class TestAudioRegion(unittest.TestCase):
             concat_region.duration, expected_duration, places=6
         )
         self.assertEqual(bytes(concat_region), expected_data)
-        # due to the behavior of `round` len(concat_region) does not always
-        # equal len(region_1) + len(region_2)
-        # Exmaple if both regions are 1.0005 seconds long, then:
-        # len(region_1) == len(region_2) == round(1.0005) == 1000
-        # and:
-        # region_1.duration + region_2.duration == 1.0005 * 2 = 2.001
-        # and:
-        # len(region_3) == round(2.001 * 1000) = 2001
-        #                                      != len(region_1) + len(region_2)
-        self.assertEqual(len(concat_region), round(expected_duration * 1000))
 
     @genty_dataset(
         simple=(8000, 1, 1),
@@ -264,8 +254,6 @@ class TestAudioRegion(unittest.TestCase):
             concat_region.duration, expected_duration, places=6
         )
         self.assertEqual(bytes(concat_region), expected_data)
-        # see test_concatenation
-        self.assertEqual(len(concat_region), round(expected_duration * 1000))
 
     def test_concatenation_different_sampling_rate_error(self):
 
