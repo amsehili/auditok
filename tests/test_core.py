@@ -239,6 +239,14 @@ class TestAudioRegion(unittest.TestCase):
             filename = region.save(format)[len(tmpdir) + 1 :]
             self.assertEqual(filename, expected)
 
+    def test_save_file_exists_exception(self):
+        with TemporaryDirectory() as tmpdir:
+            filename = os.path.join(tmpdir, "output.wav")
+            open(filename, "w").close()
+            region = AudioRegion(b"0" * 160, 0, 160, 1, 1)
+            with self.assertRaises(FileExistsError):
+                region.save(filename, exists_ok=False)
+
     @genty_dataset(
         simple=(8000, 1, 1),
         stereo_sw_2=(8000, 2, 2),
