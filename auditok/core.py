@@ -335,7 +335,7 @@ class AudioRegion(object):
             sr=self.sr,
             sw=self.sw,
             ch=self.ch,
-            **audio_parameters
+            audio_parameters=audio_parameters
         )
         return file
 
