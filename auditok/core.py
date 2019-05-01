@@ -414,9 +414,9 @@ class AudioRegion(object):
             raise TypeError("Slicing Audioregion requires integers")
 
         if start_ms < 0:
-            start_ms += len(self)
+            start_ms = max(start_ms + len(self), 0)
         if stop_ms < 0:
-            stop_ms += len(self)
+            stop_ms = max(stop_ms + len(self), 0)
 
         samples_per_ms = self.sr / 1000
         bytes_per_ms = samples_per_ms * self.sw * self.channels
@@ -427,7 +427,7 @@ class AudioRegion(object):
         actual_start_s = onset / bytes_per_ms / 1000
         new_start = (
             self.start + actual_start_s
-        )  # TODO deal with negative indices
+        )
         data = self._data[onset:offset]
         return AudioRegion(data, new_start, self.sr, self.sw, self.ch)
 
