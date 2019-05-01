@@ -248,6 +248,129 @@ class TestAudioRegion(unittest.TestCase):
                 region.save(filename, exists_ok=False)
 
     @genty_dataset(
+        first_half=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, 500),
+            0,
+            b"a" * 80,
+        ),
+        second_half=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(500, None),
+            0.5,
+            b"b" * 80,
+        ),
+        second_half_negative=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-500, None),
+            0.5,
+            b"b" * 80,
+        ),
+        middle=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(200, 750),
+            0.2,
+            b"a" * 48 + b"b" * 40,
+        ),
+        middle_negative=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-800, -250),
+            0.2,
+            b"a" * 48 + b"b" * 40,
+        ),
+        middle_sw2=(
+            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 2, 1),
+            slice(200, 750),
+            0.2,
+            b"a" * 96 + b"b" * 80,
+        ),
+        middle_ch2=(
+            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 1, 2),
+            slice(200, 750),
+            0.2,
+            b"a" * 96 + b"b" * 80,
+        ),
+        middle_sw2_ch2=(
+            AudioRegion(b"a" * 320 + b"b" * 320, 0, 160, 2, 2),
+            slice(200, 750),
+            0.2,
+            b"a" * 192 + b"b" * 160,
+        ),
+        but_first_sample=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(1, None),
+            0.001,
+            b"a" * (4000 - 8) + b"b" * 4000,
+        ),
+        but_first_sample_negative=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(-999, None),
+            0.001,
+            b"a" * (4000 - 8) + b"b" * 4000,
+        ),
+        but_last_sample=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(0, 999),
+            0,
+            b"a" * 4000 + b"b" * (4000 - 8),
+        ),
+        but_last_sample_negative=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(0, -1),
+            0,
+            b"a" * 4000 + b"b" * (4000 - 8),
+        ),
+        big_negative_start=(
+            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            slice(-5000, None),
+            0,
+            b"a" * 160,
+        ),
+        big_negative_stop=(
+            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            slice(None, -1500),
+            0,
+            b"",
+        ),
+        empty=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, 0),
+            0,
+            b"",
+        ),
+        empty_start_stop_reversed=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(200, 100),
+            0.2,
+            b"",
+        ),
+        empty_big_positive_start=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(2000, 3000),
+            2,
+            b"",
+        ),
+        empty_negative_reversed=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-100, -200),
+            0.9,
+            b"",
+        ),
+        empty_big_negative_stop=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, -2000),
+            0,
+            b"",
+        ),
+    )
+    def test_region_slicing(
+        self, region, slice_, expected_start, expected_data
+    ):
+        sub_region = region[slice_]
+        self.assertEqual(sub_region.start, expected_start)
+        self.assertEqual(bytes(sub_region), expected_data)
+
+    @genty_dataset(
         simple=(8000, 1, 1),
         stereo_sw_2=(8000, 2, 2),
         arbitray_sr_multichannel=(5413, 2, 3),
@@ -293,8 +416,6 @@ class TestAudioRegion(unittest.TestCase):
             concat_region.duration, expected_duration, places=6
         )
         self.assertEqual(bytes(concat_region), expected_data)
-        # see test_concatenation
-        self.assertEqual(len(concat_region), round(expected_duration * 1000))
 
     def test_concatenation_different_sampling_rate_error(self):
 
