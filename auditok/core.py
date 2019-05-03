@@ -123,7 +123,6 @@ def split(
         max_silence, analysis_window
     )
 
-    print(min_length, max_length, max_continuous_silence)
     tokenizer = StreamTokenizer(
         validator, min_length, max_length, max_continuous_silence, mode=mode
     )
@@ -324,7 +323,7 @@ class AudioRegion(object):
             file = file.format(
                 start=round(self.start, 6),
                 end=round(self.end, 6),
-                duration=round(self.duration, 6)
+                duration=round(self.duration, 6),
             )
             if not exists_ok and os.path.exists(file):
                 raise FileExistsError("file '{file}' exists".format(file=file))
@@ -335,7 +334,7 @@ class AudioRegion(object):
             sr=self.sr,
             sw=self.sw,
             ch=self.ch,
-            audio_parameters=audio_parameters
+            audio_parameters=audio_parameters,
         )
         return file
 
@@ -401,6 +400,16 @@ class AudioRegion(object):
             return self
         return other.add(self)
 
+    def __mul__(self, n):
+        if not isinstance(n, int):
+            err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
+            raise TypeError(err_msg.format(type(n)))
+        data = self._data * n
+        return AudioRegion(data, self.start, self.sr, self.sw, self.ch)
+
+    def __rmul__(self, n):
+        return self * n
+
     def __getitem__(self, index):
         err_message = "AudioRegion index must a slice object without a step"
         if not isinstance(index, slice):
@@ -425,9 +434,7 @@ class AudioRegion(object):
         offset = round(stop_ms * bytes_per_ms + 0.5)
         # recompute start_ms based on actual onset
         actual_start_s = onset / bytes_per_ms / 1000
-        new_start = (
-            self.start + actual_start_s
-        )
+        new_start = self.start + actual_start_s
         data = self._data[onset:offset]
         return AudioRegion(data, new_start, self.sr, self.sw, self.ch)
 
