@@ -455,3 +455,22 @@ class TestAudioRegion(unittest.TestCase):
             "number of channels (1 != 2)",
             str(val_err.exception),
         )
+
+    @genty_dataset(
+        simple=(0.01, 0.03, 30),
+        rounded_len_floor=(0.00575, 0.01725, 17),
+        rounded_len_ceil=(0.00625, 0.01875, 19),
+    )
+    def test_multiplication(
+        self, duration, expected_duration, expected_length
+    ):
+        sw = 2
+        data = b"0" * int(duration * 8000 * sw)
+        region = AudioRegion(data, 0, 8000, sw, 1)
+        m_region = 1 * region * 3
+        self.assertEqual(bytes(m_region), data * 3)
+        self.assertEqual(m_region.sr, 8000)
+        self.assertEqual(m_region.sw, 2)
+        self.assertEqual(m_region.ch, 1)
+        self.assertEqual(m_region.duration, expected_duration)
+        self.assertEqual(len(m_region), expected_length)
