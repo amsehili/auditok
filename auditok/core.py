@@ -410,6 +410,18 @@ class AudioRegion(object):
     def __rmul__(self, n):
         return self * n
 
+    def __eq__(self, other):
+        if other is self:
+            return True
+        if not isinstance(other, AudioRegion):
+            return False
+        return (
+            (self._data == other._data)
+            and (self.sr == other.sr)
+            and (self.sw == other.sw)
+            and (self.ch == other.ch)
+        )
+
     def __getitem__(self, index):
         err_message = "AudioRegion index must a slice object without a step"
         if not isinstance(index, slice):
