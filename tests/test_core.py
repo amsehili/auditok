@@ -475,12 +475,9 @@ class TestAudioRegion(unittest.TestCase):
         self.assertEqual(m_region.duration, expected_duration)
         self.assertEqual(len(m_region), expected_length)
 
-    @genty_dataset(
-        _str=("x", "str"),
-        _float=(1.4, "float"),
-    )
+    @genty_dataset(_str=("x", "str"), _float=(1.4, "float"))
     def test_multiplication_non_int(self, factor, _type):
         with self.assertRaises(TypeError) as type_err:
-            AudioRegion(b'0' * 80, 0, 8000, 1, 1) * factor
+            AudioRegion(b"0" * 80, 0, 8000, 1, 1) * factor
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             self.assertEqual(err_msg.format(_type), str(type_err.exception))
