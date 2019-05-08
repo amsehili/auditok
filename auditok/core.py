@@ -10,7 +10,7 @@ Class summary
 """
 import os
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
-from auditok.io import check_audio_data, to_file
+from auditok.io import check_audio_data, to_file, player_for
 
 __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
@@ -270,6 +270,11 @@ class AudioRegion(object):
     @property
     def ch(self):
         return self._channels
+
+    def play(self, player=None, progress_bar=False):
+        if player is None:
+            player = player_for(self)
+        player.play(self, progress_bar=progress_bar)
 
     def save(self, file, format=None, exists_ok=True, **audio_parameters):
         """Save audio region to file.
