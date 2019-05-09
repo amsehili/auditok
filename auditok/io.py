@@ -749,25 +749,25 @@ class PyAudioPlayer:
             start += chunk_size
 
 
-def player_for(audio_source):
+def player_for(source):
     """
-    Return a :class:`PyAudioPlayer` that can play data from `audio_source`.
+    Return a :class:`AudioPlayer` that can play data from `source`.
 
     :Parameters:
 
-        `audio_source` : 
-            an `AudioSource` object.
+        `source` :
+            a objects that has `sampling_rate`, `sample_width` and
+            `sample_width` attributes.
 
     :Returns:
 
-        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
-        as `audio_source`.
+        An `AudioPlayer` that has the same sampling rate, sample width
+        and number of channels as `source`.
     """
-
     return PyAudioPlayer(
-        audio_source.get_sampling_rate(),
-        audio_source.get_sample_width(),
-        audio_source.get_channels(),
+        source.sampling_rate,
+        source.sample_width,
+        source.channels,
     )
 
 
