@@ -94,6 +94,7 @@ def split(
         block_dur = kwargs.get("analysis_window", DEFAULT_ANALYSIS_WINDOW)
         max_read = kwargs.get("max_read")
         params = kwargs.copy()
+        print(isinstance(input, AudioRegion))
         if isinstance(input, AudioRegion):
             params["sampling_rate"] = input.sr
             params["sample_width"] = input.sw
@@ -271,10 +272,27 @@ class AudioRegion(object):
     def ch(self):
         return self._channels
 
-    def play(self, player=None, progress_bar=False):
+    def play(self, player=None, progress_bar=False, **progress_bar_kwargs):
+        """Play audio region
+
+        :Parameters:
+
+        player: AudioPalyer, default: None
+            audio player to use. if None (default), use `player_for(self)`
+            to get a new audio player.
+
+        progress_bar bool, default: False
+            whether to use a progress bar while playing audio. Default: False.
+
+        progress_bar_kwargs: kwargs
+            keyword arguments to pass to progress_bar object. Currently only
+            `tqdm` is supported.
+        """
         if player is None:
             player = player_for(self)
-        player.play(self, progress_bar=progress_bar)
+        player.play(
+            self._data, progress_bar=progress_bar, **progress_bar_kwargs
+        )
 
     def save(self, file, format=None, exists_ok=True, **audio_parameters):
         """Save audio region to file.
