@@ -43,6 +43,17 @@ try:
 except ImportError:
     _WITH_PYDUB = False
 
+try:
+    from tqdm import tqdm as _tqdm
+
+    DEFAULT_BAR_FORMAT_TQDM = "|" + "{bar}" + "|" + "[{elapsed}/{duration}]"
+    DEFAULT_NCOLS_TQDM = 30
+    DEFAULT_MIN_INTERVAL_TQDM = 0.05
+    _WITH_TQDM = True
+except ImportError:
+    _WITH_TQDM = False
+
+
 __all__ = [
     "AudioIOError",
     "AudioParameterError",
@@ -140,7 +151,9 @@ def _get_audio_parameters(param_dict):
                                          channels,
                                          use_channel)
     """
-    err_message = "'{ln}' (or '{sn}') must be a positive integer, found: '{val}'"
+    err_message = (
+        "'{ln}' (or '{sn}') must be a positive integer, found: '{val}'"
+    )
     parameters = []
     for (long_name, short_name) in (
         ("sampling_rate", "sr"),
@@ -176,8 +189,12 @@ def _mix_audio_channels(data, channels, sample_width):
         return audioop.tomono(data, sample_width, 0.5, 0.5)
     fmt = DATA_FORMAT[sample_width]
     buffer = array(fmt, data)
-    mono_channels = [array(fmt, buffer[ch::channels]) for ch in range(channels)]
-    avg_arr = array(fmt, (sum(samples) // channels for samples in zip(*mono_channels)))
+    mono_channels = [
+        array(fmt, buffer[ch::channels]) for ch in range(channels)
+    ]
+    avg_arr = array(
+        fmt, (sum(samples) // channels for samples in zip(*mono_channels))
+    )
     return _array_to_bytes(avg_arr)
 
 
@@ -227,7 +244,9 @@ class AudioSource:
     ):
 
         if not sample_width in (1, 2, 4):
-            raise AudioParameterError("Sample width must be one of: 1, 2 or 4 (bytes)")
+            raise AudioParameterError(
+                "Sample width must be one of: 1, 2 or 4 (bytes)"
+            )
 
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
@@ -433,7 +452,8 @@ class BufferAudioSource(Rewindable):
             raise AudioIOError("Stream is not open")
         bytes_to_read = self._sample_size_all_channels * size
         data = self._buffer[
-            self._current_position_bytes : self._current_position_bytes + bytes_to_read
+            self._current_position_bytes : self._current_position_bytes
+            + bytes_to_read
         ]
         if data:
             self._current_position_bytes += len(data)
@@ -546,7 +566,9 @@ class _FileAudioSource(AudioSource):
 
 
 class RawAudioSource(_FileAudioSource, Rewindable):
-    def __init__(self, file, sampling_rate, sample_width, channels, use_channel=0):
+    def __init__(
+        self, file, sampling_rate, sample_width, channels, use_channel=0
+    ):
         _FileAudioSource.__init__(
             self, sampling_rate, sample_width, channels, use_channel
         )
@@ -696,6 +718,20 @@ class StdinAudioSource(_FileAudioSource):
         return None
 
 
+def make_tqdm_progress_bar(iterable, total, duration, **tqdm_kwargs):
+
+    tqdm_kwargs = tqdm_kwargs.copy()
+    fmt = tqdm_kwargs.get("bar_format", DEFAULT_BAR_FORMAT_TQDM)
+    fmt = fmt.replace("{duration}", "{:.3f}".format(duration))
+    tqdm_kwargs["bar_format"] = fmt
+
+    tqdm_kwargs["ncols"] = tqdm_kwargs.get("ncols", DEFAULT_NCOLS_TQDM)
+    tqdm_kwargs["mininterval"] = tqdm_kwargs.get(
+        "mininterval", DEFAULT_MIN_INTERVAL_TQDM
+    )
+    return _tqdm(iterable, total=total, **tqdm_kwargs)
+
+
 class PyAudioPlayer:
     """
     A class for audio playback using Pyaudio
@@ -725,13 +761,25 @@ class PyAudioPlayer:
             output=True,
         )
 
-    def play(self, data):
+    def play(self, data, progress_bar=False, **progress_bar_kwargs):
+        chunk_gen, nb_chunks = self._chunk_data(data)
+        if progress_bar and _WITH_TQDM:
+            duration = len(data) / (
+                self.sampling_rate * self.sample_width * self.channels
+            )
+            chunk_gen = make_tqdm_progress_bar(
+                chunk_gen,
+                total=nb_chunks,
+                duration=duration,
+                **progress_bar_kwargs
+            )
         if self.stream.is_stopped():
             self.stream.start_stream()
-
-        for chunk in self._chunk_data(data):
-            self.stream.write(chunk)
-
+        try:
+            for chunk in chunk_gen:
+                self.stream.write(chunk)
+        except KeyboardInterrupt:
+            pass
         self.stream.stop_stream()
 
     def stop(self):
@@ -742,11 +790,17 @@ class PyAudioPlayer:
 
     def _chunk_data(self, data):
         # make audio chunks of 100 ms to allow interruption (like ctrl+c)
-        chunk_size = int((self.sampling_rate * self.sample_width * self.channels) / 10)
-        start = 0
-        while start < len(data):
-            yield data[start : start + chunk_size]
-            start += chunk_size
+        bytes_1_sec = self.sampling_rate * self.sample_width * self.channels
+        chunk_size = bytes_1_sec // 10
+        # make sure chunk_size is a multiple of sample_width * channels
+        chunk_size -= chunk_size % (self.sample_width * self.channels)
+        nb_chunks, rest = divmod(len(data), chunk_size)
+        if rest > 0:
+            nb_chunks += 1
+        chunk_gen = (
+            data[i : i + chunk_size] for i in range(0, len(data), chunk_size)
+        )
+        return chunk_gen, nb_chunks
 
 
 def player_for(source):
@@ -765,9 +819,7 @@ def player_for(source):
         and number of channels as `source`.
     """
     return PyAudioPlayer(
-        source.sampling_rate,
-        source.sample_width,
-        source.channels,
+        source.sampling_rate, source.sample_width, source.channels
     )
 
 
@@ -784,12 +836,20 @@ def get_audio_source(input=None, **kwargs):
         microphone using PyAudio.
     """
 
-    sampling_rate = kwargs.get("sampling_rate", kwargs.get("sr", DEFAULT_SAMPLING_RATE))
-    sample_width = kwargs.get("sample_rate", kwargs.get("sw", DEFAULT_SAMPLE_WIDTH))
+    sampling_rate = kwargs.get(
+        "sampling_rate", kwargs.get("sr", DEFAULT_SAMPLING_RATE)
+    )
+    sample_width = kwargs.get(
+        "sample_rate", kwargs.get("sw", DEFAULT_SAMPLE_WIDTH)
+    )
     channels = kwargs.get("channels", kwargs.get("ch", DEFAULT_NB_CHANNELS))
-    use_channel = kwargs.get("use_channel", kwargs.get("uc", DEFAULT_USE_CHANNEL))
+    use_channel = kwargs.get(
+        "use_channel", kwargs.get("uc", DEFAULT_USE_CHANNEL)
+    )
     if input == "-":
-        return StdinAudioSource(sampling_rate, sample_width, channels, use_channel)
+        return StdinAudioSource(
+            sampling_rate, sample_width, channels, use_channel
+        )
 
     if isinstance(input, bytes):
         return BufferAudioSource(input, sampling_rate, sample_width, channels)
@@ -812,7 +872,12 @@ def get_audio_source(input=None, **kwargs):
 
 
 def _load_raw(
-    file, sampling_rate, sample_width, channels, use_channel=0, large_file=False
+    file,
+    sampling_rate,
+    sample_width,
+    channels,
+    use_channel=0,
+    large_file=False,
 ):
     """
     Load a raw audio file with standard Python.
@@ -858,9 +923,14 @@ def _load_raw(
             data = fp.read()
         if channels != 1:
             # TODO check if striding with mmap doesn't load all data to memory
-            data = _extract_selected_channel(data, channels, sample_width, use_channel)
+            data = _extract_selected_channel(
+                data, channels, sample_width, use_channel
+            )
         return BufferAudioSource(
-            data, sampling_rate=sampling_rate, sample_width=sample_width, channels=1
+            data,
+            sampling_rate=sampling_rate,
+            sample_width=sample_width,
+            channels=1,
         )
 
 
@@ -881,7 +951,9 @@ def _load_wave(filename, large_file=False, use_channel=0):
         data = fp.readframes(-1)
     if channels > 1:
         data = _extract_selected_channel(data, channels, swidth, use_channel)
-    return BufferAudioSource(data, sampling_rate=srate, sample_width=swidth, channels=1)
+    return BufferAudioSource(
+        data, sampling_rate=srate, sample_width=swidth, channels=1
+    )
 
 
 def _load_with_pydub(filename, audio_format, use_channel=0):
@@ -975,7 +1047,9 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
 
     if audio_format == "raw":
         srate, swidth, channels, use_channel = _get_audio_parameters(kwargs)
-        return _load_raw(filename, srate, swidth, channels, use_channel, large_file)
+        return _load_raw(
+            filename, srate, swidth, channels, use_channel, large_file
+        )
 
     use_channel = _normalize_use_channel(kwargs.get("use_channel"))
     if audio_format in ["wav", "wave"]:
@@ -987,7 +1061,9 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
             filename, audio_format=audio_format, use_channel=use_channel
         )
     else:
-        raise AudioIOError("pydub is required for audio formats other than raw or wav")
+        raise AudioIOError(
+            "pydub is required for audio formats other than raw or wav"
+        )
 
 
 def _save_raw(data, file):
@@ -1015,13 +1091,18 @@ def _save_wave(data, file, sampling_rate, sample_width, channels):
         fp.writeframes(data)
 
 
-def _save_with_pydub(data, file, audio_format, sampling_rate, sample_width, channels):
+def _save_with_pydub(
+    data, file, audio_format, sampling_rate, sample_width, channels
+):
     """
     Saves audio data with pydub (https://github.com/jiaaro/pydub).
     See also :func:`to_file`.
     """
     segment = AudioSegment(
-        data, frame_rate=sampling_rate, sample_width=sample_width, channels=channels
+        data,
+        frame_rate=sampling_rate,
+        sample_width=sample_width,
+        channels=channels,
     )
     with open(file, "wb") as fp:
         segment.export(fp, format=audio_format)
