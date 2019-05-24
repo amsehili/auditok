@@ -22,6 +22,7 @@ import threading
 
 from auditok import __version__
 from .util import AudioDataSource
+from .io import player_for
 from .cmdline_util import make_logger, make_kwargs
 from . import workers
 
@@ -40,7 +41,9 @@ def main(argv=None):
         parser = ArgumentParser(
             prog=program_name, description="An Audio Tokenization tool"
         )
-        parser.add_argument("--version", "-v", action="version", version=version)
+        parser.add_argument(
+            "--version", "-v", action="version", version=version
+        )
         group = parser.add_argument_group("Input-Output options")
         group.add_argument(
             "-i",
@@ -268,6 +271,14 @@ def main(argv=None):
             help="Play back each detection immediately using pyaudio",
         )
         group.add_argument(
+            "-B",
+            "--progress-bar",
+            dest="progress_bar",
+            action="store_true",
+            default=False,
+            help="Show a progress bar when playing audio",
+        )
+        group.add_argument(
             "-p",
             "--plot",
             dest="plot",
@@ -345,6 +356,11 @@ def main(argv=None):
         kwargs = make_kwargs(args)
         observers = []
 
+        reader = AudioDataSource(args.input, **kwargs.io)
+        if args.output_main is not None:
+            reader = workers.StreamSaverWorker(reader, args.output_main)
+            reader.start()
+
         if args.output_tokens is not None:
             worker = workers.RegionSaverWorker(
                 args.output_tokens, args.output_type, logger=logger
@@ -352,12 +368,17 @@ def main(argv=None):
             observers.append(worker)
 
         if args.echo:
-            progress_bar = args.quiet and not args.debug
-            worker = workers.PlayerWorker(progress_bar=progress_bar, logger=logger)
+            player = player_for(reader)
+            progress_bar = args.progress_bar
+            worker = workers.PlayerWorker(
+                player, progress_bar=progress_bar, logger=logger
+            )
             observers.append(worker)
 
         if args.command is not None:
-            worker = workers.CommandLineWorker(command=args.command, logger=logger)
+            worker = workers.CommandLineWorker(
+                command=args.command, logger=logger
+            )
             observers.append(worker)
 
         if not args.quiet:
@@ -368,13 +389,10 @@ def main(argv=None):
             )
             time_format = args.time_format
             timestamp_format = args.timestamp_format
-            worker = workers.PrintWorker(print_format, time_format, timestamp_format)
+            worker = workers.PrintWorker(
+                print_format, time_format, timestamp_format
+            )
             observers.append(worker)
-
-        reader = AudioDataSource(args.input, **kwargs.io)
-        if args.output_main is not None:
-            reader = workers.StreamSaverWorker(reader, args.output_main)
-            reader.start()
 
         tokenizer_worker = workers.TokenizerWorker(
             reader, observers, logger=logger, **kwargs.split
