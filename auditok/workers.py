@@ -36,8 +36,8 @@ class AudioEncodingError(Exception):
 
 def _run_subprocess(command):
     with subprocess.Popen(
-            command, stdin=open(os.devnull, "rb"), stdout=subprocess.PIPE
-        ) as proc:
+        command, stdin=open(os.devnull, "rb"), stdout=subprocess.PIPE
+    ) as proc:
         stdout, stderr = proc.communicate()
         return proc.returncode, stdout, stderr
 
@@ -121,10 +121,7 @@ class TokenizerWorker(Worker, AudioDataSource):
         self._init_start_processing_timestamp()
         for _id, audio_region in enumerate(self._audio_region_gen, start=1):
             ar_meta = _AudioRegionMeta(
-                _id,
-                audio_region.start,
-                audio_region.end,
-                audio_region.duration,
+                _id, audio_region.start, audio_region.end, audio_region.duration
             )
             self._audio_regions.append(ar_meta)
             if self._logger is not None:
@@ -134,9 +131,7 @@ class TokenizerWorker(Worker, AudioDataSource):
                     end=audio_region.end,
                     duration=audio_region.duration,
                 )
-                self._log(
-                    message + " " + str(self._start_processing_timestamp)
-                )
+                self._log(message + " " + str(self._start_processing_timestamp))
             self._notify_observers((_id, audio_region))
         self._notify_observers(_STOP_PROCESSING)
         self._reader.close()
@@ -171,12 +166,7 @@ class TokenizerWorker(Worker, AudioDataSource):
 
 class StreamSaverWorker(Worker, AudioDataSource):
     def __init__(
-        self,
-        audio_data_source,
-        filename,
-        format=None,
-        cache_size=16000,
-        timeout=0.5,
+        self, audio_data_source, filename, format=None, cache_size=16000, timeout=0.5
     ):
 
         self._audio_data_source = audio_data_source
@@ -207,9 +197,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
     def __del__(self):
         self._post_process()
-        if (
-            self._tmp_output_filename != self._output_filename
-        ) and self._exported:
+        if (self._tmp_output_filename != self._output_filename) and self._exported:
             os.remove(self._tmp_output_filename)
 
     def _process_message(self, data):
@@ -308,7 +296,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
             self._output_filename,
         ]
         returncode, stdout, stderr = _run_subprocess(["ffmpeg"] + command)
-        if  returncode != 0:
+        if returncode != 0:
             returncode, stdout, stderr = _run_subprocess(["avconv"] + command)
             if returncode != 0:
                 raise AudioEncodingError(stderr)
@@ -354,7 +342,8 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
 
 class PlayerWorker(Worker):
-    def __init__(self, progress_bar=False, timeout=0.5, logger=None):
+    def __init__(self, player, progress_bar=False, timeout=0.5, logger=None):
+        self._player = player
         self._progress_bar = progress_bar
         self._log_format = "[PLAY]: Detection {id} played (start:{start:.3f},"
         self._log_format += "end:{end:.3f}, dur:{duration:.3f})"
@@ -370,13 +359,13 @@ class PlayerWorker(Worker):
                 duration=audio_region.duration,
             )
             self._log(message)
-        audio_region.play(self._progress_bar)
+        audio_region.play(
+            player=self._player, progress_bar=self._progress_bar, leave=False
+        )
 
 
 class RegionSaverWorker(Worker):
-    def __init__(
-        self, name_format, filetype=None, timeout=0.2, logger=None, **kwargs
-    ):
+    def __init__(self, name_format, filetype=None, timeout=0.2, logger=None, **kwargs):
         self._name_format = name_format
         self._filetype = filetype
         self._audio_kwargs = kwargs
@@ -386,9 +375,7 @@ class RegionSaverWorker(Worker):
     def _process_message(self, message):
         _id, audio_region = message
         filename = self._name_format.replace("{id}", str(_id))
-        filename = audio_region.save(
-            filename, self._filetype, **self._audio_kwargs
-        )
+        filename = audio_region.save(filename, self._filetype, **self._audio_kwargs)
         if self._logger:
             message = self._debug_format.format(id=_id, filename=filename)
             self._log(message)
