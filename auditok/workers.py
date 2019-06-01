@@ -35,11 +35,15 @@ class AudioEncodingError(Exception):
 
 
 def _run_subprocess(command):
-    with subprocess.Popen(
-        command, stdin=open(os.devnull, "rb"), stdout=subprocess.PIPE
-    ) as proc:
-        stdout, stderr = proc.communicate()
-        return proc.returncode, stdout, stderr
+    try:
+        with subprocess.Popen(
+            command, stdin=open(os.devnull, "rb"), stdout=subprocess.PIPE
+        ) as proc:
+            stdout, stderr = proc.communicate()
+            return proc.returncode, stdout, stderr
+    except:
+        err_msg = "Can not export audio with command: {}".format(command)
+        raise AudioEncodingError(err_msg)
 
 
 class Worker(Thread):
@@ -253,14 +257,17 @@ class StreamSaverWorker(Worker, AudioDataSource):
             self._export_with_ffmpeg_or_avconv()
         except AudioEncodingError:
             try:
-                self._save_with_sox()
+                self._export_with_sox()
             except AudioEncodingError:
                 warn_msg = "Couldn't save data in the required format '{}'"
                 print(warn_msg.format(self._export_format), file=sys.stderr)
                 print("Saving stream as a wave file...", file=sys.stderr)
                 self._output_filename += ".wav"
                 self._export_wave()
-                print("Audio data saved to '{}'".format(self._output_filename))
+                print(
+                    "Audio data saved to '{}'".format(self._output_filename),
+                    file=sys.stderr,
+                )
         finally:
             self._exported = True
         return self._output_filename
@@ -318,7 +325,6 @@ class StreamSaverWorker(Worker, AudioDataSource):
             self._tmp_output_filename,
             self._output_filename,
         ]
-        print(" ".join(command))
         returncode, stdout, stderr = _run_subprocess(command)
         if returncode != 0:
             raise AudioEncodingError(stderr)
