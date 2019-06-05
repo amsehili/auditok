@@ -321,9 +321,9 @@ def main(argv=None):
             "--timestamp-format",
             dest="timestamp_format",
             type=str,
-            default="%Y/%m/%D %H:%M:%S",
+            default="%Y/%m/%d %H:%M:%S",
             help="format used to print {timestamp}. Should be a format accepted by "
-            "datetime Default %%Y/%%m/%%D %%H:%%M:%%S",
+            "datetime Default %%Y/%%m/%%d %%H:%%M:%%S",
         )
         parser.add_argument(
             "-q",
