@@ -26,7 +26,6 @@ def split(
     max_silence=0.3,
     drop_trailing_silence=False,
     strict_min_dur=False,
-    analysis_window=0.01,
     **kwargs
 ):
     """Splits audio data and returns a generator of `AudioRegion`s
@@ -90,11 +89,13 @@ def split(
     """
     if isinstance(input, AudioDataSource):
         source = input
+        analysis_window = source.block_dur
     else:
-        block_dur = kwargs.get("analysis_window", DEFAULT_ANALYSIS_WINDOW)
+        analysis_window = kwargs.get(
+            "analysis_window", DEFAULT_ANALYSIS_WINDOW
+        )
         max_read = kwargs.get("max_read")
         params = kwargs.copy()
-        print(isinstance(input, AudioRegion))
         if isinstance(input, AudioRegion):
             params["sampling_rate"] = input.sr
             params["sample_width"] = input.sw
@@ -102,7 +103,7 @@ def split(
             input = bytes(input)
 
         source = AudioDataSource(
-            input, block_dur=block_dur, max_read=max_read, **params
+            input, block_dur=analysis_window, max_read=max_read, **params
         )
 
     validator = kwargs.get("validator")

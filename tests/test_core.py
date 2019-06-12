@@ -1,9 +1,9 @@
 import os
-import unittest
+from unittest import TestCase
 from random import random
 from tempfile import TemporaryDirectory
 from genty import genty, genty_dataset
-from auditok import AudioRegion, AudioParameterError
+from auditok import split, AudioRegion, AudioParameterError
 
 
 def _make_random_length_regions(
@@ -22,7 +22,113 @@ def _make_random_length_regions(
 
 
 @genty
-class TestAudioRegion(unittest.TestCase):
+class TestSplit(TestCase):
+    @genty_dataset(
+        simple=(
+            0.2,
+            5,
+            0.2,
+            False,
+            False,
+            {"eth": 50},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        low_energy_threshold=(
+            0.2,
+            5,
+            0.2,
+            False,
+            False,
+            {"energy_threshold": 40},
+            [(0, 50), (50, 76)],
+        ),
+        high_energy_threshold=(
+            0.2,
+            5,
+            0.2,
+            False,
+            False,
+            {"energy_threshold": 60},
+            [],
+        ),
+        trim_leading_and_trailing_silence=(
+            0.2,
+            10,  # use long max_dur
+            0.5,  # and a max_silence longer than any inter-region silence
+            True,
+            False,
+            {"eth": 50},
+            [(2, 76)],
+        ),
+        drop_trailing_silence=(
+            0.2,
+            5,
+            0.2,
+            True,
+            False,
+            {"eth": 50},
+            [(2, 14), (17, 29), (34, 76)],
+        ),
+        drop_trailing_silence_2=(
+            1.5,
+            5,
+            0.2,
+            True,
+            False,
+            {"eth": 50},
+            [(34, 76)],
+        ),
+        strict_min_dur=(
+            0.3,
+            2,
+            0.2,
+            False,
+            True,
+            {"eth": 50},
+            [(2, 16), (17, 31), (34, 54), (54, 74)],
+        ),
+    )
+    def test_split_params(
+        self,
+        min_dur,
+        max_dur,
+        max_silence,
+        drop_trailing_silence,
+        strict_min_dur,
+        kwargs,
+        expected,
+    ):
+        with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+            data = fp.read()
+
+        regions = split(
+            data,
+            min_dur,
+            max_dur,
+            max_silence,
+            drop_trailing_silence,
+            strict_min_dur,
+            analysis_window=0.1,
+            sr=10,
+            sw=2,
+            ch=1,
+            **kwargs
+        )
+        regions = list(regions)
+        print(regions)
+        err_msg = "Wrong number of regions after split, expected: "
+        err_msg += "{}, found: {}".format(len(regions), len(expected))
+        self.assertEqual(len(regions), len(expected), err_msg)
+
+        sample_width = 2
+        for reg, exp in zip(regions, expected):
+            onset, offset = exp
+            exp_data = data[onset * sample_width : offset * sample_width]
+            self.assertEqual(bytes(reg), exp_data)
+
+
+@genty
+class TestAudioRegion(TestCase):
     @genty_dataset(
         simple=(b"\0" * 8000, 0, 8000, 1, 1, 1, 1, 1000),
         one_ms_less_than_1_sec=(
