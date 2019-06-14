@@ -109,8 +109,10 @@ def _normalize_use_channel(use_channel):
     """
     if use_channel is None:
         return 0
-    if use_channel == "mix" or isinstance(use_channel, int):
-        return use_channel
+    if use_channel == "mix":
+        return "mix"
+    if isinstance(use_channel, int):
+        return use_channel - 1
     try:
         return ["left", "right"].index(use_channel)
     except ValueError:
@@ -167,7 +169,7 @@ def _get_audio_parameters(param_dict):
             )
         parameters.append(param)
     sampling_rate, sample_width, channels = parameters
-    use_channel = param_dict.get("use_channel", param_dict.get("uc", 0))
+    use_channel = param_dict.get("use_channel", param_dict.get("uc", 1))
     use_channel = _normalize_use_channel(use_channel)
     return sampling_rate, sample_width, channels, use_channel
 
@@ -835,24 +837,16 @@ def get_audio_source(input=None, **kwargs):
         "-", raw data will be read from stdin. If None, read audio data from
         microphone using PyAudio.
     """
-
-    sampling_rate = kwargs.get(
-        "sampling_rate", kwargs.get("sr", DEFAULT_SAMPLING_RATE)
-    )
-    sample_width = kwargs.get(
-        "sample_rate", kwargs.get("sw", DEFAULT_SAMPLE_WIDTH)
-    )
-    channels = kwargs.get("channels", kwargs.get("ch", DEFAULT_NB_CHANNELS))
-    use_channel = kwargs.get(
-        "use_channel", kwargs.get("uc", DEFAULT_USE_CHANNEL)
-    )
+    sampling_rate, sample_width, channels, use_channel = _get_audio_parameters(kwargs)
     if input == "-":
         return StdinAudioSource(
             sampling_rate, sample_width, channels, use_channel
         )
 
     if isinstance(input, bytes):
-        return BufferAudioSource(input, sampling_rate, sample_width, channels)
+        use_channel = _normalize_use_channel(use_channel)
+        data = _extract_selected_channel(input, channels, sample_width, use_channel)
+        return BufferAudioSource(data, sampling_rate, sample_width, channels)
 
     # read data from a file
     if input is not None:
@@ -922,7 +916,6 @@ def _load_raw(
         with open(file, "rb") as fp:
             data = fp.read()
         if channels != 1:
-            # TODO check if striding with mmap doesn't load all data to memory
             data = _extract_selected_channel(
                 data, channels, sample_width, use_channel
             )
