@@ -74,8 +74,7 @@ class TestIO(TestCase):
 
     @genty_dataset(
         none=(None, 0),
-        positive_int=(1, 1),
-        negative_int=(-1, -1),
+        positive_int=(1, 0),
         left=("left", 0),
         right=("right", 1),
         mix=("mix", "mix"),
@@ -85,7 +84,8 @@ class TestIO(TestCase):
         self.assertEqual(result, expected)
 
     @genty_dataset(
-        simple=((8000, 2, 1, 0), (8000, 2, 1, 0)),
+        int_1=((8000, 2, 1, 1), (8000, 2, 1, 0)),
+        int_2=((8000, 2, 1, 2), (8000, 2, 1, 1)),
         use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
         use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
         use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
@@ -93,12 +93,13 @@ class TestIO(TestCase):
         no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
     )
     def test_get_audio_parameters_short_params(self, values, expected):
-        params = {k: v for k, v in zip(("sr", "sw", "ch", "uc"), values)}
+        params = dict(zip(("sr", "sw", "ch", "uc"), values))
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
 
     @genty_dataset(
-        simple=((8000, 2, 1, 0), (8000, 2, 1, 0)),
+        int_1=((8000, 2, 1, 1), (8000, 2, 1, 0)),
+        int_2=((8000, 2, 1, 2), (8000, 2, 1, 1)),
         use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
         use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
         use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
@@ -106,29 +107,16 @@ class TestIO(TestCase):
         no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
     )
     def test_get_audio_parameters_long_params(self, values, expected):
-        params = {
-            k: v
-            for k, v in zip(
-                ("sampling_rate", "sample_width", "channels", "use_channel"),
-                values,
-            )
-        }
+        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
 
-    @genty_dataset(simple=((8000, 2, 1, 0), (8000, 2, 1, 0)))
-    def test_get_audio_parameters_short_and_long_params(
+    @genty_dataset(simple=((8000, 2, 1, 1), (8000, 2, 1, 0)))
+    def test_get_audio_parameters_long_params_shadow_short_ones(
         self, values, expected
     ):
-        params = {
-            k: v
-            for k, v in zip(
-                ("sampling_rate", "sample_width", "channels", "use_channel"),
-                values,
-            )
-        }
-
-        params.update({k: v for k, v in zip(("sr", "sw", "ch", "uc"), "xxxx")})
+        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
+        params.update(dict(zip(("sr", "sw", "ch", "uc"), "xxxx")))
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
 
@@ -141,13 +129,10 @@ class TestIO(TestCase):
         negative_channels=((8000, 2, -1, 0),),
     )
     def test_get_audio_parameters_invalid(self, values):
-        params = {
-            k: v
-            for k, v in zip(
-                ("sampling_rate", "sample_width", "channels", "use_channel"),
-                values,
-            )
-        }
+        # TODO 0 or negative use_channel must raise AudioParameterError
+        # change implementation, don't accept negative uc
+        # hifglight everywhere in doc that uc must be positive
+        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
         with self.assertRaises(AudioParameterError):
             _get_audio_parameters(params)
 
@@ -311,14 +296,14 @@ class TestIO(TestCase):
                 from_file("audio", "mp3")
 
     @genty_dataset(
-        raw_first_channel=("raw", 0, 400),
-        raw_second_channel=("raw", 1, 800),
-        raw_third_channel=("raw", 2, 1600),
+        raw_first_channel=("raw", 1, 400),
+        raw_second_channel=("raw", 2, 800),
+        raw_third_channel=("raw", 3, 1600),
         raw_left_channel=("raw", "left", 400),
         raw_right_channel=("raw", "right", 800),
-        wav_first_channel=("wav", 0, 400),
-        wav_second_channel=("wav", 1, 800),
-        wav_third_channel=("wav", 2, 1600),
+        wav_first_channel=("wav", 1, 400),
+        wav_second_channel=("wav", 2, 800),
+        wav_third_channel=("wav", 3, 1600),
         wav_left_channel=("wav", "left", 400),
         wav_right_channel=("wav", "right", 800),
     )
@@ -378,13 +363,13 @@ class TestIO(TestCase):
     @patch("auditok.io._WITH_PYDUB", True)
     @patch("auditok.io.BufferAudioSource")
     @genty_dataset(
-        ogg_first_channel=("ogg", 0, "from_ogg"),
-        ogg_second_channel=("ogg", 1, "from_ogg"),
+        ogg_first_channel=("ogg", 1, "from_ogg"),
+        ogg_second_channel=("ogg", 2, "from_ogg"),
         ogg_mix=("ogg", "mix", "from_ogg"),
         ogg_default=("ogg", None, "from_ogg"),
         mp3_left_channel=("mp3", "left", "from_mp3"),
         mp3_right_channel=("mp3", "right", "from_mp3"),
-        flac_first_channel=("flac", 0, "from_file"),
+        flac_first_channel=("flac", 1, "from_file"),
         flac_second_channel=("flac", 1, "from_file"),
         flv_left_channel=("flv", "left", "from_flv"),
         webm_right_channel=("webm", "right", "from_file"),
@@ -406,9 +391,12 @@ class TestIO(TestCase):
                 self.assertTrue(open_func.called)
                 self.assertTrue(ext_mock.called)
 
-                use_channel = {"left": 0, "right": 1, None: 0}.get(
+                use_channel = {"left": 1, "right": 2, None: 1}.get(
                     use_channel, use_channel
                 )
+                if isinstance(use_channel, int):
+                    # _extract_selected_channel will be called with a channel starting from 0
+                    use_channel -= 1
                 ext_mock.assert_called_with(
                     segment_mock._data,
                     segment_mock.channels,
