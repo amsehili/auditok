@@ -35,7 +35,9 @@ class TestAudioSource(unittest.TestCase):
         mono_mix=("mono_400Hz", 1, "mix", 400),
         mono_channel_selection=("mono_400Hz", 1, 2, 400),
         multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
-        multichannel_channel_selection=("3channel_400-800-1600Hz", 3, 1, 800),
+        multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
+        multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
+        multichannel_channel_select_3rd=("3channel_400-800-1600Hz", 3, 3, 1600),
     )
     def test_RawAudioSource(
         self, file_suffix, channels, use_channel, frequency
@@ -68,7 +70,9 @@ class TestAudioSource(unittest.TestCase):
         mono_mix=("mono_400Hz", 1, "mix", 400),
         mono_channel_selection=("mono_400Hz", 1, 2, 400),
         multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
-        multichannel_channel_selection=("3channel_400-800-1600Hz", 3, 1, 800),
+        multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
+        multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
+        multichannel_channel_select_3rd=("3channel_400-800-1600Hz", 3, 3, 1600),
     )
     def test_WaveAudioSource(
         self, file_suffix, channels, use_channel, frequency
