@@ -37,7 +37,12 @@ class TestAudioSource(unittest.TestCase):
         multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
         multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
         multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
-        multichannel_channel_select_3rd=("3channel_400-800-1600Hz", 3, 3, 1600),
+        multichannel_channel_select_3rd=(
+            "3channel_400-800-1600Hz",
+            3,
+            3,
+            1600,
+        ),
     )
     def test_RawAudioSource(
         self, file_suffix, channels, use_channel, frequency
@@ -72,7 +77,12 @@ class TestAudioSource(unittest.TestCase):
         multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
         multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
         multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
-        multichannel_channel_select_3rd=("3channel_400-800-1600Hz", 3, 3, 1600),
+        multichannel_channel_select_3rd=(
+            "3channel_400-800-1600Hz",
+            3,
+            3,
+            1600,
+        ),
     )
     def test_WaveAudioSource(
         self, file_suffix, channels, use_channel, frequency
@@ -446,6 +456,7 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
         with self.assertRaises(Exception):
             self.audio_source.read(1)
 
+
 @genty
 class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
     def setUp(self):
@@ -556,10 +567,9 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
     @genty_dataset(
         empty=([], 0, 0, 0),
         zero=([0], 0, 0, 0),
-        two=([2], 2, 2/16, int(2000/16)),
-        eleven=([11], 11, 11/16, int(11*1000/16)),
+        two=([2], 2, 2 / 16, int(2000 / 16)),
+        eleven=([11], 11, 11 / 16, int(11 * 1000 / 16)),
         multiple=([4, 8], 12, 0.75, 750),
-
     )
     def test_position(
         self, block_sizes, expected_sample, expected_second, expected_ms
@@ -603,10 +613,10 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     @genty_dataset(
         zero=(0, 0, 0, 0),
-        one=(1, 1, 1/16, int(1000/16)),
-        ten=(10, 10, 10/16, int(10000/16)),
-        negative_1=(-1, 15, 15/16, int(15000/16)),
-        negative_2=(-7, 9, 9/16, int(9000/16)),
+        one=(1, 1, 1 / 16, int(1000 / 16)),
+        ten=(10, 10, 10 / 16, int(10000 / 16)),
+        negative_1=(-1, 15, 15 / 16, int(15000 / 16)),
+        negative_2=(-7, 9, 9 / 16, int(9000 / 16)),
     )
     def test_position_setter(
         self, position, expected_sample, expected_second, expected_ms
@@ -642,11 +652,11 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     @genty_dataset(
         zero=(0, 0, 0, 0),
-        one=(0.1, 1, 1/16, int(1000/16)),
-        two=(1/8, 2, 1/8, int(1/8 * 1000)),
-        twelve=(0.75, 12, .75, 750),
-        negative_1=(-0.1, 15, 15/16, int(15000/16)),
-        negative_2=(-0.7, 5, 5/16, int(5000/16)),
+        one=(0.1, 1, 1 / 16, int(1000 / 16)),
+        two=(1 / 8, 2, 1 / 8, int(1 / 8 * 1000)),
+        twelve=(0.75, 12, 0.75, 750),
+        negative_1=(-0.1, 15, 15 / 16, int(15000 / 16)),
+        negative_2=(-0.7, 5, 5 / 16, int(5000 / 16)),
     )
     def test_position_s_setter(
         self, position_s, expected_sample, expected_second, expected_ms
@@ -682,11 +692,11 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
 
     @genty_dataset(
         zero=(0, 0, 0, 0),
-        one=(100, 1, 1/16, int(1000/16)),
+        one=(100, 1, 1 / 16, int(1000 / 16)),
         ten=(1000, 16, 1, 1000),
-        negative_1=(-100, 15, 15/16, int(15*1000/16)),
+        negative_1=(-100, 15, 15 / 16, int(15 * 1000 / 16)),
         negative_2=(-500, 8, 0.5, 500),
-        negative_3=(-700, 5, 5/16, int(5*1000/16)),
+        negative_3=(-700, 5, 5 / 16, int(5 * 1000 / 16)),
     )
     def test_position_ms_setter(
         self, position_ms, expected_sample, expected_second, expected_ms
@@ -719,8 +729,6 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
                 expected_ms, position_ms
             ),
         )
-
-
 
     def test_sr16_sw2_ch1_rewind(self):
         self.audio_source.read(10)
