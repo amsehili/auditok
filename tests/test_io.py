@@ -107,7 +107,12 @@ class TestIO(TestCase):
         no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
     )
     def test_get_audio_parameters_long_params(self, values, expected):
-        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
+        params = dict(
+            zip(
+                ("sampling_rate", "sample_width", "channels", "use_channel"),
+                values,
+            )
+        )
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
 
@@ -115,7 +120,12 @@ class TestIO(TestCase):
     def test_get_audio_parameters_long_params_shadow_short_ones(
         self, values, expected
     ):
-        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
+        params = dict(
+            zip(
+                ("sampling_rate", "sample_width", "channels", "use_channel"),
+                values,
+            )
+        )
         params.update(dict(zip(("sr", "sw", "ch", "uc"), "xxxx")))
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
@@ -132,7 +142,12 @@ class TestIO(TestCase):
         # TODO 0 or negative use_channel must raise AudioParameterError
         # change implementation, don't accept negative uc
         # hifglight everywhere in doc that uc must be positive
-        params = dict(zip(("sampling_rate", "sample_width", "channels", "use_channel"), values))
+        params = dict(
+            zip(
+                ("sampling_rate", "sample_width", "channels", "use_channel"),
+                values,
+            )
+        )
         with self.assertRaises(AudioParameterError):
             _get_audio_parameters(params)
 

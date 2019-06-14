@@ -837,7 +837,9 @@ def get_audio_source(input=None, **kwargs):
         "-", raw data will be read from stdin. If None, read audio data from
         microphone using PyAudio.
     """
-    sampling_rate, sample_width, channels, use_channel = _get_audio_parameters(kwargs)
+    sampling_rate, sample_width, channels, use_channel = _get_audio_parameters(
+        kwargs
+    )
     if input == "-":
         return StdinAudioSource(
             sampling_rate, sample_width, channels, use_channel
@@ -845,7 +847,9 @@ def get_audio_source(input=None, **kwargs):
 
     if isinstance(input, bytes):
         use_channel = _normalize_use_channel(use_channel)
-        data = _extract_selected_channel(input, channels, sample_width, use_channel)
+        data = _extract_selected_channel(
+            input, channels, sample_width, use_channel
+        )
         return BufferAudioSource(data, sampling_rate, sample_width, channels)
 
     # read data from a file
