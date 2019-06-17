@@ -36,10 +36,6 @@ def split(
     input: str, bytes, AudioSource, AudioRegion, AudioDataSource
         input audio data. If str, it should be a path to an existing audio
         file. If bytes, input is considered as raw audio data.
-    audio_format: str
-        type of audio date (e.g., wav, ogg, raw, etc.). This will only be used
-        if ´input´ is a string path to audio file. If not given, audio type
-        will be guessed from file name extension or from file header.
     min_dur: float
         minimun duration in seconds of a detected audio event. Default: 0.2.
         Using large values, very short audio events (e.g., very short 1-word
@@ -57,11 +53,15 @@ def split(
         strict minimum duration. Drop an event if it is shorter than ´min_dur´
         even if it is continguous to the latest valid event. This happens if
         the the latest event had reached ´max_dur´.
-    analysis_window: float
+    analysis_window, aw: float
         duration of analysis window in seconds. Default: 0.05 second (50 ms).
         A value up to 0.1 second (100 ms) should be good for most use-cases.
         You might need a different value, especially if you use a custom
         validator.
+    audio_format, fmt: str
+        type of audio date (e.g., wav, ogg, raw, etc.). This will only be used
+        if ´input´ is a string path to audio file. If not given, audio type
+        will be guessed from file name extension or from file header.
     sampling_rate, sr: int
         sampling rate of audio data. Only needed for raw audio files/data.
     sample_width, sw: int
@@ -77,13 +77,13 @@ def split(
         - 'right': second channel (equivalent to 1)
         - 'mix': compute average channel
         Default: 0, use the first channel.
-    max_read: float
+    max_read, mr: float
         maximum data to read in seconds. Default: `None`, read until there is
         no more data to read.
-    validator: DataValidator
+    validator, val: DataValidator
         custom data validator. If ´None´ (default), an `AudioEnergyValidor` is
         used with the given energy threshold.
-    energy_threshold: float
+    energy_threshold, eth: float
         energy threshlod for audio activity detection, default: 50. If a custom
         validator is given, this argumemt will be ignored.
     """
@@ -92,21 +92,20 @@ def split(
         analysis_window = source.block_dur
     else:
         analysis_window = kwargs.get(
-            "analysis_window", DEFAULT_ANALYSIS_WINDOW
+            "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
         )
-        max_read = kwargs.get("max_read")
+
         params = kwargs.copy()
+        params["max_read"] = params.get("max_read", params.get("mr"))
         if isinstance(input, AudioRegion):
             params["sampling_rate"] = input.sr
             params["sample_width"] = input.sw
             params["channels"] = input.ch
             input = bytes(input)
 
-        source = AudioDataSource(
-            input, block_dur=analysis_window, max_read=max_read, **params
-        )
+        source = AudioDataSource(input, block_dur=analysis_window, **params)
 
-    validator = kwargs.get("validator")
+    validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None:
         energy_threshold = kwargs.get(
             "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)

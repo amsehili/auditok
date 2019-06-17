@@ -84,13 +84,13 @@ class TestIO(TestCase):
         self.assertEqual(result, expected)
 
     @genty_dataset(
-        int_1=((8000, 2, 1, 1), (8000, 2, 1, 0)),
-        int_2=((8000, 2, 1, 2), (8000, 2, 1, 1)),
-        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
-        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
+        int_1=((8000, 2, 1, 1), (8000, 2, 1, 1)),
+        int_2=((8000, 2, 1, 2), (8000, 2, 1, 2)),
+        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, "left")),
+        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, "right")),
         use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
-        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, 0)),
-        no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
+        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, None)),
+        no_use_channel=((8000, 2, 2), (8000, 2, 2, None)),
     )
     def test_get_audio_parameters_short_params(self, values, expected):
         params = dict(zip(("sr", "sw", "ch", "uc"), values))
@@ -98,13 +98,13 @@ class TestIO(TestCase):
         self.assertEqual(result, expected)
 
     @genty_dataset(
-        int_1=((8000, 2, 1, 1), (8000, 2, 1, 0)),
-        int_2=((8000, 2, 1, 2), (8000, 2, 1, 1)),
-        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, 0)),
-        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, 1)),
+        int_1=((8000, 2, 1, 1), (8000, 2, 1, 1)),
+        int_2=((8000, 2, 1, 2), (8000, 2, 1, 2)),
+        use_channel_left=((8000, 2, 1, "left"), (8000, 2, 1, "left")),
+        use_channel_right=((8000, 2, 1, "right"), (8000, 2, 1, "right")),
         use_channel_mix=((8000, 2, 1, "mix"), (8000, 2, 1, "mix")),
-        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, 0)),
-        no_use_channel=((8000, 2, 2), (8000, 2, 2, 0)),
+        use_channel_None=((8000, 2, 2, None), (8000, 2, 2, None)),
+        no_use_channel=((8000, 2, 2), (8000, 2, 2, None)),
     )
     def test_get_audio_parameters_long_params(self, values, expected):
         params = dict(
@@ -116,7 +116,7 @@ class TestIO(TestCase):
         result = _get_audio_parameters(params)
         self.assertEqual(result, expected)
 
-    @genty_dataset(simple=((8000, 2, 1, 1), (8000, 2, 1, 0)))
+    @genty_dataset(simple=((8000, 2, 1, 1), (8000, 2, 1, 1)))
     def test_get_audio_parameters_long_params_shadow_short_ones(
         self, values, expected
     ):
@@ -459,9 +459,9 @@ class TestIO(TestCase):
 
     @genty_dataset(
         dafault_first_channel=(None, 400),
-        first_channel=(0, 400),
-        second_channel=(1, 800),
-        third_channel=(2, 1600),
+        first_channel=(1, 400),
+        second_channel=(2, 800),
+        third_channel=(3, 1600),
         negative_first_channel=(-3, 400),
         negative_second_channel=(-2, 800),
         negative_third_channel=(-1, 1600),
@@ -537,9 +537,9 @@ class TestIO(TestCase):
 
     @genty_dataset(
         dafault_first_channel=(None, 400),
-        first_channel=(0, 400),
-        second_channel=(1, 800),
-        third_channel=(2, 1600),
+        first_channel=(1, 400),
+        second_channel=(2, 800),
+        third_channel=(3, 1600),
         negative_first_channel=(-3, 400),
         negative_second_channel=(-2, 800),
         negative_third_channel=(-1, 1600),
@@ -596,7 +596,7 @@ class TestIO(TestCase):
         mp3_left_channel=("mp3", 1, "left", "from_mp3"),
         mp3_right_channel=("mp3", 2, "right", "from_mp3"),
         mp3_mix_channels=("mp3", 3, "mix", "from_mp3"),
-        flac_first_channel=("flac", 2, 0, "from_file"),
+        flac_first_channel=("flac", 2, 1, "from_file"),
         flac_second_channel=("flac", 2, 1, "from_file"),
         flv_left_channel=("flv", 1, "left", "from_flv"),
         webm_right_channel=("webm", 2, "right", "from_file"),
@@ -615,9 +615,11 @@ class TestIO(TestCase):
                 "auditok.io.AudioSegment.{}".format(function)
             ) as open_func:
                 open_func.return_value = segment_mock
-                use_channel = {"left": 0, "right": 1, None: 0}.get(
+                normalized_use_channel = {"left": 1, "right": 2, None: 0}.get(
                     use_channel, use_channel
                 )
+                if isinstance(normalized_use_channel, int) and normalized_use_channel > 0:
+                     normalized_use_channel -= 1
                 _load_with_pydub(filename, audio_format, use_channel)
                 self.assertTrue(open_func.called)
                 if channels > 1:
@@ -626,7 +628,7 @@ class TestIO(TestCase):
                         segment_mock._data,
                         segment_mock.channels,
                         segment_mock.sample_width,
-                        use_channel,
+                        normalized_use_channel,
                     )
                 else:
                     self.assertFalse(ext_mock.called)
