@@ -4,6 +4,11 @@ from random import random
 from tempfile import TemporaryDirectory
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
+from auditok.io import (
+    _normalize_use_channel,
+    _extract_selected_channel,
+    get_audio_source,
+)
 
 
 def _make_random_length_regions(
@@ -115,9 +120,8 @@ class TestSplit(TestCase):
             **kwargs
         )
         regions = list(regions)
-        print(regions)
         err_msg = "Wrong number of regions after split, expected: "
-        err_msg += "{}, found: {}".format(len(regions), len(expected))
+        err_msg += "{}, found: {}".format(len(expected), len(regions))
         self.assertEqual(len(regions), len(expected), err_msg)
 
         sample_width = 2
