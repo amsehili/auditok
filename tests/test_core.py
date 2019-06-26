@@ -130,6 +130,102 @@ class TestSplit(TestCase):
             exp_data = data[onset * sample_width : offset * sample_width]
             self.assertEqual(bytes(reg), exp_data)
 
+    @genty_dataset(
+        stereo_all_default=(2, {}, [(2, 16), (17, 31), (34, 76)]),
+        mono_max_read=(2, {"max_read": 5}, [(2, 16), (17, 31), (34, 50)]),
+        mono_max_read_short_name=(2, {"mr": 5}, [(2, 16), (17, 31), (34, 50)]),
+        mono_use_channel_1=(
+            1,
+            {"eth": 50, "use_channel": 1},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        mono_uc_1=(1, {"eth": 50, "uc": 1}, [(2, 16), (17, 31), (34, 76)]),
+        mono_use_channel_left=(
+            1,
+            {"eth": 50, "use_channel": "left"},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        mono_uc_left=(
+            1,
+            {"eth": 50, "uc": "left"},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        mono_use_channel_None=(
+            1,
+            {"eth": 50, "use_channel": None},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_use_channel_1=(
+            2,
+            {"eth": 50, "use_channel": 1},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_use_channel_left=(
+            2,
+            {"eth": 50, "use_channel": "left"},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_use_channel_no_use_channel_given=(
+            2,
+            {"eth": 50},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_use_channel_minus_2=(
+            2,
+            {"eth": 50, "use_channel": -2},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_uc_2=(2, {"eth": 50, "uc": 2}, [(10, 32), (36, 76)]),
+        stereo_use_channel_right=(
+            2,
+            {"eth": 50, "use_channel": "right"},
+            [(10, 32), (36, 76)],
+        ),
+        stereo_uc_minus_1=(2, {"eth": 50, "uc": -1}, [(10, 32), (36, 76)]),
+    )
+    def test_split_kwargs(self, channels, kwargs, expected):
+
+        mono_or_stereo = "mono" if channels == 1 else "stereo"
+        filename = "tests/data/test_split_10HZ_{}.raw".format(mono_or_stereo)
+        with open(filename, "rb") as fp:
+            data = fp.read()
+
+        regions = split(
+            data,
+            min_dur=0.2,
+            max_dur=5,
+            max_silence=0.2,
+            drop_trailing_silence=False,
+            strict_min_dur=False,
+            analysis_window=0.1,
+            sr=10,
+            sw=2,
+            ch=channels,
+            **kwargs
+        )
+
+        sample_width = 2
+        import numpy as np
+
+        use_channel = kwargs.get("use_channel", kwargs.get("uc"))
+        # extrat channel of interest
+        if channels != 1:
+            use_channel = kwargs.get("use_channel", kwargs.get("uc"))
+            use_channel = _normalize_use_channel(use_channel)
+            data = _extract_selected_channel(
+                data, channels, sample_width, use_channel=use_channel
+            )
+
+        regions = list(regions)
+        err_msg = "Wrong number of regions after split, expected: "
+        err_msg += "{}, found: {}".format(expected, regions)
+        self.assertEqual(len(regions), len(expected), err_msg)
+
+        for reg, exp in zip(regions, expected):
+            onset, offset = exp
+            exp_data = data[onset * sample_width : offset * sample_width]
+            self.assertEqual(bytes(reg), exp_data)
+
 
 @genty
 class TestAudioRegion(TestCase):
