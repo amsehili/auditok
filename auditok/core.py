@@ -97,6 +97,7 @@ def split(
 
         params = kwargs.copy()
         params["max_read"] = params.get("max_read", params.get("mr"))
+        params["audio_format"] = params.get("audio_format", params.get("fmt"))
         if isinstance(input, AudioRegion):
             params["sampling_rate"] = input.sr
             params["sample_width"] = input.sw
