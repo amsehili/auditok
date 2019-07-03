@@ -133,8 +133,8 @@ class TestSplit(TestCase):
 
     @genty_dataset(
         stereo_all_default=(2, {}, [(2, 16), (17, 31), (34, 76)]),
-        mono_max_read=(2, {"max_read": 5}, [(2, 16), (17, 31), (34, 50)]),
-        mono_max_read_short_name=(2, {"mr": 5}, [(2, 16), (17, 31), (34, 50)]),
+        mono_max_read=(1, {"max_read": 5}, [(2, 16), (17, 31), (34, 50)]),
+        mono_max_read_short_name=(1, {"mr": 5}, [(2, 16), (17, 31), (34, 50)]),
         mono_use_channel_1=(
             1,
             {"eth": 50, "use_channel": 1},
@@ -183,6 +183,22 @@ class TestSplit(TestCase):
             [(10, 32), (36, 76)],
         ),
         stereo_uc_minus_1=(2, {"eth": 50, "uc": -1}, [(10, 32), (36, 76)]),
+        mono_uc_mix=(
+            1,
+            {"eth": 50, "uc": "mix"},
+            [(2, 16), (17, 31), (34, 76)],
+        ),
+        stereo_use_channel_mix=(
+            2,
+            {"energy_threshold": 53.5, "use_channel": "mix"},
+            [(54, 76)],
+        ),
+        stereo_uc_mix=(2, {"eth": 52, "uc": "mix"}, [(17, 26), (54, 76)]),
+        stereo_uc_mix_default_eth=(
+            2,
+            {"uc": "mix"},
+            [(10, 16), (17, 31), (36, 76)],
+        ),
     )
     def test_split_kwargs(self, channels, kwargs, expected):
 
