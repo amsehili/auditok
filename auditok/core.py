@@ -146,9 +146,10 @@ def split(
 
 def _duration_to_nb_windows(duration, analysis_window):
     """
-    Converts a given duration into a positive integer on analysis windows.
+    Converts a given duration into a positive integer of analysis windows.
     if `duration / analysis_window` is not an integer, the result will be
     rounded to the closest bigger integer. If `duration == 0`, returns `0`.
+    If `duration < analysis_window`, returns 1.
     `duration` and `analysis_window` can be in seconds or milliseconds but
     must be in the same unit.
 
@@ -165,13 +166,15 @@ def _duration_to_nb_windows(duration, analysis_window):
         minimum number of `analysis_window`'s to cover `durartion`. That means
         that `analysis_window * nb_windows >= duration`.
     """
+    if duration < 0 or analysis_window <= 0:
+        err_msg = "'duration' ({}) must be >= 0 and 'analysis_window' ({}) > 0"
+        raise ValueError(err_msg.format(duration, analysis_window))
     if duration == 0:
         return 0
-    if duration > analysis_window:
-        nb_windows, rest = divmod(duration, analysis_window)
-        if rest > 0:
-            nb_windows += 1
-        return int(nb_windows)
+    nb_windows, rest = divmod(duration, analysis_window)
+    if rest > 0:
+        nb_windows += 1
+    return int(nb_windows)
 
 
 def _make_audio_region(
@@ -447,11 +450,11 @@ class AudioRegion(object):
         )
 
     def __getitem__(self, index):
-        err_message = "AudioRegion index must a slice object without a step"
+        err_msg = "AudioRegion index must a slice object without a step"
         if not isinstance(index, slice):
-            raise TypeError(err_message)
+            raise TypeError(err_msg)
         if index.step is not None:
-            raise ValueError(err_message)
+            raise ValueError(err_msg)
 
         start_ms = index.start if index.start is not None else 0
         stop_ms = index.stop if index.stop is not None else len(self)

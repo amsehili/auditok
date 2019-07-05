@@ -4,6 +4,7 @@ from random import random
 from tempfile import TemporaryDirectory
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
+from auditok.core import _duration_to_nb_windows
 from auditok.util import AudioDataSource
 from auditok.io import (
     _normalize_use_channel,
@@ -25,6 +26,24 @@ def _make_random_length_regions(
         )
         regions.append(region)
     return regions
+
+
+@genty
+class TestFunctions(TestCase):
+    @genty_dataset(
+        zero_duration=(0, 1, 0),
+        multiple=(0.3, 0.1, 3),
+        not_multiple=(0.35, 0.1, 4),
+        small_duration=(0.05, 0.1, 1),
+    )
+    def test_duration_to_nb_windows(self, duration, analysis_window, expected):
+
+        if issubclass(expected.__class__, Exception):
+            with self.assertRaises(expected):
+                _duration_to_nb_windows(duration, analysis_window)
+        else:
+            result = _duration_to_nb_windows(duration, analysis_window)
+            self.assertEqual(result, expected)
 
 
 @genty
