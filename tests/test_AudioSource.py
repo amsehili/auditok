@@ -386,48 +386,48 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
         with self.assertRaises(IndexError):
             self.audio_source.position_ms = position_ms
 
-    def test_sr10_sw1_ch1_get_time_position_0(self):
-        tp = self.audio_source.get_time_position()
+    def test_sr10_sw1_ch1_position_s_0(self):
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             0.0,
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_get_time_position_1(self):
+    def test_sr10_sw1_ch1_position_s_1(self):
         srate = self.audio_source.get_sampling_rate()
         # read one second
         self.audio_source.read(srate)
-        tp = self.audio_source.get_time_position()
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             1.0,
             msg="wrong time position, expected: 1.0, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_get_time_position_2_5(self):
+    def test_sr10_sw1_ch1_position_s_2_5(self):
         # read 2.5 seconds
         self.audio_source.read(25)
-        tp = self.audio_source.get_time_position()
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             2.5,
             msg="wrong time position, expected: 2.5, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_set_time_position_0(self):
+    def test_sr10_sw1_ch1_position_s_0(self):
         self.audio_source.read(10)
-        self.audio_source.set_time_position(0)
-        tp = self.audio_source.get_time_position()
+        self.audio_source.position_s = 0
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             0.0,
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_set_time_position_1(self):
-        self.audio_source.set_time_position(1)
-        tp = self.audio_source.get_time_position()
+    def test_sr10_sw1_ch1_position_s_1(self):
+        self.audio_source.position_s = 1
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             1.0,
@@ -603,7 +603,7 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
             ),
         )
 
-    def test_sr16_sw2_ch1_read_set_position_0(self):
+    def test_sr16_sw2_ch1_read_position_0(self):
         self.audio_source.read(10)
         self.audio_source.position = 0
         pos = self.audio_source.position
@@ -733,7 +733,7 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
     def test_sr16_sw2_ch1_rewind(self):
         self.audio_source.read(10)
         self.audio_source.rewind()
-        tp = self.audio_source.get_position()
+        tp = self.audio_source.position
         self.assertEqual(
             tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp)
         )
@@ -871,67 +871,67 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             ),
         )
 
-    def test_sr11_sw4_ch1_get_position_0(self):
-        pos = self.audio_source.get_position()
+    def test_sr11_sw4_ch1_position_0(self):
+        pos = self.audio_source.position
         self.assertEqual(
             pos, 0, msg="wrong position, expected: 0, found: {0} ".format(pos)
         )
 
-    def test_sr11_sw4_ch1_get_position_5(self):
+    def test_sr11_sw4_ch1_position_5(self):
         self.audio_source.read(5)
-        pos = self.audio_source.get_position()
+        pos = self.audio_source.position
         self.assertEqual(
             pos, 5, msg="wrong position, expected: 5, found: {0} ".format(pos)
         )
 
-    def test_sr11_sw4_ch1_get_position_9(self):
+    def test_sr11_sw4_ch1_position_9(self):
         self.audio_source.read(5)
         self.audio_source.read(4)
-        pos = self.audio_source.get_position()
+        pos = self.audio_source.position
         self.assertEqual(
             pos, 9, msg="wrong position, expected: 5, found: {0} ".format(pos)
         )
 
-    def test_sr11_sw4_ch1_set_position_0(self):
+    def test_sr11_sw4_ch1_position_0(self):
         self.audio_source.read(10)
-        self.audio_source.set_position(0)
-        pos = self.audio_source.get_position()
+        self.audio_source.position = 0
+        pos = self.audio_source.position
         self.assertEqual(
             pos, 0, msg="wrong position, expected: 0, found: {0} ".format(pos)
         )
 
-    def test_sr11_sw4_ch1_set_position_10(self):
-        self.audio_source.set_position(10)
-        pos = self.audio_source.get_position()
+    def test_sr11_sw4_ch1_position_10(self):
+        self.audio_source.position = 10
+        pos = self.audio_source.position
         self.assertEqual(
             pos,
             10,
             msg="wrong position, expected: 10, found: {0} ".format(pos),
         )
 
-    def test_sr11_sw4_ch1_get_time_position_0(self):
-        tp = self.audio_source.get_time_position()
+    def test_sr11_sw4_ch1_position_s_0(self):
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             0.0,
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr11_sw4_ch1_get_time_position_1(self):
+    def test_sr11_sw4_ch1_position_s_1(self):
         srate = self.audio_source.get_sampling_rate()
         # read one second
         self.audio_source.read(srate)
-        tp = self.audio_source.get_time_position()
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             1.0,
             msg="wrong time position, expected: 1.0, found: {0} ".format(tp),
         )
 
-    def test_sr11_sw4_ch1_get_time_position_0_63(self):
+    def test_sr11_sw4_ch1_position_s_0_63(self):
         # read 2.5 seconds
         self.audio_source.read(7)
-        tp = self.audio_source.get_time_position()
+        tp = self.audio_source.position_s
         self.assertAlmostEqual(
             tp,
             0.636363636364,
@@ -939,20 +939,20 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             "found: {0} ".format(tp),
         )
 
-    def test_sr11_sw4_ch1_set_time_position_0(self):
+    def test_sr11_sw4_ch1_position_s_0(self):
         self.audio_source.read(10)
-        self.audio_source.set_time_position(0)
-        tp = self.audio_source.get_time_position()
+        self.audio_source.position_s = 0
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             0.0,
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr11_sw4_ch1_set_time_position_1(self):
+    def test_sr11_sw4_ch1_position_s_1(self):
 
-        self.audio_source.set_time_position(1)
-        tp = self.audio_source.get_time_position()
+        self.audio_source.position_s = 1
+        tp = self.audio_source.position_s
         self.assertEqual(
             tp,
             1.0,
