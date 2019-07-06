@@ -107,7 +107,9 @@ def _normalize_use_channel(use_channel):
     str 'mix' returns it as is. If it's `left` or `right` returns 0 or 1
     respectively.
     """
-    err_message = "'use_channel' parameter must be a non-zero integer or one of "
+    err_message = (
+        "'use_channel' parameter must be a non-zero integer or one of "
+    )
     err_message += "('left', 'right', 'mix'), found: '{}'"
     if use_channel is None:
         return 0
@@ -496,7 +498,7 @@ class BufferAudioSource(Rewindable):
         self._buffer += data_buffer
 
     def rewind(self):
-        self.set_position(0)
+        self.position = 0
 
     @property
     def position(self):
@@ -922,7 +924,9 @@ def _load_raw(
         with open(file, "rb") as fp:
             data = fp.read()
         if channels != 1:
-            use_channel = _normalize_use_channel(use_channel) # TODO: should happen in BufferAudioSource
+            use_channel = _normalize_use_channel(
+                use_channel
+            )  # TODO: should happen in BufferAudioSource
             data = _extract_selected_channel(
                 data, channels, sample_width, use_channel
             )
@@ -950,7 +954,9 @@ def _load_wave(filename, large_file=False, use_channel=1):
         swidth = fp.getsampwidth()
         data = fp.readframes(-1)
     if channels > 1:
-        use_channel = _normalize_use_channel(use_channel) # TODO: should happen in BufferAudioSource
+        use_channel = _normalize_use_channel(
+            use_channel
+        )  # TODO: should happen in BufferAudioSource
         data = _extract_selected_channel(data, channels, swidth, use_channel)
     return BufferAudioSource(
         data, sampling_rate=srate, sample_width=swidth, channels=1
@@ -979,7 +985,9 @@ def _load_with_pydub(filename, audio_format, use_channel=1):
     segment = open_function(filename)
     data = segment._data
     if segment.channels > 1:
-        use_channel = _normalize_use_channel(use_channel) # TODO: should happen in BufferAudioSource
+        use_channel = _normalize_use_channel(
+            use_channel
+        )  # TODO: should happen in BufferAudioSource
         data = _extract_selected_channel(
             data, segment.channels, segment.sample_width, use_channel
         )
@@ -1053,7 +1061,7 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
             filename, srate, swidth, channels, use_channel, large_file
         )
 
-    use_channel = kwargs.get("use_channel", kwargs.get("uc"))    
+    use_channel = kwargs.get("use_channel", kwargs.get("uc"))
     if audio_format in ["wav", "wave"]:
         return _load_wave(filename, large_file, use_channel)
     if large_file:
