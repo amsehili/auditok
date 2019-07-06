@@ -320,7 +320,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
         audio_source.open()
 
         # Compare all blocks read from OverlapADS to those read
-        # from an audio source with a manual set_position
+        # from an audio source with a manual position setting
         for i, block in enumerate(ads_data):
 
             tmp = audio_source.read(block_size)
@@ -331,7 +331,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
                 "Unexpected block (N={0}) read from OverlapADS".format(i),
             )
 
-            audio_source.set_position((i + 1) * hop_size)
+            audio_source.position = (i + 1) * hop_size
 
         audio_source.close()
 
@@ -367,7 +367,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
         audio_source.open()
 
         # Compare all blocks read from OverlapADS to those read
-        # from an audio source with a manual set_position
+        # from an audio source with a manual position setting
         for i, block in enumerate(ads_data):
             tmp = audio_source.read(len(block) // (ads.sw * ads.ch))
             self.assertEqual(
@@ -375,7 +375,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
                 len(tmp),
                 "Unexpected block (N={0}) read from OverlapADS".format(i),
             )
-            audio_source.set_position((i + 1) * hop_size)
+            audio_source.position = (i + 1) * hop_size
 
         audio_source.close()
 
@@ -469,7 +469,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
         audio_source.open()
 
         # Compare all blocks read from OverlapADS to those read
-        # from an audio source with a manual set_position
+        # from an audio source with a manual position setting
         for j in range(i):
 
             tmp = audio_source.read(block_size)
@@ -479,7 +479,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
                 tmp,
                 "Unexpected block (N={0}) read from OverlapADS".format(i),
             )
-            audio_source.set_position((j + 1) * hop_size)
+            audio_source.position = (j + 1) * hop_size
 
         ads.close()
         audio_source.close()
@@ -519,7 +519,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
         audio_source.open()
 
         # Compare all blocks read from OverlapADS to those read
-        # from an audio source with a manual set_position
+        # from an audio source with a manual position setting
         for j in range(i):
 
             tmp = audio_source.read(block_size)
@@ -529,7 +529,7 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
                 tmp,
                 "Unexpected block (N={0}) read from OverlapADS".format(i),
             )
-            audio_source.set_position((j + 1) * hop_size)
+            audio_source.position = (j + 1) * hop_size
 
         ads.close()
         audio_source.close()
@@ -653,7 +653,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
         audio_source.open()
 
         # Compare all blocks read from OverlapADS to those read
-        # from an audio source with a manual set_position
+        # from an audio source with a manual position setting
         for j in range(i):
 
             tmp = audio_source.read(block_size)
@@ -667,7 +667,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
                     block, i
                 ),
             )
-            audio_source.set_position((j + 1) * hop_size)
+            audio_source.position = (j + 1) * hop_size
 
         ads.close()
         audio_source.close()
@@ -994,11 +994,10 @@ class TestADSFactoryAlias(unittest.TestCase):
                 tmp,
                 "Unexpected block (N={0}) read from OverlapADS".format(i),
             )
-            audio_source.set_position((j + 1) * hop_size)
+            audio_source.position = (j + 1) * hop_size
         ads.close()
         audio_source.close()
 
 
 if __name__ == "__main__":
-    # import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
