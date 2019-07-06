@@ -698,7 +698,18 @@ class _Limiter(_AudioSourceProxy):
 class _FixedSizeAudioReader(_AudioSourceProxy):
     def __init__(self, audio_source, block_dur):
         super(_FixedSizeAudioReader, self).__init__(audio_source)
+
+        if block_dur <= 0:
+            raise ValueError(
+                "block_dur must be > 0, given: {}".format(block_dur)
+            )
+
         self._block_size = int(block_dur * self.sr)
+        if self._block_size == 0:
+            err_msg = "Too small block_dur ({0:f}) for sampling rate ({1}). "
+            err_msg += "block_dur should cover at least one sample "
+            err_msg += "(i.e. 1/{1})"
+            raise ValueError(err_msg.format(block_dur, self.sr))
 
     def read(self):
         return self._audio_source.read(self._block_size)
