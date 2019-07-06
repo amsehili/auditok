@@ -590,6 +590,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
             sampling_rate=16,
             sample_width=2,
             channels=1,
+            block_size=4,
         )
 
     def test_ADS_BAS_sampling_rate(self):
@@ -679,7 +680,11 @@ class TestADSFactoryAlias(unittest.TestCase):
 
     def test_sampling_rate_alias(self):
         ads = ADSFactory.ads(
-            data_buffer=self.signal, sr=16, sample_width=2, channels=1
+            data_buffer=self.signal,
+            sr=16,
+            sample_width=2,
+            channels=1,
+            block_dur=0.5,
         )
         srate = ads.sampling_rate
         self.assertEqual(
@@ -701,7 +706,11 @@ class TestADSFactoryAlias(unittest.TestCase):
 
     def test_sample_width_alias(self):
         ads = ADSFactory.ads(
-            data_buffer=self.signal, sampling_rate=16, sw=2, channels=1
+            data_buffer=self.signal,
+            sampling_rate=16,
+            sw=2,
+            channels=1,
+            block_dur=0.5,
         )
         swidth = ads.sample_width
         self.assertEqual(
@@ -723,7 +732,11 @@ class TestADSFactoryAlias(unittest.TestCase):
 
     def test_channels_alias(self):
         ads = ADSFactory.ads(
-            data_buffer=self.signal, sampling_rate=16, sample_width=2, ch=1
+            data_buffer=self.signal,
+            sampling_rate=16,
+            sample_width=2,
+            ch=1,
+            block_dur=4,
         )
         channels = ads.channels
         self.assertEqual(
@@ -904,6 +917,7 @@ class TestADSFactoryAlias(unittest.TestCase):
             sample_width=2,
             channels=1,
             mt=10,
+            block_dur=0.5,
         )
         self.assertEqual(
             ads.max_read,
@@ -933,6 +947,7 @@ class TestADSFactoryAlias(unittest.TestCase):
             sample_width=2,
             channels=1,
             rec=True,
+            block_dur=0.5,
         )
         self.assertTrue(
             ads.rewindable, "AudioDataSource.rewindable expected to be True"
