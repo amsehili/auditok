@@ -280,6 +280,89 @@ class TestSplit(TestCase):
             self.assertEqual(bytes(reg), exp_data)
 
     @genty_dataset(
+        mono_aw_0_2_max_silence_0_2=(
+            0.2,
+            5,
+            0.2,
+            1,
+            {"uc": 1, "aw": 0.2},
+            [(2, 30), (34, 76)],
+        ),
+        mono_aw_0_2_max_silence_0_3=(
+            0.2,
+            5,
+            0.3,
+            1,
+            {"uc": 1, "aw": 0.2},
+            [(2, 32), (34, 76)],
+        ),
+        mono_aw_0_2_max_silence_0_4=(
+            0.2,
+            5,
+            0.3,
+            1,
+            {"uc": 1, "aw": 0.2},
+            [(2, 32), (34, 76)],
+        ),
+        mono_aw_0_2=(
+            0.2,
+            5,
+            0.2,
+            1,
+            {"uc": 1, "aw": 0.2},
+            [(2, 30), (34, 76)],
+        ),
+        stereo_uc_1_analysis_window_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"uc": 1, "analysis_window": 0.2},
+            [(2, 30), (34, 76)],
+        ),
+    )
+    def test_split_analysis_window(
+        self, min_dur, max_dur, max_silence, channels, kwargs, expected
+    ):
+
+        mono_or_stereo = "mono" if channels == 1 else "stereo"
+        filename = "tests/data/test_split_10HZ_{}.raw".format(mono_or_stereo)
+        with open(filename, "rb") as fp:
+            data = fp.read()
+
+        regions = split(
+            data,
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=False,
+            strict_min_dur=False,
+            sr=10,
+            sw=2,
+            ch=channels,
+            **kwargs
+        )
+        regions = list(regions)
+        sample_width = 2
+        import numpy as np
+
+        use_channel = kwargs.get("use_channel", kwargs.get("uc"))
+        # extrat channel of interest
+        if channels != 1:
+            use_channel = kwargs.get("use_channel", kwargs.get("uc"))
+            use_channel = _normalize_use_channel(use_channel)
+            data = _extract_selected_channel(
+                data, channels, sample_width, use_channel=use_channel
+            )
+        err_msg = "Wrong number of regions after split, expected: "
+        err_msg += "{}, found: {}".format(expected, regions)
+        self.assertEqual(len(regions), len(expected), err_msg)
+        for reg, exp in zip(regions, expected):
+            onset, offset = exp
+            exp_data = data[onset * sample_width : offset * sample_width]
+            self.assertEqual(bytes(reg), exp_data)
+
+    @genty_dataset(
         filename_audio_format=(
             "tests/data/test_split_10HZ_stereo.raw",
             {"audio_format": "raw", "sr": 10, "sw": 2, "ch": 2},
