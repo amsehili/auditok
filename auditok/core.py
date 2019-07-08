@@ -87,6 +87,13 @@ def split(
         energy threshlod for audio activity detection, default: 50. If a custom
         validator is given, this argumemt will be ignored.
     """
+    if min_dur <= 0 or max_dur <= 0:
+        raise ValueError(
+            "min_dur ({}) and 'max_dur' ({}) must be > 0".format(
+                min_dur, max_dur
+            )
+        )
+
     if isinstance(input, AudioDataSource):
         source = input
         analysis_window = source.block_dur
@@ -124,6 +131,29 @@ def split(
     max_continuous_silence = _duration_to_nb_windows(
         max_silence, analysis_window
     )
+
+    err_msg = "({0} second(s)) results in {1} analysis windows "
+    err_msg += "(i.e. ceil({0} / {2})) which is higher than the number "
+    err_msg += "of analysis windows ({3}) for 'max_dur' ({4} second(s))"
+    if min_length > max_length:
+        err_msg = "'min_dur' " + err_msg
+        raise ValueError(
+            err_msg.format(
+                min_dur, min_length, analysis_window, max_length, max_dur
+            )
+        )
+
+    if max_continuous_silence >= max_length:
+        err_msg = "'max_silence' " + err_msg
+        raise ValueError(
+            err_msg.format(
+                max_silence,
+                max_continuous_silence,
+                analysis_window,
+                max_length,
+                max_dur,
+            )
+        )
 
     tokenizer = StreamTokenizer(
         validator, min_length, max_length, max_continuous_silence, mode=mode
