@@ -174,7 +174,7 @@ def split(
     return region_gen
 
 
-def _duration_to_nb_windows(duration, analysis_window):
+def _duration_to_nb_windows(duration, analysis_window, round_fn=round):
     """
     Converts a given duration into a positive integer of analysis windows.
     if `duration / analysis_window` is not an integer, the result will be
@@ -201,10 +201,7 @@ def _duration_to_nb_windows(duration, analysis_window):
         raise ValueError(err_msg.format(duration, analysis_window))
     if duration == 0:
         return 0
-    nb_windows, rest = divmod(duration, analysis_window)
-    if rest > 0:
-        nb_windows += 1
-    return int(nb_windows)
+    return int(round_fn(duration / analysis_window))
 
 
 def _make_audio_region(
