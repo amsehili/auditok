@@ -444,6 +444,38 @@ class TestSplit(TestCase):
             exp_data = data[onset * sample_width : offset * sample_width]
             self.assertEqual(bytes(reg), exp_data)
 
+    @genty_dataset(
+        min_dur_greater_than_max_dur=(0.5, 0.4, 0.1),
+        durations_OK_but_wrong_number_of_analysis_windows=(0.44, 0.49, 0.1),
+    )
+    def test_split_wrong_min_max_dur(self, min_dur, max_dur, analysis_window):
+
+        with self.assertRaises(ValueError) as val_err:
+            split(
+                b"0" * 16,
+                min_dur=min_dur,
+                max_dur=max_dur,
+                max_silence=0.2,
+                sr=16000,
+                sw=1,
+                ch=1,
+                analysis_window=analysis_window,
+            )
+
+        err_msg = "'min_dur' ({0} sec.) results in {1} analysis "
+        err_msg += "window(s) ({1} == ceil({0} / {2})) which is "
+        err_msg += "higher than the number of analysis window(s) for "
+        err_msg += "'max_dur' ({3} == floor({4} / {2}))"
+
+        err_msg = err_msg.format(
+            min_dur,
+            math.ceil(min_dur / analysis_window),
+            analysis_window,
+            math.floor(max_dur / analysis_window),
+            max_dur,
+        )
+        self.assertEqual(err_msg, str(val_err.exception))
+
 
 @genty
 class TestAudioRegion(TestCase):
