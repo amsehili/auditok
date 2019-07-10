@@ -9,6 +9,7 @@ Class summary
         StreamTokenizer
 """
 import os
+import math
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for
 
@@ -125,21 +126,26 @@ def split(
     )
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
-
-    min_length = _duration_to_nb_windows(min_dur, analysis_window)
-    max_length = _duration_to_nb_windows(max_dur, analysis_window)
+    min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
+    max_length = _duration_to_nb_windows(max_dur, analysis_window, math.floor)
     max_continuous_silence = _duration_to_nb_windows(
-        max_silence, analysis_window
+        max_silence, analysis_window, math.floor
     )
 
-    err_msg = "({0} second(s)) results in {1} analysis windows "
-    err_msg += "(i.e. ceil({0} / {2})) which is higher than the number "
-    err_msg += "of analysis windows ({3}) for 'max_dur' ({4} second(s))"
+    err_msg = "({0} sec.) results in {1} analysis window(s) "
+    err_msg += "({1} == {6}({0} / {2})) which is {5} the number "
+    err_msg += "of analysis window(s) for 'max_dur' ({3} == floor({4} / {2}))"
     if min_length > max_length:
         err_msg = "'min_dur' " + err_msg
         raise ValueError(
             err_msg.format(
-                min_dur, min_length, analysis_window, max_length, max_dur
+                min_dur,
+                min_length,
+                analysis_window,
+                max_length,
+                max_dur,
+                "higher than",
+                "ceil",
             )
         )
 
@@ -152,6 +158,8 @@ def split(
                 analysis_window,
                 max_length,
                 max_dur,
+                "higher or equal to",
+                "floor",
             )
         )
 
