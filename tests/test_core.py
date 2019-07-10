@@ -476,6 +476,41 @@ class TestSplit(TestCase):
         )
         self.assertEqual(err_msg, str(val_err.exception))
 
+    @genty_dataset(
+        max_silence_equals_max_dur=(0.5, 0.5, 0.1),
+        max_silence_greater_than_max_dur=(0.5, 0.4, 0.1),
+        durations_OK_but_wrong_number_of_analysis_windows=(0.44, 0.49, 0.1),
+    )
+    def test_split_wrong_max_silence_max_dur(
+        self, max_silence, max_dur, analysis_window
+    ):
+
+        with self.assertRaises(ValueError) as val_err:
+            split(
+                b"0" * 16,
+                min_dur=0.2,
+                max_dur=max_dur,
+                max_silence=max_silence,
+                sr=16000,
+                sw=1,
+                ch=1,
+                analysis_window=analysis_window,
+            )
+
+        err_msg = "'max_silence' ({0} sec.) results in {1} analysis "
+        err_msg += "window(s) ({1} == floor({0} / {2})) which is "
+        err_msg += "higher or equal to the number of analysis window(s) for "
+        err_msg += "'max_dur' ({3} == floor({4} / {2}))"
+
+        err_msg = err_msg.format(
+            max_silence,
+            math.floor(max_silence / analysis_window),
+            analysis_window,
+            math.floor(max_dur / analysis_window),
+            max_dur,
+        )
+        self.assertEqual(err_msg, str(val_err.exception))
+
 
 @genty
 class TestAudioRegion(TestCase):
