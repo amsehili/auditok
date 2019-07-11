@@ -511,6 +511,27 @@ class TestSplit(TestCase):
         )
         self.assertEqual(err_msg, str(val_err.exception))
 
+    @genty_dataset(
+        negative_min_dur=({"min_dur": -1},),
+        zero_min_dur=({"min_dur": 0},),
+        negative_max_dur=({"max_dur": -1},),
+        zero_max_dur=({"max_dur": 0},),
+        negative_max_silence=({"max_silence": -1},),
+    )
+    def test_split_negative_temporal_params(self, wrong_param):
+
+        params = {"min_dur": 0.2, "max_dur": 0.5, "max_silence": 0.1}
+        params.update(wrong_param)
+        with self.assertRaises(ValueError) as val_err:
+            split(None, **params)
+
+        name = set(wrong_param).pop()
+        value = wrong_param[name]
+        err_msg = "'{}' ({}) must be >{} 0".format(
+            name, value, "=" if name == "max_silence" else ""
+        )
+        self.assertEqual(err_msg, str(val_err.exception))
+
 
 @genty
 class TestAudioRegion(TestCase):
