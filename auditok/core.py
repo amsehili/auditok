@@ -88,12 +88,12 @@ def split(
         energy threshlod for audio activity detection, default: 50. If a custom
         validator is given, this argumemt will be ignored.
     """
-    if min_dur <= 0 or max_dur <= 0:
-        raise ValueError(
-            "min_dur ({}) and 'max_dur' ({}) must be > 0".format(
-                min_dur, max_dur
-            )
-        )
+    if min_dur <= 0:
+        raise ValueError("'min_dur' ({}) must be > 0".format(min_dur))
+    if max_dur <= 0:
+        raise ValueError("'max_dur' ({}) must be > 0".format(max_dur))
+    if max_silence < 0:
+        raise ValueError("'max_silence' ({}) must be >= 0".format(max_silence))
 
     if isinstance(input, AudioDataSource):
         source = input
