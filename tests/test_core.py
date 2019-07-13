@@ -878,14 +878,22 @@ class TestAudioRegion(TestCase):
     def test_region_slicing(
         self, region, slice_, expected_start, expected_data
     ):
-        sub_region = region[slice_]
+        sub_region = region.millis[slice_]
         self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
+
+        start_sec = slice_.start / 1000 if slice_.start is not None else None
+        stop_sec = slice_.stop / 1000 if slice_.stop is not None else None
+
+        sub_region = region.sec[start_sec:stop_sec]
+        self.assertEqual(sub_region.start, expected_start)
+        self.assertEqual(bytes(sub_region), expected_data)
+
 
     @genty_dataset(
         simple=(8000, 1, 1),
         stereo_sw_2=(8000, 2, 2),
-        arbitray_sr_multichannel=(5413, 2, 3),
+        arbitrary_sr_multichannel=(5413, 2, 3),
     )
     def test_concatenation(self, sampling_rate, sample_width, channels):
 
@@ -909,7 +917,7 @@ class TestAudioRegion(TestCase):
     @genty_dataset(
         simple=(8000, 1, 1),
         stereo_sw_2=(8000, 2, 2),
-        arbitray_sr_multichannel=(5413, 2, 3),
+        arbitrary_sr_multichannel=(5413, 2, 3),
     )
     def test_concatenation_many(self, sampling_rate, sample_width, channels):
 
