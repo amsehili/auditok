@@ -245,6 +245,44 @@ def _make_audio_region(
     return AudioRegion(data, start, sampling_rate, sample_width, channels)
 
 
+def _check_convert_index(index, types, err_msg):
+    if not isinstance(index, slice) or index.step is not None:
+        raise TypeError(err_msg)
+    start = index.start if index.start is not None else 0
+    stop = index.stop
+    for index in (start, stop):
+        if index is not None and not isinstance(index, types):
+            raise TypeError(err_msg)
+    return start, stop
+
+
+class _SecondsView:
+    def __init__(self, region):
+        self._region = region
+
+    def __getitem__(self, index):
+        err_msg = "Slicing AudioRegion by seconds requires indices of type "
+        err_msg += "'int' or 'float' without a step (e.g. region.sec[7.5:10])"
+        start_s, stop_s = _check_convert_index(index, (int, float), err_msg)
+        sr = self._region.sampling_rate
+        start_sample = int(start_s * sr)
+        stop_sample = None if stop_s is None else round(stop_s * sr)
+        return self._region[start_sample:stop_sample]
+
+
+class _MillisView(_SecondsView):
+    def __getitem__(self, index):
+        err_msg = (
+            "Slicing AudioRegion by milliseconds requires indices of type "
+        )
+        err_msg += "'int' without a step (e.g. region.sec[500:1500])"
+        start_ms, stop_ms = _check_convert_index(index, (int), err_msg)
+        start_sec = start_ms / 1000
+        stop_sec = None if stop_ms is None else stop_ms / 1000
+        index = slice(start_sec, stop_sec)
+        return super(_MillisView, self).__getitem__(index)
+
+
 class AudioRegion(object):
     def __init__(self, data, start, sampling_rate, sample_width, channels):
         """
@@ -269,6 +307,20 @@ class AudioRegion(object):
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
         self._channels = channels
+
+        self._seconds_view = _SecondsView(self)
+        self.s = self.sec
+
+        self._millis_view = _MillisView(self)
+        self.ms = self.millis
+
+    @property
+    def sec(self):
+        return self._seconds_view
+
+    @property
+    def millis(self):
+        return self._millis_view
 
     @property
     def start(self):
@@ -402,7 +454,7 @@ class AudioRegion(object):
 
     def __len__(self):
         """
-        Rerurns region duration in milliseconds.
+        Returns region duration in milliseconds.
         """
         return round(self.duration * 1000)
 
@@ -491,25 +543,26 @@ class AudioRegion(object):
         if index.step is not None:
             raise ValueError(err_msg)
 
-        start_ms = index.start if index.start is not None else 0
-        stop_ms = index.stop if index.stop is not None else len(self)
-        if not (isinstance(start_ms, int) and isinstance(stop_ms, int)):
-            raise TypeError("Slicing Audioregion requires integers")
+        bytes_per_sample = self.sample_width * self.channels
+        len_samples = len(self._data) // bytes_per_sample
 
-        if start_ms < 0:
-            start_ms = max(start_ms + len(self), 0)
-        if stop_ms < 0:
-            stop_ms = max(stop_ms + len(self), 0)
+        if index.start is None:
+            start_sample = None
+        else:
+            start_sample = index.start
+            if start_sample < 0:
+                start_sample = max(start_sample + len_samples, 0)
+        onset = start_sample * bytes_per_sample
 
-        samples_per_ms = self.sr / 1000
-        bytes_per_ms = samples_per_ms * self.sw * self.channels
-        # if a fraction of a sample is covered, return the whole sample
-        onset = int(start_ms * bytes_per_ms)
-        offset = round(stop_ms * bytes_per_ms + 0.5)
-        # recompute start_ms based on actual onset
-        actual_start_s = onset / bytes_per_ms / 1000
-        new_start = self.start + actual_start_s
+        if index.stop is None:
+            offset = None
+        elif index.stop < 0:
+            offset = max(index.stop + len_samples, 0) * bytes_per_sample
+        else:
+            offset = index.stop * bytes_per_sample
+
         data = self._data[onset:offset]
+        new_start = self.start + start_sample / self.sampling_rate
         return AudioRegion(data, new_start, self.sr, self.sw, self.ch)
 
 
