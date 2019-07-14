@@ -537,29 +537,23 @@ class AudioRegion(object):
         )
 
     def __getitem__(self, index):
-        err_msg = "AudioRegion index must a slice object without a step"
-        if not isinstance(index, slice):
-            raise TypeError(err_msg)
-        if index.step is not None:
-            raise ValueError(err_msg)
+        err_msg = "Slicing AudioRegion by samples requires indices of type "
+        err_msg += "'int' without a step (e.g. region.sec[1600:3200])"
+        start_sample, stop_sample = _check_convert_index(index, (int), err_msg)
 
         bytes_per_sample = self.sample_width * self.channels
         len_samples = len(self._data) // bytes_per_sample
 
-        if index.start is None:
-            start_sample = None
-        else:
-            start_sample = index.start
-            if start_sample < 0:
-                start_sample = max(start_sample + len_samples, 0)
+        if start_sample < 0:
+            start_sample = max(start_sample + len_samples, 0)
         onset = start_sample * bytes_per_sample
 
-        if index.stop is None:
-            offset = None
-        elif index.stop < 0:
-            offset = max(index.stop + len_samples, 0) * bytes_per_sample
-        else:
+        if stop_sample is not None:
+            if stop_sample < 0:
+                stop_sample = max(stop_sample + len_samples, 0)
             offset = index.stop * bytes_per_sample
+        else:
+            offset = None
 
         data = self._data[onset:offset]
         new_start = self.start + start_sample / self.sampling_rate
