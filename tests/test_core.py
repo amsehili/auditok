@@ -874,6 +874,12 @@ class TestAudioRegion(TestCase):
             0,
             b"",
         ),
+        arbitrary_sampling_rate=(
+            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1234, 1, 1),
+            slice(100, 200),
+            123 / 1234,
+            b"a" + b"b" * 123,
+        ),
     )
     def test_region_slicing(
         self, region, slice_, expected_start, expected_data
@@ -888,7 +894,6 @@ class TestAudioRegion(TestCase):
         sub_region = region.sec[start_sec:stop_sec]
         self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
-
 
     @genty_dataset(
         simple=(8000, 1, 1),
