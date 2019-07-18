@@ -312,6 +312,14 @@ class TestSplit(TestCase):
             {"uc": 1, "aw": 0.2},
             [(2, 32), (34, 76)],
         ),
+        mono_aw_0_2_max_silence_0=(
+            0.2,
+            5,
+            0,
+            1,
+            {"uc": 1, "aw": 0.2},
+            [(2, 14), (16, 24), (26, 28), (34, 76)],
+        ),
         mono_aw_0_2=(
             0.2,
             5,
@@ -320,6 +328,62 @@ class TestSplit(TestCase):
             {"uc": 1, "aw": 0.2},
             [(2, 30), (34, 76)],
         ),
+        mono_aw_0_3_max_silence_0=(
+            0.3,
+            5,
+            0,
+            1,
+            {"uc": 1, "aw": 0.3},
+            [(3, 12), (15, 24), (36, 76)],
+        ),
+        mono_aw_0_3_max_silence_0_3=(
+            0.3,
+            5,
+            0.3,
+            1,
+            {"uc": 1, "aw": 0.3},
+            [(3, 27), (36, 76)],
+        ),
+        mono_aw_0_3_max_silence_0_5=(
+            0.3,
+            5,
+            0.5,
+            1,
+            {"uc": 1, "aw": 0.3},
+            [(3, 27), (36, 76)],
+        ),
+        mono_aw_0_3_max_silence_0_6=(
+            0.3,
+            5,
+            0.6,
+            1,
+            {"uc": 1, "aw": 0.3},
+            [(3, 30), (36, 76)],
+        ),
+        mono_aw_0_4_max_silence_0=(
+            0.2,
+            5,
+            0.,
+            1,
+            {"uc": 1, "aw": 0.4},
+            [(4, 12), (16, 24), (36, 76)],
+        ),
+        mono_aw_0_4_max_silence_0_3=(
+            0.2,
+            5,
+            0.3,
+            1,
+            {"uc": 1, "aw": 0.4},
+            [(4, 12), (16, 24), (36, 76)],
+        ),
+        mono_aw_0_4_max_silence_0_4=(
+            0.2,
+            5,
+            0.4,
+            1,
+            {"uc": 1, "aw": 0.4},
+            [(4, 28), (36, 76)],
+        ),
         stereo_uc_1_analysis_window_0_2=(
             0.2,
             5,
@@ -327,6 +391,14 @@ class TestSplit(TestCase):
             2,
             {"uc": 1, "analysis_window": 0.2},
             [(2, 30), (34, 76)],
+        ),
+        stereo_uc_2_analysis_window_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"uc": 2, "analysis_window": 0.2},
+            [(10, 32), (36, 76)],
         ),
     )
     def test_split_analysis_window(
@@ -881,7 +953,7 @@ class TestAudioRegion(TestCase):
             b"a" + b"b" * 123,
         ),
     )
-    def test_region_slicing(
+    def test_region_temporal_slicing(
         self, region, slice_, expected_start, expected_data
     ):
         sub_region = region.millis[slice_]
@@ -892,6 +964,141 @@ class TestAudioRegion(TestCase):
         stop_sec = slice_.stop / 1000 if slice_.stop is not None else None
 
         sub_region = region.sec[start_sec:stop_sec]
+        self.assertEqual(sub_region.start, expected_start)
+        self.assertEqual(bytes(sub_region), expected_data)
+
+    @genty_dataset(
+        first_half=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, 80),
+            0,
+            b"a" * 80,
+        ),
+        second_half=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(80, None),
+            0.5,
+            b"b" * 80,
+        ),
+        second_half_negative=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-80, None),
+            0.5,
+            b"b" * 80,
+        ),
+        middle=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(160 // 5, 160 // 4 * 3),
+            0.2,
+            b"a" * 48 + b"b" * 40,
+        ),
+        middle_negative=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-160 // 5 * 4, -160 // 4),
+            0.2,
+            b"a" * 48 + b"b" * 40,
+        ),
+        middle_sw2=(
+            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 2, 1),
+            slice(160 // 5, 160 // 4 * 3),
+            0.2,
+            b"a" * 96 + b"b" * 80,
+        ),
+        middle_ch2=(
+            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 1, 2),
+            slice(160 // 5, 160 // 4 * 3),
+            0.2,
+            b"a" * 96 + b"b" * 80,
+        ),
+        middle_sw2_ch2=(
+            AudioRegion(b"a" * 320 + b"b" * 320, 0, 160, 2, 2),
+            slice(160 // 5, 160 // 4 * 3),
+            0.2,
+            b"a" * 192 + b"b" * 160,
+        ),
+        but_first_sample=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(1, None),
+            1 / 8000,
+            b"a" * (4000 - 1) + b"b" * 4000,
+        ),
+        but_first_sample_negative=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(-7999, None),
+            1 / 8000,
+            b"a" * (4000 - 1) + b"b" * 4000,
+        ),
+        but_last_sample=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(0, 7999),
+            0,
+            b"a" * 4000 + b"b" * (4000 - 1),
+        ),
+        but_last_sample_negative=(
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            slice(0, -1),
+            0,
+            b"a" * 4000 + b"b" * (4000 - 1),
+        ),
+        big_negative_start=(
+            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            slice(-1600, None),
+            0,
+            b"a" * 160,
+        ),
+        big_negative_stop=(
+            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            slice(None, -1600),
+            0,
+            b"",
+        ),
+        empty=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, 0),
+            0,
+            b"",
+        ),
+        empty_start_stop_reversed=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(80, 40),
+            0.5,
+            b"",
+        ),
+        empty_big_positive_start=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(1600, 3000),
+            10,
+            b"",
+        ),
+        empty_negative_reversed=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(-16, -32),
+            0.9,
+            b"",
+        ),
+        empty_big_negative_stop=(
+            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            slice(0, -2000),
+            0,
+            b"",
+        ),
+        arbitrary_sampling_rate=(
+            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1235, 1, 1),
+            slice(100, 200),
+            100 / 1235,
+            b"a" * 24 + b"b" * 76,
+        ),
+        arbitrary_sampling_rate_middle_sw2_ch2=(
+            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1235, 2, 2),
+            slice(25, 50),
+            25 / 1235,
+            b"a" * 24 + b"b" * 76,
+        ),
+    )
+    def test_region_sample_slicing(
+        self, region, slice_, expected_start, expected_data
+    ):
+        sub_region = region[slice_]
         self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
 
