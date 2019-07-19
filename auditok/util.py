@@ -709,7 +709,9 @@ class _FixedSizeAudioReader(_AudioSourceProxy):
             err_msg = "Too small block_dur ({0:f}) for sampling rate ({1}). "
             err_msg += "block_dur should cover at least one sample "
             err_msg += "(i.e. 1/{1})"
-            raise TooSamllBlockDuration(err_msg.format(block_dur, self.sr))
+            raise TooSamllBlockDuration(
+                err_msg.format(block_dur, self.sr), block_dur, self.sr
+            )
 
     def read(self):
         return self._audio_source.read(self._block_size)
