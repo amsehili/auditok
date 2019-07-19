@@ -775,6 +775,14 @@ class TestSplit(TestCase):
         )
         self.assertEqual(err_msg, str(val_err.exception))
 
+    def test_split_too_small_analysis_window(self):
+        with self.assertRaises(ValueError) as val_err:
+            split(b"", sr=10, sw=1, ch=1, analysis_window=0.09)
+        err_msg = "Too small 'analysis_windows' (0.09) for sampling rate (10)."
+        err_msg += " Analysis windows should at least be 1/10 to cover one "
+        err_msg += "single data sample"
+        self.assertEqual(err_msg, str(val_err.exception))
+
 
 @genty
 class TestAudioRegion(TestCase):
