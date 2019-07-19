@@ -38,18 +38,21 @@ class TestFunctions(TestCase):
         not_multiple_floor=(0.35, 0.1, math.floor, 3),
         small_duration=(0.05, 0.1, round, 0),
         small_duration_ceil=(0.05, 0.1, math.ceil, 1),
+        with_round_error=(0.3, 0.1, math.floor, 3, {"epsilon":1e-6}),
         negative_duration=(-0.5, 0.1, math.ceil, ValueError),
         negative_analysis_window=(0.5, -0.1, math.ceil, ValueError),
     )
     def test_duration_to_nb_windows(
-        self, duration, analysis_window, round_fn, expected
+        self, duration, analysis_window, round_fn, expected, kwargs=None
     ):
         if expected == ValueError:
             with self.assertRaises(expected):
                 _duration_to_nb_windows(duration, analysis_window, round_fn)
         else:
+            if kwargs is None:
+                kwargs = {}
             result = _duration_to_nb_windows(
-                duration, analysis_window, round_fn
+                duration, analysis_window, round_fn, **kwargs
             )
             self.assertEqual(result, expected)
 
@@ -363,7 +366,7 @@ class TestSplit(TestCase):
         mono_aw_0_4_max_silence_0=(
             0.2,
             5,
-            0.,
+            0,
             1,
             {"uc": 1, "aw": 0.4},
             [(4, 12), (16, 24), (36, 76)],

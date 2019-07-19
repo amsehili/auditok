@@ -18,6 +18,7 @@ __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
 DEFAULT_ENERGY_THRESHOLD = 50
+_EPSILON = 1e-6
 
 
 def split(
@@ -127,9 +128,9 @@ def split(
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
     min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
-    max_length = _duration_to_nb_windows(max_dur, analysis_window, math.floor)
+    max_length = _duration_to_nb_windows(max_dur, analysis_window, math.floor, _EPSILON)
     max_continuous_silence = _duration_to_nb_windows(
-        max_silence, analysis_window, math.floor
+        max_silence, analysis_window, math.floor, _EPSILON
     )
 
     err_msg = "({0} sec.) results in {1} analysis window(s) "
@@ -163,6 +164,7 @@ def split(
             )
         )
 
+    #print(min_length, max_length, max_continuous_silence)
     tokenizer = StreamTokenizer(
         validator, min_length, max_length, max_continuous_silence, mode=mode
     )
@@ -182,7 +184,7 @@ def split(
     return region_gen
 
 
-def _duration_to_nb_windows(duration, analysis_window, round_fn=round):
+def _duration_to_nb_windows(duration, analysis_window, round_fn=round, epsilon=0):
     """
     Converts a given duration into a positive integer of analysis windows.
     if `duration / analysis_window` is not an integer, the result will be
@@ -194,9 +196,16 @@ def _duration_to_nb_windows(duration, analysis_window, round_fn=round):
     :Parameters:
 
     duration: float
-        a given duration in seconds or ms
+        a given duration in seconds or ms.
     analysis_window: float
-        size of analysis window, in the same unit as `duration`
+        size of analysis window, in the same unit as `duration`.
+    round_fn: callable
+        function called to round the result. Default: `round`.
+    epsilon: float
+        small value to add to the division result before rounding.
+        E.g., `0.3 / 0.1 = 2.9999999999999996`, when called with
+        `round_fn=math.floor` returns `2` instead of `3`. Adding a small value
+        to `0.3 / 0.1` avoids this error.
 
     Returns:
     --------
@@ -209,7 +218,7 @@ def _duration_to_nb_windows(duration, analysis_window, round_fn=round):
         raise ValueError(err_msg.format(duration, analysis_window))
     if duration == 0:
         return 0
-    return int(round_fn(duration / analysis_window))
+    return int(round_fn(duration / analysis_window + epsilon))
 
 
 def _make_audio_region(
