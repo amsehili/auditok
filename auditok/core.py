@@ -12,6 +12,7 @@ import os
 import math
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for
+from auditok.exceptions import TooSamllBlockDuration
 
 __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
@@ -112,8 +113,15 @@ def split(
             params["sample_width"] = input.sw
             params["channels"] = input.ch
             input = bytes(input)
-
-        source = AudioDataSource(input, block_dur=analysis_window, **params)
+        try:
+            source = AudioDataSource(
+                input, block_dur=analysis_window, **params
+            )
+        except TooSamllBlockDuration as exc:
+            err_msg = "Too small 'analysis_windows' ({0}) for sampling rate "
+            err_msg += "({1}). Analysis windows should at least be 1/{1} to "
+            err_msg += "cover one single data sample"
+            raise ValueError(err_msg.format(exc.block_dur, exc.sampling_rate))
 
     validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None:
@@ -128,7 +136,9 @@ def split(
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
     min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
-    max_length = _duration_to_nb_windows(max_dur, analysis_window, math.floor, _EPSILON)
+    max_length = _duration_to_nb_windows(
+        max_dur, analysis_window, math.floor, _EPSILON
+    )
     max_continuous_silence = _duration_to_nb_windows(
         max_silence, analysis_window, math.floor, _EPSILON
     )
@@ -164,7 +174,7 @@ def split(
             )
         )
 
-    #print(min_length, max_length, max_continuous_silence)
+    # print(min_length, max_length, max_continuous_silence)
     tokenizer = StreamTokenizer(
         validator, min_length, max_length, max_continuous_silence, mode=mode
     )
@@ -184,7 +194,9 @@ def split(
     return region_gen
 
 
-def _duration_to_nb_windows(duration, analysis_window, round_fn=round, epsilon=0):
+def _duration_to_nb_windows(
+    duration, analysis_window, round_fn=round, epsilon=0
+):
     """
     Converts a given duration into a positive integer of analysis windows.
     if `duration / analysis_window` is not an integer, the result will be
