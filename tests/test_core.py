@@ -760,10 +760,17 @@ class TestSplit(TestCase):
         negative_max_dur=({"max_dur": -1},),
         zero_max_dur=({"max_dur": 0},),
         negative_max_silence=({"max_silence": -1},),
+        zero_analysis_window=({"analysis_window": 0},),
+        negative_analysis_window=({"analysis_window": -1},),
     )
     def test_split_negative_temporal_params(self, wrong_param):
 
-        params = {"min_dur": 0.2, "max_dur": 0.5, "max_silence": 0.1}
+        params = {
+            "min_dur": 0.2,
+            "max_dur": 0.5,
+            "max_silence": 0.1,
+            "analysis_window": 0.1,
+        }
         params.update(wrong_param)
         with self.assertRaises(ValueError) as val_err:
             split(None, **params)
