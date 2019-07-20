@@ -104,6 +104,10 @@ def split(
         analysis_window = kwargs.get(
             "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
         )
+        if analysis_window <= 0:
+            raise ValueError(
+                "'analysis_window' ({}) must be > 0".format(analysis_window)
+            )
 
         params = kwargs.copy()
         params["max_read"] = params.get("max_read", params.get("mr"))
