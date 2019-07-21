@@ -11,7 +11,7 @@ Class summary
 import os
 import math
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
-from auditok.io import check_audio_data, to_file, player_for
+from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
 
 __all__ = ["split", "AudioRegion", "StreamTokenizer"]
@@ -338,6 +338,27 @@ class AudioRegion(object):
 
         self._millis_view = _MillisView(self)
         self.ms = self.millis
+
+    @classmethod
+    def load(cls, file, skip=0, max_read=None, **kwargs):
+        audio_source = get_audio_source(file, **kwargs)
+        audio_source.open()
+        if skip is not None and skip > 0:
+            skip_samples = int(skip * audio_source.sampling_rate)
+            audio_source.read(skip_samples)
+        if max_read is None or max_read < 0:
+            max_read_samples = None
+        else:
+            max_read_samples = round(max_read * audio_source.sampling_rate)
+        data = audio_source.read(max_read_samples)
+        audio_source.close()
+        return cls(
+            data,
+            0,
+            audio_source.sampling_rate,
+            audio_source.sample_width,
+            audio_source.channels,
+        )
 
     @property
     def sec(self):
