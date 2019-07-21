@@ -456,11 +456,12 @@ class BufferAudioSource(Rewindable):
     def read(self, size):
         if not self._is_open:
             raise AudioIOError("Stream is not open")
-        bytes_to_read = self._sample_size_all_channels * size
-        data = self._buffer[
-            self._current_position_bytes : self._current_position_bytes
-            + bytes_to_read
-        ]
+        if size is None or size < 0:
+            offset = None
+        else:
+            bytes_to_read = self._sample_size_all_channels * size
+            offset = self._current_position_bytes + bytes_to_read
+        data = self._buffer[self._current_position_bytes : offset]
         if data:
             self._current_position_bytes += len(data)
             return data
@@ -587,7 +588,10 @@ class RawAudioSource(_FileAudioSource, Rewindable):
             self._audio_stream = open(self._file, "rb")
 
     def _read_from_stream(self, size):
-        bytes_to_read = size * self._sample_size
+        if size is None or size < 0:
+            bytes_to_read = None
+        else:
+            bytes_to_read = size * self._sample_size
         data = self._audio_stream.read(bytes_to_read)
         return data
 
@@ -622,6 +626,8 @@ class WaveAudioSource(_FileAudioSource, Rewindable):
             self._audio_stream = wave.open(self._filename)
 
     def _read_from_stream(self, size):
+        if size is None or size < 0:
+            size = -1
         return self._audio_stream.readframes(size)
 
 
