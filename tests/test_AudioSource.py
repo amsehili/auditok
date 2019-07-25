@@ -12,7 +12,7 @@ from auditok.io import (
     RawAudioSource,
     WaveAudioSource,
 )
-from test_util import PURE_TONE_DICT
+from test_util import PURE_TONE_DICT, _sample_generator
 
 
 def audio_source_read_all_gen(audio_source, size=None):
@@ -31,142 +31,87 @@ class TestAudioSource(unittest.TestCase):
     # TODO when use_channel is None, return samples from all channels
 
     @genty_dataset(
-        mono_default=("mono_400Hz", 1, None, 400),
-        mono_mix=("mono_400Hz", 1, "mix", 400),
-        mono_channel_selection=("mono_400Hz", 1, 2, 400),
-        multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
-        multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
-        multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
-        multichannel_channel_select_3rd=(
-            "3channel_400-800-1600Hz",
-            3,
-            3,
-            1600,
-        ),
+        mono=("mono_400Hz", (400,)),
+        multichannel=("3channel_400-800-1600Hz", (400, 800, 1600)),
     )
-    def test_BufferAudioSource_read_all(
-        self, file_suffix, channels, use_channel, frequency
-    ):
+    def test_BufferAudioSource_read_all(self, file_suffix, frequencies):
         file = "tests/data/test_16KHZ_{}.raw".format(file_suffix)
         with open(file, "rb") as fp:
             expected = fp.read()
-            audio_source = BufferAudioSource(expected, 16000, 2, channels)
-            audio_source.open()
-            data = audio_source.read(None)
-            self.assertEqual(data, expected)
-            audio_source.rewind()
-            data = audio_source.read(-10)
-            self.assertEqual(data, expected)
-            audio_source.close()
-
+        channels = len(frequencies)
+        audio_source = BufferAudioSource(expected, 16000, 2, channels)
+        audio_source.open()
+        data = audio_source.read(None)
+        self.assertEqual(data, expected)
+        audio_source.rewind()
+        data = audio_source.read(-10)
+        self.assertEqual(data, expected)
+        audio_source.close()
 
     @genty_dataset(
-        mono_default=("mono_400Hz", 1, None, 400),
-        mono_mix=("mono_400Hz", 1, "mix", 400),
-        mono_channel_selection=("mono_400Hz", 1, 2, 400),
-        multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
-        multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
-        multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
-        multichannel_channel_select_3rd=(
-            "3channel_400-800-1600Hz",
-            3,
-            3,
-            1600,
-        ),
+        mono=("mono_400Hz", (400,)),
+        multichannel=("3channel_400-800-1600Hz", (400, 800, 1600)),
     )
-    def test_RawAudioSource(
-        self, file_suffix, channels, use_channel, frequency
-    ):
+    def test_RawAudioSource(self, file_suffix, frequencies):
         file = "tests/data/test_16KHZ_{}.raw".format(file_suffix)
-        audio_source = RawAudioSource(file, 16000, 2, channels, use_channel)
+        channels = len(frequencies)
+        audio_source = RawAudioSource(file, 16000, 2, channels)
         audio_source.open()
-        data = b"".join(audio_source_read_all_gen(audio_source))
+        data_read_all = b"".join(audio_source_read_all_gen(audio_source))
         audio_source.close()
-        expected = _array_to_bytes(PURE_TONE_DICT[frequency])
-        self.assertEqual(data, expected)
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+        fmt = DATA_FORMAT[audio_source.sample_width]
+        expected = _array_to_bytes(
+            array(fmt, _sample_generator(*mono_channels))
+        )
+
+        self.assertEqual(data_read_all, expected)
 
         # assert read all data with None
-        audio_source = RawAudioSource(file, 16000, 2, channels, use_channel)
+        audio_source = RawAudioSource(file, 16000, 2, channels)
         audio_source.open()
         data_read_all = audio_source.read(None)
         audio_source.close()
         self.assertEqual(data_read_all, expected)
 
         # assert read all data with a negative size
-        audio_source = RawAudioSource(file, 16000, 2, channels, use_channel)
+        audio_source = RawAudioSource(file, 16000, 2, channels)
         audio_source.open()
         data_read_all = audio_source.read(-10)
         audio_source.close()
         self.assertEqual(data_read_all, expected)
-
-
-    def test_RawAudioSource_mix(self):
-        file = "tests/data/test_16KHZ_3channel_400-800-1600Hz.raw"
-        audio_source = RawAudioSource(file, 16000, 2, 3, use_channel="mix")
-        audio_source.open()
-        data = b"".join(audio_source_read_all_gen(audio_source))
-        audio_source.close()
-
-        mono_channels = [PURE_TONE_DICT[freq] for freq in [400, 800, 1600]]
-        fmt = DATA_FORMAT[2]
-        expected = _array_to_bytes(
-            array(fmt, (sum(samples) // 3 for samples in zip(*mono_channels)))
-        )
-        expected = expected
-        self.assertEqual(data, expected)
 
     @genty_dataset(
-        mono_default=("mono_400Hz", 1, None, 400),
-        mono_mix=("mono_400Hz", 1, "mix", 400),
-        mono_channel_selection=("mono_400Hz", 1, 2, 400),
-        multichannel_default=("3channel_400-800-1600Hz", 3, None, 400),
-        multichannel_channel_select_1st=("3channel_400-800-1600Hz", 3, 1, 400),
-        multichannel_channel_select_2nd=("3channel_400-800-1600Hz", 3, 2, 800),
-        multichannel_channel_select_3rd=(
-            "3channel_400-800-1600Hz",
-            3,
-            3,
-            1600,
-        ),
+        mono=("mono_400Hz", (400,)),
+        multichannel=("3channel_400-800-1600Hz", (400, 800, 1600)),
     )
-    def test_WaveAudioSource(
-        self, file_suffix, channels, use_channel, frequency
-    ):
+    def test_WaveAudioSource(self, file_suffix, frequencies):
         file = "tests/data/test_16KHZ_{}.wav".format(file_suffix)
-        audio_source = WaveAudioSource(file, use_channel)
+        audio_source = WaveAudioSource(file)
         audio_source.open()
         data = b"".join(audio_source_read_all_gen(audio_source))
         audio_source.close()
-        expected = _array_to_bytes(PURE_TONE_DICT[frequency])
+        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+        fmt = DATA_FORMAT[audio_source.sample_width]
+        expected = _array_to_bytes(
+            array(fmt, _sample_generator(*mono_channels))
+        )
+
         self.assertEqual(data, expected)
 
         # assert read all data with None
-        audio_source = WaveAudioSource(file, use_channel)
+        audio_source = WaveAudioSource(file)
         audio_source.open()
         data_read_all = audio_source.read(None)
         audio_source.close()
         self.assertEqual(data_read_all, expected)
 
         # assert read all data with a negative size
-        audio_source = WaveAudioSource(file, use_channel)
+        audio_source = WaveAudioSource(file)
         audio_source.open()
         data_read_all = audio_source.read(-10)
         audio_source.close()
         self.assertEqual(data_read_all, expected)
-
-    def test_WaveAudioSource_mix(self):
-        file = "tests/data/test_16KHZ_3channel_400-800-1600Hz.wav"
-        audio_source = WaveAudioSource(file, use_channel="mix")
-        audio_source.open()
-        data = b"".join(audio_source_read_all_gen(audio_source))
-        audio_source.close()
-
-        mono_channels = [PURE_TONE_DICT[freq] for freq in [400, 800, 1600]]
-        fmt = DATA_FORMAT[2]
-        expected = _array_to_bytes(
-            array(fmt, (sum(samples) // 3 for samples in zip(*mono_channels)))
-        )
-        self.assertEqual(data, expected)
 
 
 @genty

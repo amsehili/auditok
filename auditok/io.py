@@ -71,7 +71,6 @@ __all__ = [
 DEFAULT_SAMPLING_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
 DEFAULT_NB_CHANNELS = 1
-DEFAULT_USE_CHANNEL = 0
 DATA_FORMAT = {1: "b", 2: "h", 4: "i"}
 
 
@@ -130,32 +129,17 @@ def _get_audio_parameters(param_dict):
     Gets audio parameters from a dictionary of parameters.
     A parameter can have a long name or a short name. If the long name is
     present, the short name is ignored. In neither is present then
-    `AudioParameterError` is raised  except for the `use_channel` (or `uc`)
-    parameter for which a defalut value of 0 is returned.
-
-    Also raises `AudioParameterError` if sampling rate, sample width or
-    channels is not an integer.
+    `AudioParameterError` is raised.
 
     Expected parameters are:
 
         `sampling_rate`, `sr`: int, sampling rate.
         `sample_width`, `sw`: int, sample size in bytes.
         `channels`, `ch`: int, number of channels.
-        `use_channel`, `us`: int or str, which channel to use from data.
-            Default value is 0 (first channel). The following special str
-            values are also accepted:
-                `left`: alias for 0
-                `right`: alias for 1
-                `mix`: indicates that all channels should be mixed up into one
-                    single channel
 
     :Returns
-
-        param_dict: tuple
-            audio parameters as a tuple (sampling_rate,
-                                         sample_width,
-                                         channels,
-                                         use_channel)
+        audio_parameters: tuple
+            audio parameters: (sampling_rate, sample_width, channels)
     """
     err_message = (
         "'{ln}' (or '{sn}') must be a positive integer, found: '{val}'"
@@ -173,8 +157,7 @@ def _get_audio_parameters(param_dict):
             )
         parameters.append(param)
     sampling_rate, sample_width, channels = parameters
-    use_channel = param_dict.get("use_channel", param_dict.get("uc"))
-    return sampling_rate, sample_width, channels, use_channel
+    return sampling_rate, sample_width, channels
 
 
 def _array_to_bytes(a):
@@ -530,27 +513,13 @@ class BufferAudioSource(Rewindable):
 
 
 class _FileAudioSource(AudioSource):
-    def __init__(self, sampling_rate, sample_width, channels, use_channel):
+    def __init__(self, sampling_rate, sample_width, channels):
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._audio_stream = None
-        self._use_channel = _normalize_use_channel(use_channel)
-        if channels > 1:
-            self._extract_selected_channel = partial(
-                _extract_selected_channel,
-                channels=channels,
-                sample_width=sample_width,
-                use_channel=self._use_channel,
-            )
-        else:
-            self._extract_selected_channel = lambda x: x
 
     def __del__(self):
         if self.is_open():
             self.close()
-
-    @property
-    def use_channel(self):
-        return self._use_channel
 
     def is_open(self):
         return self._audio_stream is not None
@@ -567,18 +536,14 @@ class _FileAudioSource(AudioSource):
         if not self.is_open():
             raise AudioIOError("Audio stream is not open")
         data = self._read_from_stream(size)
-        if data:
-            return self._extract_selected_channel(data)
-        return None
+        if not data:
+            return None
+        return data
 
 
 class RawAudioSource(_FileAudioSource, Rewindable):
-    def __init__(
-        self, file, sampling_rate, sample_width, channels, use_channel=None
-    ):
-        _FileAudioSource.__init__(
-            self, sampling_rate, sample_width, channels, use_channel
-        )
+    def __init__(self, file, sampling_rate, sample_width, channels):
+        _FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._file = file
         self._audio_stream = None
         self._sample_size = sample_width * channels
@@ -608,7 +573,7 @@ class WaveAudioSource(_FileAudioSource, Rewindable):
             path to a valid wave file.
     """
 
-    def __init__(self, filename, use_channel=None):
+    def __init__(self, filename):
         self._filename = filename
         self._audio_stream = None
         stream = wave.open(self._filename, "rb")
@@ -617,7 +582,6 @@ class WaveAudioSource(_FileAudioSource, Rewindable):
             stream.getframerate(),
             stream.getsampwidth(),
             stream.getnchannels(),
-            use_channel,
         )
         stream.close()
 
@@ -700,12 +664,9 @@ class StdinAudioSource(_FileAudioSource):
         sampling_rate=DEFAULT_SAMPLING_RATE,
         sample_width=DEFAULT_SAMPLE_WIDTH,
         channels=DEFAULT_NB_CHANNELS,
-        use_channel=0,
     ):
 
-        _FileAudioSource.__init__(
-            self, sampling_rate, sample_width, channels, use_channel
-        )
+        _FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._is_open = False
         self._sample_size = sample_width * channels
         if PYTHON_3:
@@ -847,20 +808,12 @@ def get_audio_source(input=None, **kwargs):
         "-", raw data will be read from stdin. If None, read audio data from
         microphone using PyAudio.
     """
-    sampling_rate, sample_width, channels, use_channel = _get_audio_parameters(
-        kwargs
-    )
+    sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
     if input == "-":
-        return StdinAudioSource(
-            sampling_rate, sample_width, channels, use_channel
-        )
+        return StdinAudioSource(sampling_rate, sample_width, channels)
 
     if isinstance(input, bytes):
-        use_channel = _normalize_use_channel(use_channel)
-        data = _extract_selected_channel(
-            input, channels, sample_width, use_channel
-        )
-        return BufferAudioSource(data, sampling_rate, sample_width, 1)
+        return BufferAudioSource(input, sampling_rate, sample_width, channels)
 
     # read data from a file
     if input is not None:
@@ -879,14 +832,7 @@ def get_audio_source(input=None, **kwargs):
         )
 
 
-def _load_raw(
-    file,
-    sampling_rate,
-    sample_width,
-    channels,
-    use_channel=1,
-    large_file=False,
-):
+def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
     """
     Load a raw audio file with standard Python.
     If `large_file` is True, audio data will be lazily
@@ -903,15 +849,13 @@ def _load_raw(
             sample width of audio data
         `channels`: int
             number of channels of audio data
-        `use_channel`: int
-            audio channel to read if file is not mono audio. This must be an integer
-            0 >= and < channels, or one of 'left' (treated as 0 or first channel), or
-            right (treated as 1 or second channels). 
+        `large_file`: bool
+            If True, return a `RawAudioSource` object that reads data lazily
+            from disk, otherwise load all data and return a `BufferAudioSource`
 
     :Returns:
 
-        `PyAudioPlayer` that has the same sampling rate, sample width and number of channels
-        as `audio_source`.
+        `RawAudioSource` if `large_file` is True, `BufferAudioSource` otherwise
     """
     if None in (sampling_rate, sample_width, channels):
         raise AudioParameterError(
@@ -924,52 +868,38 @@ def _load_raw(
             sampling_rate=sampling_rate,
             sample_width=sample_width,
             channels=channels,
-            use_channel=use_channel,
-        )
-    else:
-        with open(file, "rb") as fp:
-            data = fp.read()
-        if channels != 1:
-            use_channel = _normalize_use_channel(
-                use_channel
-            )  # TODO: should happen in BufferAudioSource
-            data = _extract_selected_channel(
-                data, channels, sample_width, use_channel
-            )
-        return BufferAudioSource(
-            data,
-            sampling_rate=sampling_rate,
-            sample_width=sample_width,
-            channels=1,
         )
 
+    with open(file, "rb") as fp:
+        data = fp.read()
+    return BufferAudioSource(
+        data,
+        sampling_rate=sampling_rate,
+        sample_width=sample_width,
+        channels=channels,
+    )
 
-def _load_wave(filename, large_file=False, use_channel=1):
+
+def _load_wave(filename, large_file=False):
     """
     Load a wave audio file with standard Python.
     If `large_file` is True, audio data will be lazily
     loaded to memory.
 
-    See also :func:`to_file`.
     """
     if large_file:
-        return WaveAudioSource(filename, use_channel)
+        return WaveAudioSource(filename)
     with wave.open(filename) as fp:
         channels = fp.getnchannels()
         srate = fp.getframerate()
         swidth = fp.getsampwidth()
         data = fp.readframes(-1)
-    if channels > 1:
-        use_channel = _normalize_use_channel(
-            use_channel
-        )  # TODO: should happen in BufferAudioSource
-        data = _extract_selected_channel(data, channels, swidth, use_channel)
     return BufferAudioSource(
-        data, sampling_rate=srate, sample_width=swidth, channels=1
+        data, sampling_rate=srate, sample_width=swidth, channels=channels
     )
 
 
-def _load_with_pydub(filename, audio_format, use_channel=1):
+def _load_with_pydub(filename, audio_format):
     """Open compressed audio file using pydub. If a video file
     is passed, its audio track(s) are extracted and loaded.
     This function should not be called directely, use :func:`from_file`
@@ -989,19 +919,11 @@ def _load_with_pydub(filename, audio_format, use_channel=1):
     }
     open_function = func_dict.get(audio_format, AudioSegment.from_file)
     segment = open_function(filename)
-    data = segment._data
-    if segment.channels > 1:
-        use_channel = _normalize_use_channel(
-            use_channel
-        )  # TODO: should happen in BufferAudioSource
-        data = _extract_selected_channel(
-            data, segment.channels, segment.sample_width, use_channel
-        )
     return BufferAudioSource(
-        data_buffer=data,
+        data_buffer=segment._data,
         sampling_rate=segment.frame_rate,
         sample_width=segment.sample_width,
-        channels=1,
+        channels=segment.channels,
     )
 
 
@@ -1032,7 +954,7 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
         audio format used to save data  (e.g. raw, webm, wav, ogg)
     `large_file`: bool
         If True, audio won't fully be loaded to memory but only when a window
-        is read disk.
+        is read from disk.
 
     :kwargs:
 
@@ -1045,10 +967,6 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
         sample width (i.e. number of bytes used to represent one audio sample)
     `channels`: int
         number of channels of audio data
-    `use_channel`: int, str
-        audio channel to extract from input file if file is not mono audio.
-        This must be an integer >= 0 and < channels, or one of the special
-        values `left` and `right` (treated as 0 and 1 respectively).
 
     :Returns:
 
@@ -1062,20 +980,16 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
     audio_format = _guess_audio_format(audio_format, filename)
 
     if audio_format == "raw":
-        srate, swidth, channels, use_channel = _get_audio_parameters(kwargs)
-        return _load_raw(
-            filename, srate, swidth, channels, use_channel, large_file
-        )
+        srate, swidth, channels = _get_audio_parameters(kwargs)
+        return _load_raw(filename, srate, swidth, channels, large_file)
 
-    use_channel = kwargs.get("use_channel", kwargs.get("uc"))
     if audio_format in ["wav", "wave"]:
-        return _load_wave(filename, large_file, use_channel)
+        return _load_wave(filename, large_file)
     if large_file:
-        raise AudioIOError("Large file format should be raw or wav")
+        err_msg = "if 'large_file` is True file format should be raw or wav"
+        raise AudioIOError(err_msg)
     if _WITH_PYDUB:
-        return _load_with_pydub(
-            filename, audio_format=audio_format, use_channel=use_channel
-        )
+        return _load_with_pydub(filename, audio_format=audio_format)
     else:
         raise AudioIOError(
             "pydub is required for audio formats other than raw or wav"
@@ -1160,8 +1074,7 @@ def to_file(data, file, audio_format=None, **kwargs):
         _save_raw(data, file)
         return
     try:
-        params = _get_audio_parameters(kwargs)
-        sampling_rate, sample_width, channels, _ = params
+        sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
     except AudioParameterError as exc:
         err_message = "All audio parameters are required to save formats "
         "other than raw. Error detail: {}".format(exc)
