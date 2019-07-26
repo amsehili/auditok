@@ -74,12 +74,10 @@ def split(
         nuumber of channels of audio data. Only needed for raw audio files.
     use_channel, uc: int, str
         which channel to use if input has multichannel audio data. Can be an
-        int (0 being the first channel), or one of the following special str
-        values:
-        - 'left': first channel (equivalent to 0)
-        - 'right': second channel (equivalent to 1)
-        - 'mix': compute average channel
-        Default: 0, use the first channel.
+        int (0 being the first channel), or one of the following values:
+            - None, "any": a valid frame from one any given channel makes
+              parallel frames from all other channels automatically valid.
+            - 'mix': compute average channel (i.e. mix down all channels)
     max_read, mr: float
         maximum data to read in seconds. Default: `None`, read until there is
         no more data to read.
@@ -132,8 +130,10 @@ def split(
         energy_threshold = kwargs.get(
             "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
         )
-        validator = AudioEnergyValidator(source.sw, energy_threshold)
-
+        use_channel = kwargs.get("use_channel", kwargs.get("uc"))
+        validator = AudioEnergyValidator(
+            energy_threshold, source.sw, source.ch, use_channel=use_channel
+        )
     mode = (
         StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
     )

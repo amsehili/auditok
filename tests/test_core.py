@@ -182,25 +182,15 @@ class TestSplit(TestCase):
             self.assertEqual(bytes(reg), exp_data)
 
     @genty_dataset(
-        stereo_all_default=(2, {}, [(2, 16), (17, 31), (34, 76)]),
+        stereo_all_default=(2, {}, [(2, 32), (34, 76)]),
         mono_max_read=(1, {"max_read": 5}, [(2, 16), (17, 31), (34, 50)]),
         mono_max_read_short_name=(1, {"mr": 5}, [(2, 16), (17, 31), (34, 50)]),
         mono_use_channel_1=(
             1,
-            {"eth": 50, "use_channel": 1},
+            {"eth": 50, "use_channel": 0},
             [(2, 16), (17, 31), (34, 76)],
         ),
         mono_uc_1=(1, {"eth": 50, "uc": 1}, [(2, 16), (17, 31), (34, 76)]),
-        mono_use_channel_left=(
-            1,
-            {"eth": 50, "use_channel": "left"},
-            [(2, 16), (17, 31), (34, 76)],
-        ),
-        mono_uc_left=(
-            1,
-            {"eth": 50, "uc": "left"},
-            [(2, 16), (17, 31), (34, 76)],
-        ),
         mono_use_channel_None=(
             1,
             {"eth": 50, "use_channel": None},
@@ -208,30 +198,20 @@ class TestSplit(TestCase):
         ),
         stereo_use_channel_1=(
             2,
-            {"eth": 50, "use_channel": 1},
-            [(2, 16), (17, 31), (34, 76)],
-        ),
-        stereo_use_channel_left=(
-            2,
-            {"eth": 50, "use_channel": "left"},
+            {"eth": 50, "use_channel": 0},
             [(2, 16), (17, 31), (34, 76)],
         ),
         stereo_use_channel_no_use_channel_given=(
             2,
             {"eth": 50},
-            [(2, 16), (17, 31), (34, 76)],
+            [(2, 32), (34, 76)],
         ),
         stereo_use_channel_minus_2=(
             2,
             {"eth": 50, "use_channel": -2},
             [(2, 16), (17, 31), (34, 76)],
         ),
-        stereo_uc_2=(2, {"eth": 50, "uc": 2}, [(10, 32), (36, 76)]),
-        stereo_use_channel_right=(
-            2,
-            {"eth": 50, "use_channel": "right"},
-            [(10, 32), (36, 76)],
-        ),
+        stereo_uc_2=(2, {"eth": 50, "uc": 1}, [(10, 32), (36, 76)]),
         stereo_uc_minus_1=(2, {"eth": 50, "uc": -1}, [(10, 32), (36, 76)]),
         mono_uc_mix=(
             1,
@@ -272,23 +252,16 @@ class TestSplit(TestCase):
         )
         regions = list(regions)
         sample_width = 2
-        import numpy as np
-
-        use_channel = kwargs.get("use_channel", kwargs.get("uc"))
-        # extrat channel of interest
-        if channels != 1:
-            use_channel = kwargs.get("use_channel", kwargs.get("uc"))
-            use_channel = _normalize_use_channel(use_channel)
-            data = _extract_selected_channel(
-                data, channels, sample_width, use_channel=use_channel
-            )
         err_msg = "Wrong number of regions after split, expected: "
-        err_msg += "{}, found: {}".format(expected, regions)
+        err_msg += "{}, found: {}".format(len(expected), len(regions))
         self.assertEqual(len(regions), len(expected), err_msg)
+        sample_size_bytes = sample_width * channels
         for reg, exp in zip(regions, expected):
             onset, offset = exp
-            exp_data = data[onset * sample_width : offset * sample_width]
-            self.assertEqual(bytes(reg), exp_data)
+            exp_data = data[
+                onset * sample_size_bytes : offset * sample_size_bytes
+            ]
+            self.assertEqual(len(bytes(reg)), len(exp_data))
 
     @genty_dataset(
         mono_aw_0_2_max_silence_0_2=(
@@ -296,7 +269,7 @@ class TestSplit(TestCase):
             5,
             0.2,
             1,
-            {"uc": 1, "aw": 0.2},
+            {"aw": 0.2},
             [(2, 30), (34, 76)],
         ),
         mono_aw_0_2_max_silence_0_3=(
@@ -304,7 +277,7 @@ class TestSplit(TestCase):
             5,
             0.3,
             1,
-            {"uc": 1, "aw": 0.2},
+            {"aw": 0.2},
             [(2, 30), (34, 76)],
         ),
         mono_aw_0_2_max_silence_0_4=(
@@ -312,7 +285,7 @@ class TestSplit(TestCase):
             5,
             0.4,
             1,
-            {"uc": 1, "aw": 0.2},
+            {"aw": 0.2},
             [(2, 32), (34, 76)],
         ),
         mono_aw_0_2_max_silence_0=(
@@ -320,23 +293,16 @@ class TestSplit(TestCase):
             5,
             0,
             1,
-            {"uc": 1, "aw": 0.2},
+            {"aw": 0.2},
             [(2, 14), (16, 24), (26, 28), (34, 76)],
         ),
-        mono_aw_0_2=(
-            0.2,
-            5,
-            0.2,
-            1,
-            {"uc": 1, "aw": 0.2},
-            [(2, 30), (34, 76)],
-        ),
+        mono_aw_0_2=(0.2, 5, 0.2, 1, {"aw": 0.2}, [(2, 30), (34, 76)]),
         mono_aw_0_3_max_silence_0=(
             0.3,
             5,
             0,
             1,
-            {"uc": 1, "aw": 0.3},
+            {"aw": 0.3},
             [(3, 12), (15, 24), (36, 76)],
         ),
         mono_aw_0_3_max_silence_0_3=(
@@ -344,7 +310,7 @@ class TestSplit(TestCase):
             5,
             0.3,
             1,
-            {"uc": 1, "aw": 0.3},
+            {"aw": 0.3},
             [(3, 27), (36, 76)],
         ),
         mono_aw_0_3_max_silence_0_5=(
@@ -352,7 +318,7 @@ class TestSplit(TestCase):
             5,
             0.5,
             1,
-            {"uc": 1, "aw": 0.3},
+            {"aw": 0.3},
             [(3, 27), (36, 76)],
         ),
         mono_aw_0_3_max_silence_0_6=(
@@ -360,7 +326,7 @@ class TestSplit(TestCase):
             5,
             0.6,
             1,
-            {"uc": 1, "aw": 0.3},
+            {"aw": 0.3},
             [(3, 30), (36, 76)],
         ),
         mono_aw_0_4_max_silence_0=(
@@ -368,7 +334,7 @@ class TestSplit(TestCase):
             5,
             0,
             1,
-            {"uc": 1, "aw": 0.4},
+            {"aw": 0.4},
             [(4, 12), (16, 24), (36, 76)],
         ),
         mono_aw_0_4_max_silence_0_3=(
@@ -376,7 +342,7 @@ class TestSplit(TestCase):
             5,
             0.3,
             1,
-            {"uc": 1, "aw": 0.4},
+            {"aw": 0.4},
             [(4, 12), (16, 24), (36, 76)],
         ),
         mono_aw_0_4_max_silence_0_4=(
@@ -384,8 +350,16 @@ class TestSplit(TestCase):
             5,
             0.4,
             1,
-            {"uc": 1, "aw": 0.4},
+            {"aw": 0.4},
             [(4, 28), (36, 76)],
+        ),
+        stereo_uc_0_analysis_window_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"uc": 0, "analysis_window": 0.2},
+            [(2, 30), (34, 76)],
         ),
         stereo_uc_1_analysis_window_0_2=(
             0.2,
@@ -393,14 +367,6 @@ class TestSplit(TestCase):
             0.2,
             2,
             {"uc": 1, "analysis_window": 0.2},
-            [(2, 30), (34, 76)],
-        ),
-        stereo_uc_2_analysis_window_0_2=(
-            0.2,
-            5,
-            0.2,
-            2,
-            {"uc": 2, "analysis_window": 0.2},
             [(10, 32), (36, 76)],
         ),
         stereo_uc_mix_aw_0_1_max_silence_0=(
@@ -597,20 +563,18 @@ class TestSplit(TestCase):
         sample_width = 2
         import numpy as np
 
-        use_channel = kwargs.get("use_channel", kwargs.get("uc"))
-        # extrat channel of interest
-        if channels != 1:
-            use_channel = kwargs.get("use_channel", kwargs.get("uc"))
-            use_channel = _normalize_use_channel(use_channel)
-            data = _extract_selected_channel(
-                data, channels, sample_width, use_channel=use_channel
-            )
         err_msg = "Wrong number of regions after split, expected: "
         err_msg += "{}, found: {}".format(expected, regions)
         self.assertEqual(len(regions), len(expected), err_msg)
         for reg, exp in zip(regions, expected):
             onset, offset = exp
-            exp_data = data[onset * sample_width : offset * sample_width]
+            exp_data = data[
+                onset
+                * sample_width
+                * channels : offset
+                * sample_width
+                * channels
+            ]
             self.assertEqual(bytes(reg), exp_data)
 
     @genty_dataset(
@@ -663,7 +627,7 @@ class TestSplit(TestCase):
     )
     def test_split_input_type(self, input, kwargs):
 
-        with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+        with open("tests/data/test_split_10HZ_stereo.raw", "rb") as fp:
             data = fp.read()
 
         regions = split(
@@ -677,14 +641,16 @@ class TestSplit(TestCase):
             **kwargs
         )
         regions = list(regions)
-        expected = [(2, 16), (17, 31), (34, 76)]
+        expected = [(2, 32), (34, 76)]
         sample_width = 2
         err_msg = "Wrong number of regions after split, expected: "
         err_msg += "{}, found: {}".format(expected, regions)
         self.assertEqual(len(regions), len(expected), err_msg)
         for reg, exp in zip(regions, expected):
             onset, offset = exp
-            exp_data = data[onset * sample_width : offset * sample_width]
+            exp_data = data[
+                onset * sample_width * 2 : offset * sample_width * 2
+            ]
             self.assertEqual(bytes(reg), exp_data)
 
     @genty_dataset(

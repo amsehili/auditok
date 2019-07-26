@@ -14,9 +14,9 @@ Class summary
         ADSFactory.RecorderADS
         DataValidator
         AudioEnergyValidator
-
 """
 from __future__ import division
+import sys
 from abc import ABCMeta, abstractmethod
 import math
 from array import array
@@ -29,14 +29,16 @@ from .io import (
     get_audio_source,
 )
 from .exceptions import DuplicateArgument, TooSamllBlockDuration
-import sys
 
 try:
     import numpy
 
+    np = numpy
     _WITH_NUMPY = True
+    _FORMAT = {1: np.int8, 2: np.int16, 4: np.int32}
 except ImportError as e:
     _WITH_NUMPY = False
+    _FORMAT = {1: "b", 2: "h", 4: "i"}
 
 try:
     from builtins import str
@@ -54,6 +56,119 @@ __all__ = [
     "AudioDataSource",
     "AudioEnergyValidator",
 ]
+
+
+def make_channel_selector(sample_width, channels, selected=None):
+    fmt = _FORMAT.get(sample_width)
+    if fmt is None:
+        err_msg = "'sample_width' must be 1, 2 or 4, given: {}"
+        raise ValueError(err_msg.format(sample_width))
+
+    if channels == 1:
+        if _WITH_NUMPY:
+
+            def _as_array(data):
+                return np.frombuffer(data, dtype=fmt).astype(np.float64)
+
+        else:
+
+            def _as_array(data):
+                return array(fmt, data)
+
+        return _as_array
+
+    if isinstance(selected, int):
+        if selected < 0:
+            selected += channels
+        if selected < 0 or selected >= channels:
+            err_msg = "Selected channel must be >= -channels and < 'channels'"
+            err_msg += ", given: {}"
+            raise ValueError(err_msg.format(selected))
+        if _WITH_NUMPY:
+
+            def _extract_single_channel(data):
+                samples = np.frombuffer(data, dtype=fmt)
+                return samples[selected::channels].astype(np.float64)
+
+        else:
+
+            def _extract_single_channel(data):
+                samples = array(fmt, data)
+                return samples[selected::channels]
+
+        return _extract_single_channel
+
+    if selected in ("mix", "avg", "average"):
+        if _WITH_NUMPY:
+
+            def _average_channels(data):
+                array = np.frombuffer(data, dtype=fmt).astype(np.float64)
+                return array.reshape(-1, channels).mean(axis=1)
+
+        else:
+
+            def _average_channels(data):
+                all_channels = array(fmt, data)
+                mono_channels = [
+                    array(fmt, all_channels[ch::channels])
+                    for ch in range(channels)
+                ]
+                avg_arr = array(
+                    fmt,
+                    (
+                        sum(samples) // channels
+                        for samples in zip(*mono_channels)
+                    ),
+                )
+                return avg_arr
+
+        return _average_channels
+
+    if selected is None:
+        if _WITH_NUMPY:
+
+            def _split_channels(data):
+                array = np.frombuffer(data, dtype=fmt).astype(np.float64)
+                return array.reshape(-1, channels).T
+
+        else:
+
+            def _split_channels(data):
+                all_channels = array(fmt, data)
+                mono_channels = [
+                    array(fmt, all_channels[ch::channels])
+                    for ch in range(channels)
+                ]
+                return mono_channels
+
+        return _split_channels
+
+
+if _WITH_NUMPY:
+
+    def _calculate_energy_single_channel(x):
+        return 10 * np.log10(np.dot(x, x).clip(min=1e-20) / x.size)
+
+
+else:
+
+    def _calculate_energy_single_channel(x):
+        energy = max(sum(i ** 2 for i in x) / len(x), 1e-20)
+        return 10 * math.log10(energy)
+
+
+if _WITH_NUMPY:
+
+    def _calculate_energy_multichannel(x, aggregation_fn=np.max):
+        energy = 10 * np.log10((x * x).mean(axis=1).clip(min=1e-20))
+        return aggregation_fn(energy)
+
+
+else:
+
+    def _calculate_energy_multichannel(x, aggregation_fn=max):
+        energies = (_calculate_energy_single_channel(xi) for xi in x)
+        return aggregation_fn(energies)
 
 
 class DataSource:
@@ -86,6 +201,23 @@ class DataValidator:
         """
         Check whether `data` is valid
         """
+
+
+class AudioEnergyValidator(DataValidator):
+    def __init__(
+        self, energy_threshold, sample_width, channels, use_channel=None
+    ):
+        self._selector = make_channel_selector(
+            sample_width, channels, use_channel
+        )
+        if channels == 1 or use_channel is not None:
+            self._energy_fn = _calculate_energy_single_channel
+        else:
+            self._energy_fn = _calculate_energy_multichannel
+        self._energy_threshold = energy_threshold
+
+    def is_valid(self, data):
+        return self._energy_fn(self._selector(data)) > self._energy_threshold
 
 
 class StringDataSource(DataSource):
@@ -881,107 +1013,3 @@ class AudioDataSource(DataSource):
             raise AttributeError(
                 "'AudioDataSource' has no attribute '{}'".format(name)
             )
-
-
-class AudioEnergyValidator(DataValidator):
-    """
-    The most basic auditok audio frame validator.
-    This validator computes the log energy of an input audio frame
-    and return True if the result is >= a given threshold, False
-    otherwise.
-
-    :Parameters:
-
-    `sample_width` : *(int)*
-        Number of bytes of one audio sample. This is used to convert data from `basestring` or `Bytes` to
-        an array of floats.
-
-    `energy_threshold` : *(float)*
-        A threshold used to check whether an input data buffer is valid.
-    """
-
-    if _WITH_NUMPY:
-        _formats = {1: numpy.int8, 2: numpy.int16, 4: numpy.int32}
-
-        @staticmethod
-        def _convert(signal, sample_width):
-            return numpy.array(
-                numpy.frombuffer(
-                    signal, dtype=AudioEnergyValidator._formats[sample_width]
-                ),
-                dtype=numpy.float64,
-            )
-
-        @staticmethod
-        def _signal_energy(signal):
-            return float(numpy.dot(signal, signal)) / len(signal)
-
-        @staticmethod
-        def _signal_log_energy(signal):
-            energy = AudioEnergyValidator._signal_energy(signal)
-            if energy <= 0:
-                return -200
-            return 10.0 * numpy.log10(energy)
-
-    else:
-        _formats = {1: "b", 2: "h", 4: "i"}
-
-        @staticmethod
-        def _convert(signal, sample_width):
-            return array(
-                "d", array(AudioEnergyValidator._formats[sample_width], signal)
-            )
-
-        @staticmethod
-        def _signal_energy(signal):
-            energy = 0.0
-            for a in signal:
-                energy += a * a
-            return energy / len(signal)
-
-        @staticmethod
-        def _signal_log_energy(signal):
-            energy = AudioEnergyValidator._signal_energy(signal)
-            if energy <= 0:
-                return -200
-            return 10.0 * math.log10(energy)
-
-    def __init__(self, sample_width, energy_threshold=45):
-        self.sample_width = sample_width
-        self._energy_threshold = energy_threshold
-
-    def is_valid(self, data):
-        """
-        Check if data is valid. Audio data will be converted into an array (of
-        signed values) of which the log energy is computed. Log energy is computed
-        as follows:
-
-        .. code:: python
-
-            arr = AudioEnergyValidator._convert(signal, sample_width)
-            energy = float(numpy.dot(arr, arr)) / len(arr)
-            log_energy = 10. * numpy.log10(energy)
-
-
-        :Parameters:
-
-        `data` : either a *string* or a *Bytes* buffer
-            `data` is converted into a numerical array using the `sample_width`
-            given in the constructor.
-
-        :Returns:
-
-        True if `log_energy` >= `energy_threshold`, False otherwise.
-        """
-
-        signal = AudioEnergyValidator._convert(data, self.sample_width)
-        return (
-            AudioEnergyValidator._signal_log_energy(signal)
-            >= self._energy_threshold
-        )
-
-    def get_energy_threshold(self):
-        return self._energy_threshold
-
-    def set_energy_threshold(self, threshold):
-        self._energy_threshold = threshold
