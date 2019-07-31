@@ -21,10 +21,7 @@ def _make_random_length_regions(
     for b in byte_seq:
         duration = round(random() * 10, 6)
         data = b * int(duration * sampling_rate) * sample_width * channels
-        start = round(random() * 13, 3)
-        region = AudioRegion(
-            data, start, sampling_rate, sample_width, channels
-        )
+        region = AudioRegion(data, sampling_rate, sample_width, channels)
         regions.append(region)
     return regions
 
@@ -611,7 +608,6 @@ class TestSplit(TestCase):
         audio_region=(
             AudioRegion(
                 open("tests/data/test_split_10HZ_stereo.raw", "rb").read(),
-                0,
                 10,
                 2,
                 2,
@@ -916,17 +912,16 @@ class TestAudioRegion(TestCase):
         expected_duration_s,
         expected_duration_ms,
     ):
-        region = AudioRegion(
-            data, start, sampling_rate, sample_width, channels
-        )
+        meta = {"start": start, "end": expected_end}
+        region = AudioRegion(data, sampling_rate, sample_width, channels, meta)
         self.assertEqual(region.sampling_rate, sampling_rate)
         self.assertEqual(region.sr, sampling_rate)
         self.assertEqual(region.sample_width, sample_width)
         self.assertEqual(region.sw, sample_width)
         self.assertEqual(region.channels, channels)
         self.assertEqual(region.ch, channels)
-        self.assertEqual(region.start, start)
-        self.assertEqual(region.end, expected_end)
+        self.assertEqual(region.meta.start, start)
+        self.assertEqual(region.meta.end, expected_end)
         self.assertEqual(region.duration, expected_duration_s)
         self.assertEqual(len(region), expected_duration_ms)
         self.assertEqual(bytes(region), data)
@@ -934,11 +929,7 @@ class TestAudioRegion(TestCase):
     def test_creation_invalid_data_exception(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
             _ = AudioRegion(
-                data=b"ABCDEFGHI",
-                start=0,
-                sampling_rate=8,
-                sample_width=2,
-                channels=1,
+                data=b"ABCDEFGHI", sampling_rate=8, sample_width=2, channels=1
             )
         self.assertEqual(
             "The length of audio data must be an integer "
@@ -948,29 +939,31 @@ class TestAudioRegion(TestCase):
 
     @genty_dataset(
         simple=("output.wav", 1.230, "output.wav"),
-        start=("output_{start}.wav", 1.230, "output_1.23.wav"),
-        start_2=("output_{start}.wav", 1.233712, "output_1.233712.wav"),
-        start_3=("output_{start}.wav", 1.2300001, "output_1.23.wav"),
-        start_4=("output_{start:.3f}.wav", 1.233712, "output_1.234.wav"),
+        start=("output_{meta.start:g}.wav", 1.230, "output_1.23.wav"),
+        start_2=("output_{meta.start}.wav", 1.233712, "output_1.233712.wav"),
+        start_3=("output_{meta.start:.2f}.wav", 1.2300001, "output_1.23.wav"),
+        start_4=("output_{meta.start:.3f}.wav", 1.233712, "output_1.234.wav"),
         start_5=(
-            "output_{start:.8f}.wav",
-            1.233712345,
+            "output_{meta.start:.8f}.wav",
+            1.233712,
             "output_1.23371200.wav",
         ),
         start_end_duration=(
-            "output_{start}_{end}_{duration}.wav",
+            "output_{meta.start}_{meta.end}_{duration}.wav",
             1.455,
             "output_1.455_2.455_1.0.wav",
         ),
         start_end_duration_2=(
-            "output_{start}_{end}_{duration}.wav",
+            "output_{meta.start}_{meta.end}_{duration}.wav",
             1.455321,
             "output_1.455321_2.455321_1.0.wav",
         ),
     )
     def test_save(self, format, start, expected):
         with TemporaryDirectory() as tmpdir:
-            region = AudioRegion(b"0" * 160, start, 160, 1, 1)
+            region = AudioRegion(b"0" * 160, 160, 1, 1)
+            meta = {"start": start, "end": start + region.duration}
+            region.meta = meta
             format = os.path.join(tmpdir, format)
             filename = region.save(format)[len(tmpdir) + 1 :]
             self.assertEqual(filename, expected)
@@ -979,279 +972,252 @@ class TestAudioRegion(TestCase):
         with TemporaryDirectory() as tmpdir:
             filename = os.path.join(tmpdir, "output.wav")
             open(filename, "w").close()
-            region = AudioRegion(b"0" * 160, 0, 160, 1, 1)
+            region = AudioRegion(b"0" * 160, 160, 1, 1)
             with self.assertRaises(FileExistsError):
                 region.save(filename, exists_ok=False)
 
     @genty_dataset(
         first_half=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, 500),
-            0,
             b"a" * 80,
         ),
         second_half=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(500, None),
-            0.5,
             b"b" * 80,
         ),
         second_half_negative=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-500, None),
-            0.5,
             b"b" * 80,
         ),
         middle=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(200, 750),
-            0.2,
             b"a" * 48 + b"b" * 40,
         ),
         middle_negative=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-800, -250),
-            0.2,
             b"a" * 48 + b"b" * 40,
         ),
         middle_sw2=(
-            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 2, 1),
+            AudioRegion(b"a" * 160 + b"b" * 160, 160, 2, 1),
             slice(200, 750),
-            0.2,
             b"a" * 96 + b"b" * 80,
         ),
         middle_ch2=(
-            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 1, 2),
+            AudioRegion(b"a" * 160 + b"b" * 160, 160, 1, 2),
             slice(200, 750),
-            0.2,
             b"a" * 96 + b"b" * 80,
         ),
         middle_sw2_ch2=(
-            AudioRegion(b"a" * 320 + b"b" * 320, 0, 160, 2, 2),
+            AudioRegion(b"a" * 320 + b"b" * 320, 160, 2, 2),
             slice(200, 750),
-            0.2,
             b"a" * 192 + b"b" * 160,
         ),
         but_first_sample=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(1, None),
-            0.001,
             b"a" * (4000 - 8) + b"b" * 4000,
         ),
         but_first_sample_negative=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(-999, None),
-            0.001,
             b"a" * (4000 - 8) + b"b" * 4000,
         ),
         but_last_sample=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(0, 999),
-            0,
             b"a" * 4000 + b"b" * (4000 - 8),
         ),
         but_last_sample_negative=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(0, -1),
-            0,
             b"a" * 4000 + b"b" * (4000 - 8),
         ),
         big_negative_start=(
-            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            AudioRegion(b"a" * 160, 160, 1, 1),
             slice(-5000, None),
-            0,
             b"a" * 160,
         ),
         big_negative_stop=(
-            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            AudioRegion(b"a" * 160, 160, 1, 1),
             slice(None, -1500),
-            0,
             b"",
         ),
         empty=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, 0),
-            0,
             b"",
         ),
         empty_start_stop_reversed=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(200, 100),
-            0.2,
             b"",
         ),
         empty_big_positive_start=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(2000, 3000),
-            2,
             b"",
         ),
         empty_negative_reversed=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-100, -200),
-            0.9,
             b"",
         ),
         empty_big_negative_stop=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, -2000),
-            0,
             b"",
         ),
         arbitrary_sampling_rate=(
-            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1234, 1, 1),
+            AudioRegion(b"a" * 124 + b"b" * 376, 1234, 1, 1),
             slice(100, 200),
-            123 / 1234,
             b"a" + b"b" * 123,
         ),
     )
-    def test_region_temporal_slicing(
-        self, region, slice_, expected_start, expected_data
-    ):
+    def test_region_temporal_slicing(self, region, slice_, expected_data):
         sub_region = region.millis[slice_]
-        self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
-
         start_sec = slice_.start / 1000 if slice_.start is not None else None
         stop_sec = slice_.stop / 1000 if slice_.stop is not None else None
-
         sub_region = region.sec[start_sec:stop_sec]
-        self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
 
     @genty_dataset(
         first_half=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, 80),
             0,
             b"a" * 80,
         ),
         second_half=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(80, None),
             0.5,
             b"b" * 80,
         ),
         second_half_negative=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-80, None),
             0.5,
             b"b" * 80,
         ),
         middle=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(160 // 5, 160 // 4 * 3),
             0.2,
             b"a" * 48 + b"b" * 40,
         ),
         middle_negative=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-160 // 5 * 4, -160 // 4),
             0.2,
             b"a" * 48 + b"b" * 40,
         ),
         middle_sw2=(
-            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 2, 1),
+            AudioRegion(b"a" * 160 + b"b" * 160, 160, 2, 1),
             slice(160 // 5, 160 // 4 * 3),
             0.2,
             b"a" * 96 + b"b" * 80,
         ),
         middle_ch2=(
-            AudioRegion(b"a" * 160 + b"b" * 160, 0, 160, 1, 2),
+            AudioRegion(b"a" * 160 + b"b" * 160, 160, 1, 2),
             slice(160 // 5, 160 // 4 * 3),
             0.2,
             b"a" * 96 + b"b" * 80,
         ),
         middle_sw2_ch2=(
-            AudioRegion(b"a" * 320 + b"b" * 320, 0, 160, 2, 2),
+            AudioRegion(b"a" * 320 + b"b" * 320, 160, 2, 2),
             slice(160 // 5, 160 // 4 * 3),
             0.2,
             b"a" * 192 + b"b" * 160,
         ),
         but_first_sample=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(1, None),
             1 / 8000,
             b"a" * (4000 - 1) + b"b" * 4000,
         ),
         but_first_sample_negative=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(-7999, None),
             1 / 8000,
             b"a" * (4000 - 1) + b"b" * 4000,
         ),
         but_last_sample=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(0, 7999),
             0,
             b"a" * 4000 + b"b" * (4000 - 1),
         ),
         but_last_sample_negative=(
-            AudioRegion(b"a" * 4000 + b"b" * 4000, 0, 8000, 1, 1),
+            AudioRegion(b"a" * 4000 + b"b" * 4000, 8000, 1, 1),
             slice(0, -1),
             0,
             b"a" * 4000 + b"b" * (4000 - 1),
         ),
         big_negative_start=(
-            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            AudioRegion(b"a" * 160, 160, 1, 1),
             slice(-1600, None),
             0,
             b"a" * 160,
         ),
         big_negative_stop=(
-            AudioRegion(b"a" * 160, 0, 160, 1, 1),
+            AudioRegion(b"a" * 160, 160, 1, 1),
             slice(None, -1600),
             0,
             b"",
         ),
         empty=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, 0),
             0,
             b"",
         ),
         empty_start_stop_reversed=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(80, 40),
             0.5,
             b"",
         ),
         empty_big_positive_start=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(1600, 3000),
             10,
             b"",
         ),
         empty_negative_reversed=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(-16, -32),
             0.9,
             b"",
         ),
         empty_big_negative_stop=(
-            AudioRegion(b"a" * 80 + b"b" * 80, 0, 160, 1, 1),
+            AudioRegion(b"a" * 80 + b"b" * 80, 160, 1, 1),
             slice(0, -2000),
             0,
             b"",
         ),
         arbitrary_sampling_rate=(
-            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1235, 1, 1),
+            AudioRegion(b"a" * 124 + b"b" * 376, 1235, 1, 1),
             slice(100, 200),
             100 / 1235,
             b"a" * 24 + b"b" * 76,
         ),
         arbitrary_sampling_rate_middle_sw2_ch2=(
-            AudioRegion(b"a" * 124 + b"b" * 376, 0, 1235, 2, 2),
+            AudioRegion(b"a" * 124 + b"b" * 376, 1235, 2, 2),
             slice(25, 50),
             25 / 1235,
             b"a" * 24 + b"b" * 76,
         ),
     )
     def test_region_sample_slicing(
-        self, region, slice_, expected_start, expected_data
+        self, region, slice_, time_shift, expected_data
     ):
         sub_region = region[slice_]
-        self.assertEqual(sub_region.start, expected_start)
         self.assertEqual(bytes(sub_region), expected_data)
 
     @genty_dataset(
@@ -1264,15 +1230,9 @@ class TestAudioRegion(TestCase):
         region_1, region_2 = _make_random_length_regions(
             [b"a", b"b"], sampling_rate, sample_width, channels
         )
-
-        expected_start = region_1.start
         expected_duration = region_1.duration + region_2.duration
-        expected_end = expected_start + expected_duration
         expected_data = bytes(region_1) + bytes(region_2)
         concat_region = region_1 + region_2
-
-        self.assertEqual(concat_region.start, expected_start)
-        self.assertAlmostEqual(concat_region.end, expected_end, places=6)
         self.assertAlmostEqual(
             concat_region.duration, expected_duration, places=6
         )
@@ -1288,14 +1248,10 @@ class TestAudioRegion(TestCase):
         regions = _make_random_length_regions(
             [b"a", b"b", b"c"], sampling_rate, sample_width, channels
         )
-        expected_start = regions[0].start
         expected_duration = sum(r.duration for r in regions)
-        expected_end = expected_start + expected_duration
         expected_data = b"".join(bytes(r) for r in regions)
         concat_region = sum(regions)
 
-        self.assertEqual(concat_region.start, expected_start)
-        self.assertAlmostEqual(concat_region.end, expected_end, places=6)
         self.assertAlmostEqual(
             concat_region.duration, expected_duration, places=6
         )
@@ -1303,8 +1259,8 @@ class TestAudioRegion(TestCase):
 
     def test_concatenation_different_sampling_rate_error(self):
 
-        region_1 = AudioRegion(b"a" * 100, 0, 8000, 1, 1)
-        region_2 = AudioRegion(b"b" * 100, 0, 3000, 1, 1)
+        region_1 = AudioRegion(b"a" * 100, 8000, 1, 1)
+        region_2 = AudioRegion(b"b" * 100, 3000, 1, 1)
 
         with self.assertRaises(ValueError) as val_err:
             region_1 + region_2
@@ -1316,8 +1272,8 @@ class TestAudioRegion(TestCase):
 
     def test_concatenation_different_sample_width_error(self):
 
-        region_1 = AudioRegion(b"a" * 100, 0, 8000, 2, 1)
-        region_2 = AudioRegion(b"b" * 100, 0, 8000, 4, 1)
+        region_1 = AudioRegion(b"a" * 100, 8000, 2, 1)
+        region_2 = AudioRegion(b"b" * 100, 8000, 4, 1)
 
         with self.assertRaises(ValueError) as val_err:
             region_1 + region_2
@@ -1329,8 +1285,8 @@ class TestAudioRegion(TestCase):
 
     def test_concatenation_different_number_of_channels_error(self):
 
-        region_1 = AudioRegion(b"a" * 100, 0, 8000, 1, 1)
-        region_2 = AudioRegion(b"b" * 100, 0, 8000, 1, 2)
+        region_1 = AudioRegion(b"a" * 100, 8000, 1, 1)
+        region_2 = AudioRegion(b"b" * 100, 8000, 1, 2)
 
         with self.assertRaises(ValueError) as val_err:
             region_1 + region_2
@@ -1350,7 +1306,7 @@ class TestAudioRegion(TestCase):
     ):
         sw = 2
         data = b"0" * int(duration * 8000 * sw)
-        region = AudioRegion(data, 0, 8000, sw, 1)
+        region = AudioRegion(data, 8000, sw, 1)
         m_region = 1 * region * 3
         self.assertEqual(bytes(m_region), data * 3)
         self.assertEqual(m_region.sr, 8000)
@@ -1362,6 +1318,6 @@ class TestAudioRegion(TestCase):
     @genty_dataset(_str=("x", "str"), _float=(1.4, "float"))
     def test_multiplication_non_int(self, factor, _type):
         with self.assertRaises(TypeError) as type_err:
-            AudioRegion(b"0" * 80, 0, 8000, 1, 1) * factor
+            AudioRegion(b"0" * 80, 8000, 1, 1) * factor
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             self.assertEqual(err_msg.format(_type), str(type_err.exception))
