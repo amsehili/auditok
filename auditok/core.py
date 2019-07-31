@@ -267,7 +267,9 @@ def _make_audio_region(
     """
     start = start_frame * frame_duration
     data = b"".join(data_frames)
-    return AudioRegion(data, start, sampling_rate, sample_width, channels)
+    duration = len(data) / (sampling_rate * sample_width * channels)
+    meta = {"start": start, "end": start + duration}
+    return AudioRegion(data, sampling_rate, sample_width, channels, meta)
 
 
 def _check_convert_index(index, types, err_msg):
@@ -308,8 +310,26 @@ class _MillisView(_SecondsView):
         return super(_MillisView, self).__getitem__(index)
 
 
+class _AudioRegionMetadata(dict):
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        else:
+            err_msg = "AudioRegion metadata has no entry '{}'"
+            raise AttributeError(err_msg.format(name))
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+    def __str__(self):
+        return "\n".join("{}: {}".format(k, v) for k, v in self.items())
+
+    def __repr__(self):
+        return str(self)
+
+
 class AudioRegion(object):
-    def __init__(self, data, start, sampling_rate, sample_width, channels):
+    def __init__(self, data, sampling_rate, sample_width, channels, meta=None):
         """
         A class for detected audio events.
 
@@ -317,8 +337,6 @@ class AudioRegion(object):
 
             data: bytes
                 audio data
-            start: float
-                start time in seconds
             samling_rate: int
                 sampling rate of audio data
             sample_width: int
@@ -328,16 +346,28 @@ class AudioRegion(object):
         """
         check_audio_data(data, sample_width, channels)
         self._data = data
-        self._start = start
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
         self._channels = channels
+
+        if meta is not None:
+            self._meta = _AudioRegionMetadata(meta)
+        else:
+            self._meta = None
 
         self._seconds_view = _SecondsView(self)
         self.s = self.sec
 
         self._millis_view = _MillisView(self)
         self.ms = self.millis
+
+    @property
+    def meta(self):
+        return self._meta
+
+    @meta.setter
+    def meta(self, new_meta):
+        self._meta = _AudioRegionMetadata(new_meta)
 
     @classmethod
     def load(cls, file, skip=0, max_read=None, **kwargs):
@@ -354,7 +384,6 @@ class AudioRegion(object):
         audio_source.close()
         return cls(
             data,
-            0,
             audio_source.sampling_rate,
             audio_source.sample_width,
             audio_source.channels,
@@ -367,14 +396,6 @@ class AudioRegion(object):
     @property
     def millis(self):
         return self._millis_view
-
-    @property
-    def start(self):
-        return self._start
-
-    @property
-    def end(self):
-        return self.start + self.duration
 
     @property
     def duration(self):
@@ -438,24 +459,9 @@ class AudioRegion(object):
 
         file: str, file-like object
             path to output file or a file-like object. If ´str´, it may contain
-            ´{start}´, ´{end}´ and ´{duration}´ place holders, they'll be
-            replaced by region's ´start´, ´end´ and ´duration´ respectively.
-            Example:
+            and ´{duration}´ place holders as well as any place holder that
+            this region's metadata might contain (e.g., ´{meta.start}´).
 
-            .. code:: python
-                region = AudioRegion(b'\0' * 2 * 24000,
-                                     start=2.25,
-                                     sampling_rate=16000,
-                                     sample_width=2,
-                                     channels=1)
-                region.duration
-                1.5
-                region.end
-                3.75
-                region.save('audio_{start}-{end}.wav')
-                audio_2.25-3.75.wav
-                region.save('audio_{duration:.3f}_{start:.3f}-{end:.3f}.wav')
-                audio_1.500_2.250-3.750.wav
 
         format: str
             type of audio file. If None (default), file type is guessed from
@@ -478,13 +484,22 @@ class AudioRegion(object):
         :Raises:
 
         IOError if ´file´ exists and ´exists_ok´ is False.
+
+        Example:
+
+        .. code:: python
+            region = AudioRegion(b'\0' * 2 * 24000,
+                                    sampling_rate=16000,
+                                    sample_width=2,
+                                    channels=1)
+            region.meta = {"start": 2.25, "end": 2.25 + region.duration}
+            region.save('audio_{meta.start}-{meta.end}.wav')
+            audio_2.25-3.75.wav
+            region.save('region_{meta.start:.3f}_{duration:.3f}.wav')
+            audio_2.250_1.500.wav
         """
         if isinstance(file, str):
-            file = file.format(
-                start=round(self.start, 6),
-                end=round(self.end, 6),
-                duration=round(self.duration, 6),
-            )
+            file = file.format(duration=self.duration, meta=self.meta)
             if not exists_ok and os.path.exists(file):
                 raise FileExistsError("file '{file}' exists".format(file=file))
         to_file(
@@ -507,18 +522,16 @@ class AudioRegion(object):
     def __bytes__(self):
         return self._data
 
-    def __repr__(self):
+    def __str__(self):
         return (
-            "AudioRegion(data, start={:.3f}, end={:.3f}, "
+            "AudioRegion(duration={:.3f}, "
             "sampling_rate={}, sample_width={}, channels={})".format(
-                self.start, self.end, self.sr, self.sw, self.ch
+                self.duration, self.sr, self.sw, self.ch
             )
         )
 
-    def __str__(self):
-        return "AudioRegion(start={:.3f}, end={:.3f}, duration={:.3f}".format(
-            self.start, self.end, self.duration
-        )
+    def __repr__(self):
+        return str(self)
 
     def __add__(self, other):
         """
@@ -547,7 +560,7 @@ class AudioRegion(object):
                 "number of channels ({} != {})".format(self.ch, other.ch)
             )
         data = self._data + other._data
-        return AudioRegion(data, self.start, self.sr, self.sw, self.ch)
+        return AudioRegion(data, self.sr, self.sw, self.ch)
 
     def __radd__(self, other):
         """
@@ -565,7 +578,7 @@ class AudioRegion(object):
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             raise TypeError(err_msg.format(type(n)))
         data = self._data * n
-        return AudioRegion(data, self.start, self.sr, self.sw, self.ch)
+        return AudioRegion(data, self.sr, self.sw, self.ch)
 
     def __rmul__(self, n):
         return self * n
@@ -602,8 +615,7 @@ class AudioRegion(object):
             offset = None
 
         data = self._data[onset:offset]
-        new_start = self.start + start_sample / self.sampling_rate
-        return AudioRegion(data, new_start, self.sr, self.sw, self.ch)
+        return AudioRegion(data, self.sr, self.sw, self.ch)
 
 
 class StreamTokenizer:
