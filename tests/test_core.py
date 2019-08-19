@@ -923,7 +923,7 @@ class TestAudioRegion(TestCase):
         self.assertEqual(region.meta.start, start)
         self.assertEqual(region.meta.end, expected_end)
         self.assertEqual(region.duration, expected_duration_s)
-        self.assertEqual(len(region), expected_duration_ms)
+        self.assertEqual(len(region.ms), expected_duration_ms)
         self.assertEqual(bytes(region), data)
 
     def test_creation_invalid_data_exception(self):
@@ -1297,12 +1297,12 @@ class TestAudioRegion(TestCase):
         )
 
     @genty_dataset(
-        simple=(0.01, 0.03, 30),
-        rounded_len_floor=(0.00575, 0.01725, 17),
-        rounded_len_ceil=(0.00625, 0.01875, 19),
+        simple=(0.01, 0.03, 240, 30),
+        rounded_len_floor=(0.00575, 0.01725, 138, 17),
+        rounded_len_ceil=(0.00625, 0.01875, 150, 19),
     )
     def test_multiplication(
-        self, duration, expected_duration, expected_length
+        self, duration, expected_duration, expected_len, expected_len_ms
     ):
         sw = 2
         data = b"0" * int(duration * 8000 * sw)
@@ -1313,7 +1313,11 @@ class TestAudioRegion(TestCase):
         self.assertEqual(m_region.sw, 2)
         self.assertEqual(m_region.ch, 1)
         self.assertEqual(m_region.duration, expected_duration)
-        self.assertEqual(len(m_region), expected_length)
+        self.assertEqual(len(m_region), expected_len)
+        self.assertEqual(m_region.len, expected_len)
+        self.assertEqual(m_region.s.len, expected_duration)
+        self.assertEqual(len(m_region.ms), expected_len_ms)
+        self.assertEqual(m_region.ms.len, expected_len_ms)
 
     @genty_dataset(_str=("x", "str"), _float=(1.4, "float"))
     def test_multiplication_non_int(self, factor, _type):
