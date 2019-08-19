@@ -296,6 +296,13 @@ class _SecondsView:
         stop_sample = None if stop_s is None else round(stop_s * sr)
         return self._region[start_sample:stop_sample]
 
+    @property
+    def len(self):
+        """
+        Return region duration in seconds.
+        """
+        return self._region.duration
+
 
 class _MillisView(_SecondsView):
     def __getitem__(self, index):
@@ -308,6 +315,19 @@ class _MillisView(_SecondsView):
         stop_sec = None if stop_ms is None else stop_ms / 1000
         index = slice(start_sec, stop_sec)
         return super(_MillisView, self).__getitem__(index)
+
+    def __len__(self):
+        """
+        Return region duration in milliseconds.
+        """
+        return round(self._region.duration * 1000)
+
+    @property
+    def len(self):
+        """
+        Return region duration in milliseconds.
+        """
+        return len(self)
 
 
 class _AudioRegionMetadata(dict):
@@ -515,9 +535,16 @@ class AudioRegion(object):
 
     def __len__(self):
         """
-        Returns region duration in milliseconds.
+        Return region length in number of samples.
         """
-        return round(self.duration * 1000)
+        return len(self._data) // (self.sample_width * self.channels)
+
+    @property
+    def len(self):
+        """
+        Return region length in number of samples.
+        """
+        return len(self)
 
     def __bytes__(self):
         return self._data
