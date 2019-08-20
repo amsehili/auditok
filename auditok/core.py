@@ -14,6 +14,11 @@ from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
 
+try:
+    from . import signal_numpy as signal
+except ImportError:
+    from . import signal
+
 __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
 
@@ -369,6 +374,7 @@ class AudioRegion(object):
         self._sampling_rate = sampling_rate
         self._sample_width = sample_width
         self._channels = channels
+        self._samples = None
 
         if meta is not None:
             self._meta = _AudioRegionMetadata(meta)
@@ -532,6 +538,21 @@ class AudioRegion(object):
             audio_parameters=audio_parameters,
         )
         return file
+
+    def __array__(self):
+        return self.samples
+
+    @property
+    def samples(self):
+        if self._samples is None:
+            fmt = signal.FORMAT[self.sample_width]
+            if self.channels == 1:
+                self._samples = signal.to_array(self._data, fmt)
+            else:
+                self._samples = signal.separate_channels(
+                    self._data, fmt, self.channels
+                )
+        return self._samples
 
     def __len__(self):
         """
