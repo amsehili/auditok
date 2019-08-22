@@ -631,6 +631,18 @@ class AudioRegion(object):
     def __rmul__(self, n):
         return self * n
 
+    def __truediv__(self, n):
+        if not isinstance(n, int) or n <= 0:
+            raise TypeError(
+                "AudioRegion can only be divided by a positive int"
+            )
+        samples_per_sub_region = round(len(self) / n)
+        sub_regions = []
+        for onset in range(0, len(self), samples_per_sub_region):
+            sub_region = self[onset : onset + samples_per_sub_region]
+            sub_regions.append(sub_region)
+        return sub_regions
+
     def __eq__(self, other):
         if other is self:
             return True
