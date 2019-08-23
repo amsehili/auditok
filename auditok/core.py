@@ -539,6 +539,27 @@ class AudioRegion(object):
         )
         return file
 
+    def split(
+        self,
+        min_dur=0.2,
+        max_dur=5,
+        max_silence=0.3,
+        drop_trailing_silence=False,
+        strict_min_dur=False,
+        **kwargs
+    ):
+        """Split region. See :auditok.split() for split parameters description.
+        """
+        return split(
+            self,
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=drop_trailing_silence,
+            strict_min_dur=strict_min_dur,
+            **kwargs
+        )
+
     def __array__(self):
         return self.samples
 
