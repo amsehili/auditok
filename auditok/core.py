@@ -13,6 +13,7 @@ import math
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
+from auditok.plotting import plot, plot_detections
 
 try:
     from . import signal_numpy as signal
@@ -559,6 +560,37 @@ class AudioRegion(object):
             strict_min_dur=strict_min_dur,
             **kwargs
         )
+
+    def plot(self, show=True, **plot_kwargs):
+        plot(self, self.sr, show=show, **plot_kwargs)
+
+    def split_and_plot(
+        self,
+        min_dur=0.2,
+        max_dur=5,
+        max_silence=0.3,
+        drop_trailing_silence=False,
+        strict_min_dur=False,
+        show=True,
+        plot_kwargs=None,
+        **kwargs
+    ):
+        """Split region and plot signal and detection.
+        See :auditok.split() for split parameters description.
+        """
+        regions = split(
+            self,
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=drop_trailing_silence,
+            strict_min_dur=strict_min_dur,
+            **kwargs
+        )
+        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
+        if plot_kwargs is None:
+            plot_kwargs = {}
+        plot_detections(self, self.sr, detections, show=show, **plot_kwargs)
 
     def __array__(self):
         return self.samples
