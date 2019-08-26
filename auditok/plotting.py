@@ -26,4 +26,3 @@ def plot_detections(data, sampling_rate, detections, show=True, save_as=None):
 
     if show:
         plt.show()
-    return
