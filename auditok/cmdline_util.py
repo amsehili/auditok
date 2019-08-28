@@ -1,6 +1,9 @@
 import sys
 import logging
 from collections import namedtuple
+from . import workers
+from .util import AudioDataSource
+from .io import player_for
 
 LOGGER_NAME = "AUDITOK_LOGGER"
 KeywordArguments = namedtuple("KeywordArguments", ["io", "split"])
@@ -99,3 +102,45 @@ def make_logger(debug_stdout=False, debug_file=None):
         handler.setLevel(logging.DEBUG)
         logger.addHandler(handler)
     return logger
+
+
+def initialize_workers(args, logger=None, **io_kwargs):
+    observers = []
+
+    reader = AudioDataSource(args.input, **io_kwargs)
+    if args.output_main is not None:
+        reader = workers.StreamSaverWorker(reader, args.output_main)
+        reader.start()
+
+    if args.output_tokens is not None:
+        worker = workers.RegionSaverWorker(
+            args.output_tokens, args.output_type, logger=logger
+        )
+        observers.append(worker)
+
+    if args.echo:
+        player = player_for(reader)
+        progress_bar = args.progress_bar
+        worker = workers.PlayerWorker(
+            player, progress_bar=progress_bar, logger=logger
+        )
+        observers.append(worker)
+
+    if args.command is not None:
+        worker = workers.CommandLineWorker(command=args.command, logger=logger)
+        observers.append(worker)
+
+    if not args.quiet:
+        print_format = (
+            args.printf.replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\r", "\r")
+        )
+        time_format = args.time_format
+        timestamp_format = args.timestamp_format
+        worker = workers.PrintWorker(
+            print_format, time_format, timestamp_format
+        )
+        observers.append(worker)
+
+    return reader, observers
