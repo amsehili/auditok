@@ -2,6 +2,7 @@ import os
 import math
 from random import random
 from tempfile import TemporaryDirectory
+from array import array as array_
 from unittest import TestCase
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
@@ -1325,3 +1326,16 @@ class TestAudioRegion(TestCase):
             AudioRegion(b"0" * 80, 8000, 1, 1) * factor
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             self.assertEqual(err_msg.format(_type), str(type_err.exception))
+    
+    @genty_dataset(simple=([b"a"*80, b"b" * 80],),
+                   extra_samples_1=([b"a"*31, b"b"*31, b"c"*30],),
+                   extra_samples_2=([b"a"*31, b"b"*30, b"c"*30],),
+                   extra_samples_3=([b"a"*11, b"b"*11, b"c"*10, b"c"*10],)
+                   )
+    def test_truediv(self, data):
+        
+        region = AudioRegion(b"".join(data), 80, 1, 1)
+
+        sub_regions = region / len(data)
+        for data_i, region in zip(data, sub_regions):
+            self.assertEqual(len(data_i), len(bytes(region)))
