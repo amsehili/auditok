@@ -689,11 +689,17 @@ class AudioRegion(object):
             raise TypeError(
                 "AudioRegion can only be divided by a positive int"
             )
-        samples_per_sub_region = round(len(self) / n)
+        samples_per_sub_region, rest = divmod(len(self), n)
+        onset = 0
         sub_regions = []
-        for onset in range(0, len(self), samples_per_sub_region):
-            sub_region = self[onset : onset + samples_per_sub_region]
-            sub_regions.append(sub_region)
+        while onset < len(self):
+            offset = 0
+            if rest > 0:
+                offset = 1
+                rest -= 1
+            offset += onset + samples_per_sub_region
+            sub_regions.append(self[onset:offset])
+            onset = offset
         return sub_regions
 
     def __eq__(self, other):
