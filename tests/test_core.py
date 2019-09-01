@@ -1326,16 +1326,39 @@ class TestAudioRegion(TestCase):
             AudioRegion(b"0" * 80, 8000, 1, 1) * factor
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             self.assertEqual(err_msg.format(_type), str(type_err.exception))
-    
-    @genty_dataset(simple=([b"a"*80, b"b" * 80],),
-                   extra_samples_1=([b"a"*31, b"b"*31, b"c"*30],),
-                   extra_samples_2=([b"a"*31, b"b"*30, b"c"*30],),
-                   extra_samples_3=([b"a"*11, b"b"*11, b"c"*10, b"c"*10],)
-                   )
+
+    @genty_dataset(
+        simple=([b"a" * 80, b"b" * 80],),
+        extra_samples_1=([b"a" * 31, b"b" * 31, b"c" * 30],),
+        extra_samples_2=([b"a" * 31, b"b" * 30, b"c" * 30],),
+        extra_samples_3=([b"a" * 11, b"b" * 11, b"c" * 10, b"c" * 10],),
+    )
     def test_truediv(self, data):
-        
+
         region = AudioRegion(b"".join(data), 80, 1, 1)
 
         sub_regions = region / len(data)
         for data_i, region in zip(data, sub_regions):
             self.assertEqual(len(data_i), len(bytes(region)))
+
+    @genty_dataset(
+        mono_sw_1=(b"a" * 10, 1, 1, "b", [97] * 10),
+        mono_sw_2=(b"a" * 10, 2, 1, "h", [24929] * 5),
+        mono_sw_4=(b"a" * 8, 4, 1, "i", [1633771873] * 2),
+        stereo_sw_1=(b"ab" * 5, 1, 2, "b", [[97] * 5, [98] * 5]),
+    )
+    def test_samples(self, data, sample_width, channels, fmt, expected):
+
+        region = AudioRegion(data, 10, sample_width, channels)
+        if isinstance(expected[0], list):
+            expected = [array_(fmt, exp) for exp in expected]
+        else:
+            expected = array_(fmt, expected)
+        samples = region.samples
+        equal = samples == expected
+        try:
+            # for numpy
+            equal = equal.all()
+        except:
+            pass
+        self.assertTrue(equal)
