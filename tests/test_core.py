@@ -168,16 +168,33 @@ class TestSplit(TestCase):
             ch=1,
             **kwargs
         )
+
+        region = AudioRegion(data, 10, 2, 1)
+        regions_ar = region.split(
+            min_dur,
+            max_dur,
+            max_silence,
+            drop_trailing_silence,
+            strict_min_dur,
+            analysis_window=0.1,
+            **kwargs
+        )
+
         regions = list(regions)
+        regions_ar = list(regions_ar)
         err_msg = "Wrong number of regions after split, expected: "
         err_msg += "{}, found: {}".format(len(expected), len(regions))
         self.assertEqual(len(regions), len(expected), err_msg)
+        err_msg = "Wrong number of regions after AudioRegion.split, expected: "
+        err_msg += "{}, found: {}".format(len(expected), len(regions_ar))
+        self.assertEqual(len(regions_ar), len(expected), err_msg)
 
         sample_width = 2
-        for reg, exp in zip(regions, expected):
+        for reg, reg_ar, exp in zip(regions, regions_ar, expected):
             onset, offset = exp
             exp_data = data[onset * sample_width : offset * sample_width]
             self.assertEqual(bytes(reg), exp_data)
+            self.assertEqual(reg, reg_ar)
 
     @genty_dataset(
         stereo_all_default=(2, {}, [(2, 32), (34, 76)]),
@@ -248,18 +265,36 @@ class TestSplit(TestCase):
             ch=channels,
             **kwargs
         )
+
+        region = AudioRegion(data, 10, 2, channels)
+        regions_ar = region.split(
+            min_dur=0.2,
+            max_dur=5,
+            max_silence=0.2,
+            drop_trailing_silence=False,
+            strict_min_dur=False,
+            analysis_window=0.1,
+            **kwargs
+        )
+
         regions = list(regions)
-        sample_width = 2
+        regions_ar = list(regions_ar)
         err_msg = "Wrong number of regions after split, expected: "
         err_msg += "{}, found: {}".format(len(expected), len(regions))
         self.assertEqual(len(regions), len(expected), err_msg)
+        err_msg = "Wrong number of regions after AudioRegion.split, expected: "
+        err_msg += "{}, found: {}".format(len(expected), len(regions_ar))
+        self.assertEqual(len(regions_ar), len(expected), err_msg)
+
+        sample_width = 2
         sample_size_bytes = sample_width * channels
-        for reg, exp in zip(regions, expected):
+        for reg, reg_ar, exp in zip(regions, regions_ar, expected):
             onset, offset = exp
             exp_data = data[
                 onset * sample_size_bytes : offset * sample_size_bytes
             ]
             self.assertEqual(len(bytes(reg)), len(exp_data))
+            self.assertEqual(reg, reg_ar)
 
     @genty_dataset(
         mono_aw_0_2_max_silence_0_2=(
@@ -557,23 +592,35 @@ class TestSplit(TestCase):
             ch=channels,
             **kwargs
         )
-        regions = list(regions)
-        sample_width = 2
-        import numpy as np
 
+        region = AudioRegion(data, 10, 2, channels)
+        regions_ar = region.split(
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=False,
+            strict_min_dur=False,
+            **kwargs
+        )
+
+        regions = list(regions)
+        regions_ar = list(regions_ar)
         err_msg = "Wrong number of regions after split, expected: "
-        err_msg += "{}, found: {}".format(expected, regions)
+        err_msg += "{}, found: {}".format(len(expected), len(regions))
         self.assertEqual(len(regions), len(expected), err_msg)
-        for reg, exp in zip(regions, expected):
+        err_msg = "Wrong number of regions after AudioRegion.split, expected: "
+        err_msg += "{}, found: {}".format(len(expected), len(regions_ar))
+        self.assertEqual(len(regions_ar), len(expected), err_msg)
+
+        sample_width = 2
+        sample_size_bytes = sample_width * channels
+        for reg, reg_ar, exp in zip(regions, regions_ar, expected):
             onset, offset = exp
             exp_data = data[
-                onset
-                * sample_width
-                * channels : offset
-                * sample_width
-                * channels
+                onset * sample_size_bytes : offset * sample_size_bytes
             ]
             self.assertEqual(bytes(reg), exp_data)
+            self.assertEqual(reg, reg_ar)
 
     @genty_dataset(
         filename_audio_format=(
