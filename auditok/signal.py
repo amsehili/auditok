@@ -20,7 +20,8 @@ def average_channels(data, fmt, channels):
         array(fmt, all_channels[ch::channels]) for ch in range(channels)
     ]
     avg_arr = array(
-        fmt, (sum(samples) // channels for samples in zip(*mono_channels))
+        fmt,
+        (round(sum(samples) / channels) for samples in zip(*mono_channels)),
     )
     return avg_arr
 
@@ -34,7 +35,7 @@ def separate_channels(data, fmt, channels):
 
 
 def calculate_energy_single_channel(x):
-    energy = max(sum(i ** 2 for i in x) / len(x), 1e-20)
+    energy = max(sum(i ** 2 for i in x) / len(x), _EPSILON)
     return 10 * math.log10(energy)
 
 

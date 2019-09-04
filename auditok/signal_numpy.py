@@ -15,7 +15,7 @@ def extract_single_channel(data, fmt, channels, selected):
 
 def average_channels(data, fmt, channels):
     array = np.frombuffer(data, dtype=fmt).astype(np.float64)
-    return array.reshape(-1, channels).mean(axis=1)
+    return array.reshape(-1, channels).mean(axis=1).round()
 
 
 def separate_channels(data, fmt, channels):
@@ -24,9 +24,11 @@ def separate_channels(data, fmt, channels):
 
 
 def calculate_energy_single_channel(x):
-    return 10 * np.log10(np.dot(x, x).clip(min=_EPSILON) / x.size)
+    x = np.asarray(x)
+    return 10 * np.log10((np.dot(x, x) / x.size).clip(min=_EPSILON))
 
 
 def calculate_energy_multichannel(x, aggregation_fn=np.max):
+    x = np.asarray(x)
     energy = 10 * np.log10((x * x).mean(axis=1).clip(min=_EPSILON))
     return aggregation_fn(energy)
