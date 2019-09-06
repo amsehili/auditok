@@ -622,10 +622,16 @@ class _AudioSourceProxy:
         self._audio_source = audio_source
 
     def rewind(self):
-        if self._audio_source.rewindable:
+        if self.rewindable:
             self._audio_source.rewind()
         else:
             raise AudioIOError("Audio stream is not rewindable")
+
+    def rewindable(self):
+        try:
+            return self._audio_source.rewindable
+        except AttributeError:
+            return False
 
     def is_open(self):
         return self._audio_source.is_open()
@@ -641,9 +647,9 @@ class _AudioSourceProxy:
 
     @property
     def data(self):
-        raise AttributeError(
-            "AudioDataSource is not a recorder, no recorded data can be accessed"
-        )
+        err_msg = "AudioDataSource is not a recorder, no recorded data can "
+        err_msg += "be retrieved"
+        raise AttributeError(err_msg)
 
     def __getattr__(self, name):
         return getattr(self._audio_source, name)
@@ -667,10 +673,13 @@ class _Recorder(_AudioSourceProxy):
     @property
     def data(self):
         if self._data is None:
-            raise RuntimeError(
-                "Unrewinded recorder. Call rewind before accessing recorded data"
-            )
+            err_msg = "Unrewinded recorder. Call rewind before accessing "
+            err_msg += "recorded data"
+            raise RuntimeError(err_msg)
         return self._data
+
+    def rewindable(self):
+        return True
 
     def rewind(self):
         if self._cache:
@@ -704,7 +713,8 @@ class _Recorder(_AudioSourceProxy):
 class _Limiter(_AudioSourceProxy):
     """
     A class for AudioDataSource objects that can read a fixed amount of data.
-    This can be useful when reading data from the microphone or from large audio files.
+    This can be useful when reading data from the microphone or from large
+    audio files.
     """
 
     def __init__(self, audio_source, max_read):
@@ -851,7 +861,6 @@ class AudioDataSource(DataSource):
         max_read=None,
         **kwargs
     ):
-
         if not isinstance(source, AudioSource):
             source = get_audio_source(source, **kwargs)
         self._record = record
