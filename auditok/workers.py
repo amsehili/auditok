@@ -20,7 +20,7 @@ except ImportError:
         from Queue import Queue, Empty
 
 from .core import split
-from .cmdline_util import make_duration_fromatter
+from . import cmdline_util
 
 _STOP_PROCESSING = "STOP_PROCESSING"
 _AudioRegionMeta = namedtuple("_AudioRegionMeta", "id start end duration")
@@ -125,7 +125,10 @@ class TokenizerWorker(Worker, AudioDataSource):
         self._init_start_processing_timestamp()
         for _id, audio_region in enumerate(self._audio_region_gen, start=1):
             ar_meta = _AudioRegionMeta(
-                _id, audio_region.start, audio_region.end, audio_region.duration
+                _id,
+                audio_region.meta.start,
+                audio_region.meta.end,
+                audio_region.duration,
             )
             self._audio_regions.append(ar_meta)
             if self._logger is not None:
@@ -135,7 +138,9 @@ class TokenizerWorker(Worker, AudioDataSource):
                     end=audio_region.end,
                     duration=audio_region.duration,
                 )
-                self._log(message + " " + str(self._start_processing_timestamp))
+                self._log(
+                    message + " " + str(self._start_processing_timestamp)
+                )
             self._notify_observers((_id, audio_region))
         self._notify_observers(_STOP_PROCESSING)
         self._reader.close()
@@ -170,7 +175,12 @@ class TokenizerWorker(Worker, AudioDataSource):
 
 class StreamSaverWorker(Worker, AudioDataSource):
     def __init__(
-        self, audio_data_source, filename, format=None, cache_size=16000, timeout=0.5
+        self,
+        audio_data_source,
+        filename,
+        format=None,
+        cache_size=16000,
+        timeout=0.5,
     ):
 
         self._audio_data_source = audio_data_source
@@ -201,7 +211,9 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
     def __del__(self):
         self._post_process()
-        if (self._tmp_output_filename != self._output_filename) and self._exported:
+        if (
+            self._tmp_output_filename != self._output_filename
+        ) and self._exported:
             os.remove(self._tmp_output_filename)
 
     def _process_message(self, data):
@@ -243,6 +255,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
     @property
     def data(self):
+        print("reading data")
         with open(self._tmp_output_filename, "rb") as fp:
             return fp.read()
 
@@ -371,7 +384,9 @@ class PlayerWorker(Worker):
 
 
 class RegionSaverWorker(Worker):
-    def __init__(self, name_format, filetype=None, timeout=0.2, logger=None, **kwargs):
+    def __init__(
+        self, name_format, filetype=None, timeout=0.2, logger=None, **kwargs
+    ):
         self._name_format = name_format
         self._filetype = filetype
         self._audio_kwargs = kwargs
@@ -380,8 +395,15 @@ class RegionSaverWorker(Worker):
 
     def _process_message(self, message):
         _id, audio_region = message
-        filename = self._name_format.replace("{id}", str(_id))
-        filename = audio_region.save(filename, self._filetype, **self._audio_kwargs)
+        filename = self._name_format.format(
+            id=_id,
+            start=audio_region.meta.start,
+            end=audio_region.meta.end,
+            duration=audio_region.duration,
+        )
+        filename = audio_region.save(
+            filename, self._filetype, **self._audio_kwargs
+        )
         if self._logger:
             message = self._debug_format.format(id=_id, filename=filename)
             self._log(message)
@@ -397,7 +419,7 @@ class PrintWorker(Worker):
     ):
 
         self._print_format = print_format
-        self._format_time = make_duration_fromatter(time_format)
+        self._format_time = cmdline_util.make_duration_fromatter(time_format)
         self._timestamp_format = timestamp_format
         self.detections = []
         Worker.__init__(self, timeout=timeout)
@@ -405,13 +427,13 @@ class PrintWorker(Worker):
     def _process_message(self, message):
         _id, audio_region = message
         timestamp = self._start_processing_timestamp + timedelta(
-            seconds=audio_region.start
+            seconds=audio_region.meta.start
         )
         timestamp = timestamp.strftime(self._timestamp_format)
         text = self._print_format.format(
             id=_id,
-            start=self._format_time(audio_region.start),
-            end=self._format_time(audio_region.end),
+            start=self._format_time(audio_region.meta.start),
+            end=self._format_time(audio_region.meta.end),
             duration=self._format_time(audio_region.duration),
             timestamp=timestamp,
         )
