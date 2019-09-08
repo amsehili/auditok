@@ -1,7 +1,7 @@
 import sys
 import logging
 from collections import namedtuple
-from . import workers
+from auditok import workers
 from .util import AudioDataSource
 from .io import player_for
 
@@ -14,13 +14,13 @@ class TimeFormatError(Exception):
 
 
 def make_kwargs(args_ns):
-    if args_ns.output_main is None:
+    if args_ns.save_stream is None:
         record = args_ns.plot or (args_ns.save_image is not None)
     else:
         record = False
     try:
         use_channel = int(args_ns.use_channel)
-    except ValueError:
+    except (ValueError, TypeError):
         use_channel = args_ns.use_channel
 
     io_kwargs = {
@@ -30,8 +30,8 @@ def make_kwargs(args_ns):
         "sample_width": args_ns.sample_width,
         "channels": args_ns.channels,
         "use_channel": use_channel,
-        "input_type": args_ns.input_type,
-        "output_type": args_ns.output_type,
+        "input_type": args_ns.input_format,
+        "output_type": args_ns.output_format,
         "large_file": args_ns.large_file,
         "frames_per_buffer": args_ns.frame_per_buffer,
         "input_device_index": args_ns.input_device_index,
@@ -108,13 +108,13 @@ def initialize_workers(args, logger=None, **io_kwargs):
     observers = []
 
     reader = AudioDataSource(args.input, **io_kwargs)
-    if args.output_main is not None:
-        reader = workers.StreamSaverWorker(reader, args.output_main)
+    if args.save_stream is not None:
+        reader = workers.StreamSaverWorker(reader, args.save_stream)
         reader.start()
 
-    if args.output_tokens is not None:
+    if args.save_detections_as is not None:
         worker = workers.RegionSaverWorker(
-            args.output_tokens, args.output_type, logger=logger
+            args.save_detections_as, args.output_format, logger=logger
         )
         observers.append(worker)
 
