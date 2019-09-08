@@ -823,9 +823,7 @@ def get_audio_source(input=None, **kwargs):
         frames_per_buffer = kwargs.get("frames_per_buffer", 1024)
         input_device_index = kwargs.get("input_device_index")
         return PyAudioSource(
-            sampling_rate=sampling_rate,
-            sample_width=sample_width,
-            channels=channels,
+            *_get_audio_parameters(kwargs),
             frames_per_buffer=frames_per_buffer,
             input_device_index=input_device_index,
         )
