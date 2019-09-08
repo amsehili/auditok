@@ -41,13 +41,15 @@ def main(argv=None):
         parser = ArgumentParser(
             prog=program_name, description="An Audio Tokenization tool"
         )
-        parser.add_argument("--version", "-v", action="version", version=version)
+        parser.add_argument(
+            "--version", "-v", action="version", version=version
+        )
         group = parser.add_argument_group("Input-Output options")
         group.add_argument(
             "-i",
             "--input",
             dest="input",
-            help="Input audio or video file. Use - for stdin "
+            help="Input audio or video file. Use '-' for stdin "
             "[default: read from microphone using pyaudio]",
             metavar="FILE",
         )
@@ -55,7 +57,8 @@ def main(argv=None):
             "-I",
             "--input-device-index",
             dest="input_device_index",
-            help="Audio device index [default: %(default)s] - only when using PyAudio",
+            help="Audio device index [default: %(default)s]. "
+            "Optional and only effective when using PyAudio",
             type=int,
             default=None,
             metavar="INT",
@@ -64,18 +67,22 @@ def main(argv=None):
             "-F",
             "--audio-frame-per-buffer",
             dest="frame_per_buffer",
-            help="Audio frame per buffer [default: %(default)s] - only when using PyAudio",
+            help="Audio frame per buffer [default: %(default)s]. "
+            "Optional and only effective when using PyAudio",
             type=int,
             default=1024,
             metavar="INT",
         )
         group.add_argument(
-            "-t",
-            "--input-type",
-            dest="input_type",
+            "-f",
+            "--input-format",
+            dest="input_format",
             type=str,
             default=None,
-            help="Input audio file type. Mandatory if file name has no extension",
+            help="Input audio file format. If not given, guess format from "
+            "extension. If output file name has no extension, guess format "
+            "from file header (requires pydub). If none of the previous is "
+            "true, raise an error",
             metavar="STRING",
         )
         group.add_argument(
@@ -84,7 +91,7 @@ def main(argv=None):
             dest="max_time",
             type=float,
             default=None,
-            help="Max data (in seconds) to read from microphone or file "
+            help="Maximum data (in seconds) to read from microphone or file "
             "[default: read until the end of file/stream]",
             metavar="FLOAT",
         )
@@ -100,32 +107,34 @@ def main(argv=None):
         )
         group.add_argument(
             "-O",
-            "--output-main",
-            dest="output_main",
+            "--save-stream",
+            dest="save_stream",
             type=str,
             default=None,
-            help="Save acquired audio data to disk. If omitted no data will be saved "
-            "[default: omitted]",
+            help="Save acquired audio data (from file or microphone) to disk."
+            " If omitted no data will be saved. [default: omitted]",
             metavar="FILE",
         )
         group.add_argument(
             "-o",
-            "--output-tokens",
-            dest="output_tokens",
+            "--save-detections-as",
+            dest="save_detections_as",
             type=str,
             default=None,
-            help="Output file name format for detections."
-            "Use {N}, {start} and {end} to build file names,"
-            "example: 'Det_{N}_{start}-{end}.wav'",
+            help="File name format for detections."
+            "The following placeholders can be used to build output file name "
+            "for each detection: {id} (sequential, starts from 1), {start}, "
+            "{end} and {duration}. Time placeholders are in seconds. "
+            "Example: 'Event_{id}_{start}-{end}_{duration:.3f}.wav'",
             metavar="STRING",
         )
         group.add_argument(
             "-T",
-            "--output-type",
-            dest="output_type",
+            "--output-format",
+            dest="output_format",
             type=str,
             default=None,
-            help="Audio type used to save detections and/or main stream. "
+            help="Audio format used to save detections and/or main stream. "
             "If not supplied, then it will: (1. be guessed from extension or (2. "
             "use raw format",
             metavar="STRING",
@@ -135,11 +144,17 @@ def main(argv=None):
             "--use-channel",
             dest="use_channel",
             type=str,
-            default="1",
-            help="Choose channel to use from a multi-channel audio file "
-            "'left' (1st channel), 'right' (2nd channel) and 'mix' "
-            "(average of all channels) are accepted values. "
-            "[Default: 1]",
+            default=None,
+            help="Which channel to use for tokenization when input stream is "
+            "multi-channel (0 is the first channel). Default is None, meaning "
+            "that all channels will be considered for tokenization (i.e., get "
+            "any valid audio event regardless of the channel it occurs in). "
+            "This value can also be 'mix' (alias 'avg' or 'average') and "
+            "means mix down all audio channels into one channel (i.e. compute "
+            "average channel) and use the resulting channel for tokenization. "
+            "Whatever option is used, saved audio events will contain the same"
+            " number of channels as input stream. "
+            "[Default: None, use all channels]",
             metavar="INT/STRING",
         )
 
@@ -297,10 +312,14 @@ def main(argv=None):
             dest="printf",
             type=str,
             default="{id} {start} {end}",
-            help="print detections, one per line, using a user supplied format "
-            "(e.g. '[{id}]: {start} -- {end}'). Available keywords are: "
-            "{id}, {start}, {end}, {duration} and {timestamp} "
-            "(i.e., system date and time)",
+            help="Print audio events information, one per line, using this "
+            "format. Format can contain text with the following placeholders: "
+            "{id} (sequential, starts from 1), {start}, {end}, {duration} and "
+            "{timestamp}. The first 3 time placeholders are in seconds and "
+            "their format can be set using --time-format argument. "
+            "{timestamp} is the system timestamp (date and time) of the event "
+            "and can be set using --timestamp-format argument.\n"
+            "Example: '[{id}]: {start} -> {end} -- {timestamp}'",
             metavar="STRING",
         )
         group.add_argument(
@@ -308,9 +327,11 @@ def main(argv=None):
             dest="time_format",
             type=str,
             default="%S",
-            help="format used to print {start} and {end}.[default= %(default)s]. "
-            "%%S: absolute time in seconds. %%I: absolute time in ms. If at least "
-            "one of (%%h, %%m, %%s, %%i) is used, convert time into hours, "
+            help="Format used to print {start}, {end} and {duration} "
+            "placeholders used with --printf [default= %(default)s]. The "
+            "following formats are accepted:\n"
+            "%%S: absolute time in seconds. %%I: absolute time in ms. If at "
+            "least one of (%%h, %%m, %%s, %%i) is used, convert time into hours, "
             "minutes, seconds and millis (e.g. %%h:%%m:%%s.%%i). Only supplied "
             "fields are printed. Note that %%S and %%I can only be used alone",
             metavar="STRING",
@@ -320,8 +341,8 @@ def main(argv=None):
             dest="timestamp_format",
             type=str,
             default="%Y/%m/%d %H:%M:%S",
-            help="format used to print {timestamp}. Should be a format accepted by "
-            "datetime Default %%Y/%%m/%%d %%H:%%M:%%S",
+            help="Format used to print {timestamp}. Should be a format "
+            "accepted by datetime Default %%Y/%%m/%%d %%H:%%M:%%S",
         )
         parser.add_argument(
             "-q",
@@ -352,7 +373,9 @@ def main(argv=None):
         args = parser.parse_args(argv)
         logger = make_logger(args.debug, args.debug_file)
         kwargs = make_kwargs(args)
-        reader, observers = initialize_workers(args, logger=logger, **kwargs.io)
+        reader, observers = initialize_workers(
+            args, logger=logger, **kwargs.io
+        )
         tokenizer_worker = workers.TokenizerWorker(
             reader, observers, logger=logger, **kwargs.split
         )
@@ -366,21 +389,22 @@ def main(argv=None):
     except (KeyboardInterrupt, workers.EndOfProcessing):
         if tokenizer_worker is not None:
             tokenizer_worker.stop_all()
-            if args.output_main is not None:
+            if args.save_stream is not None:
                 reader.save_stream()
             if args.plot or args.save_image is not None:
                 from .plotting import plot_detections
 
                 reader.rewind()
-                main_region = AudioRegion(
-                    reader.data, sr=reader.sr, sw=reader.sw, channels=reader.ch
+                record = AudioRegion(
+                    reader.data, reader.sr, reader.sw, reader.ch
                 )
                 detections = (
-                    (det.start, det.end) for det in tokenizer_worker.audio_regions
+                    (det.start, det.end)
+                    for det in tokenizer_worker.audio_regions
                 )
                 plot_detections(
-                    main_region,
-                    reader.sr,
+                    record,
+                    record.sr,
                     detections,
                     show=True,
                     save_as=args.save_image,
