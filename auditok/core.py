@@ -13,7 +13,14 @@ import math
 from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
-from auditok.plotting import plot, plot_detections
+
+try:
+    from auditok.plotting import plot, plot_detections
+
+    _WITH_MATPLOTLIB = True
+except ImportError:
+    _WITH_MATPLOTLIB = False
+
 
 try:
     from . import signal_numpy as signal
@@ -376,6 +383,7 @@ class AudioRegion(object):
         self._sample_width = sample_width
         self._channels = channels
         self._samples = None
+        self.splitp = self.split_and_plot
 
         if meta is not None:
             self._meta = _AudioRegionMetadata(meta)
@@ -562,7 +570,10 @@ class AudioRegion(object):
         )
 
     def plot(self, show=True, **plot_kwargs):
-        plot(self, self.sr, show=show, **plot_kwargs)
+        if _WITH_MATPLOTLIB:
+            plot(self, self.sr, show=show, **plot_kwargs)
+        else:
+            raise RuntimeWarning("Plotting requires matplotlib")
 
     def split_and_plot(
         self,
@@ -575,22 +586,29 @@ class AudioRegion(object):
         plot_kwargs=None,
         **kwargs
     ):
-        """Split region and plot signal and detection.
+        """Split region and plot signal and detection. Alias: `splitp`.
         See :auditok.split() for split parameters description.
         """
-        regions = split(
-            self,
-            min_dur=min_dur,
-            max_dur=max_dur,
-            max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
-            strict_min_dur=strict_min_dur,
-            **kwargs
-        )
-        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
-        if plot_kwargs is None:
-            plot_kwargs = {}
-        plot_detections(self, self.sr, detections, show=show, **plot_kwargs)
+        if _WITH_MATPLOTLIB:
+            regions = split(
+                self,
+                min_dur=min_dur,
+                max_dur=max_dur,
+                max_silence=max_silence,
+                drop_trailing_silence=drop_trailing_silence,
+                strict_min_dur=strict_min_dur,
+                **kwargs
+            )
+            regions = list(regions)
+            detections = ((reg.meta.start, reg.meta.end) for reg in regions)
+            if plot_kwargs is None:
+                plot_kwargs = {}
+            plot_detections(
+                self, self.sr, detections, show=show, **plot_kwargs
+            )
+            return regions
+        else:
+            raise RuntimeWarning("Plotting requires matplotlib")
 
     def __array__(self):
         return self.samples
