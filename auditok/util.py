@@ -854,26 +854,26 @@ class AudioDataSource(DataSource):
 
     def __init__(
         self,
-        source,
+        input,
         block_dur=0.01,
         hop_dur=None,
         record=False,
         max_read=None,
         **kwargs
     ):
-        if not isinstance(source, AudioSource):
-            source = get_audio_source(source, **kwargs)
+        if not isinstance(input, AudioSource):
+            input = get_audio_source(input, **kwargs)
         self._record = record
         if record:
-            source = _Recorder(source)
+            input = _Recorder(input)
         if max_read is not None:
-            source = _Limiter(source, max_read)
+            input = _Limiter(input, max_read)
             self._max_read = max_read
         if hop_dur is not None:
-            source = _OverlapAudioReader(source, block_dur, hop_dur)
+            input = _OverlapAudioReader(input, block_dur, hop_dur)
         else:
-            source = _FixedSizeAudioReader(source, block_dur)
-        self._audio_source = source
+            input = _FixedSizeAudioReader(input, block_dur)
+        self._audio_source = input
 
     def __repr__(self):
         block_dur, hop_dur, max_read = None, None, None
