@@ -87,8 +87,8 @@ def main(argv=None):
         )
         group.add_argument(
             "-M",
-            "--max-time",
-            dest="max_time",
+            "--max-read",
+            dest="max_read",
             type=float,
             default=None,
             help="Maximum data (in seconds) to read from microphone or file "
@@ -374,7 +374,7 @@ def main(argv=None):
         logger = make_logger(args.debug, args.debug_file)
         kwargs = make_kwargs(args)
         reader, observers = initialize_workers(
-            args, logger=logger, **kwargs.io
+            args, logger=logger, **kwargs.io, **kwargs.miscellaneous
         )
         tokenizer_worker = workers.TokenizerWorker(
             reader, observers, logger=logger, **kwargs.split
