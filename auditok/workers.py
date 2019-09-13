@@ -178,7 +178,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
         self,
         audio_data_source,
         filename,
-        format=None,
+        export_format=None,
         cache_size=16000,
         timeout=0.5,
     ):
@@ -186,7 +186,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
         self._audio_data_source = audio_data_source
         self._cache_size = cache_size
         self._output_filename = filename
-        self._export_format = _guess_audio_format(format, filename)
+        self._export_format = _guess_audio_format(export_format, filename)
         if self._export_format != "raw":
             self._tmp_output_filename = self._output_filename + ".raw"
         else:

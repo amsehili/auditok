@@ -4,13 +4,12 @@ from collections import namedtuple
 from auditok import workers
 from .util import AudioDataSource
 from .io import player_for
+from .exceptions import TimeFormatError
 
 LOGGER_NAME = "AUDITOK_LOGGER"
-KeywordArguments = namedtuple("KeywordArguments", ["io", "split"])
-
-
-class TimeFormatError(Exception):
-    pass
+KeywordArguments = namedtuple(
+    "KeywordArguments", ["io", "split", "miscellaneous"]
+)
 
 
 def make_kwargs(args_ns):
@@ -24,14 +23,16 @@ def make_kwargs(args_ns):
         use_channel = args_ns.use_channel
 
     io_kwargs = {
+        "input": args_ns.input,
+        "audio_format": args_ns.input_format,
         "max_read": args_ns.max_time,
         "block_dur": args_ns.analysis_window,
         "sampling_rate": args_ns.sampling_rate,
         "sample_width": args_ns.sample_width,
         "channels": args_ns.channels,
         "use_channel": use_channel,
-        "input_type": args_ns.input_format,
-        "output_type": args_ns.output_format,
+        "save_stream": args_ns.save_stream,
+        "export_format": args_ns.output_format,
         "large_file": args_ns.large_file,
         "frames_per_buffer": args_ns.frame_per_buffer,
         "input_device_index": args_ns.input_device_index,
@@ -46,7 +47,16 @@ def make_kwargs(args_ns):
         "strict_min_dur": args_ns.strict_min_duration,
         "energy_threshold": args_ns.energy_threshold,
     }
-    return KeywordArguments(io_kwargs, split_kwargs)
+
+    miscellaneous = {
+        "echo": args_ns.echo,
+        "command": args_ns.command,
+        "quiet": args_ns.quiet,
+        "printf": args_ns.printf,
+        "time_format": args_ns.time_format,
+        "timestamp_format": args_ns.timestamp_format,
+    }
+    return KeywordArguments(io_kwargs, split_kwargs, miscellaneous)
 
 
 def make_duration_fromatter(fmt):
@@ -64,9 +74,9 @@ def make_duration_fromatter(fmt):
             return "{0}".format(int(seconds * 1000))
 
     else:
-        fmt = fmt.replace("%h", "{hrs:d}")
-        fmt = fmt.replace("%m", "{mins:d}")
-        fmt = fmt.replace("%s", "{secs:d}")
+        fmt = fmt.replace("%h", "{hrs:02d}")
+        fmt = fmt.replace("%m", "{mins:02d}")
+        fmt = fmt.replace("%s", "{secs:02d}")
         fmt = fmt.replace("%i", "{millis:03d}")
         try:
             i = fmt.index("%")
@@ -104,42 +114,48 @@ def make_logger(debug_stdout=False, debug_file=None):
     return logger
 
 
-def initialize_workers(args, logger=None, **io_kwargs):
+def initialize_workers(logger=None, **kwargs):
     observers = []
 
-    reader = AudioDataSource(args.input, **io_kwargs)
-    if args.save_stream is not None:
-        reader = workers.StreamSaverWorker(reader, args.save_stream)
+    reader = AudioDataSource(source=kwargs["input"], **kwargs)
+    if kwargs["save_stream"] is not None:
+        reader = workers.StreamSaverWorker(
+            reader,
+            filename=kwargs["save_stream"],
+            export_format=kwargs["export_format"],
+        )
         reader.start()
 
-    if args.save_detections_as is not None:
+    if kwargs["save_detections_as"] is not None:
         worker = workers.RegionSaverWorker(
-            args.save_detections_as, args.output_format, logger=logger
+            kwargs["save_detections_as"],
+            kwargs["export_format"],
+            logger=logger,
         )
         observers.append(worker)
 
-    if args.echo:
+    if kwargs["echo"]:
         player = player_for(reader)
-        progress_bar = args.progress_bar
         worker = workers.PlayerWorker(
-            player, progress_bar=progress_bar, logger=logger
+            player, progress_bar=kwargs["progress_bar"], logger=logger
         )
         observers.append(worker)
 
-    if args.command is not None:
-        worker = workers.CommandLineWorker(command=args.command, logger=logger)
+    if kwargs["command"] is not None:
+        worker = workers.CommandLineWorker(
+            command=kwargs["command"], logger=logger
+        )
         observers.append(worker)
 
-    if not args.quiet:
+    if not kwargs["quiet"]:
         print_format = (
-            args.printf.replace("\\n", "\n")
+            kwargs["printf"]
+            .replace("\\n", "\n")
             .replace("\\t", "\t")
             .replace("\\r", "\r")
         )
-        time_format = args.time_format
-        timestamp_format = args.timestamp_format
         worker = workers.PrintWorker(
-            print_format, time_format, timestamp_format
+            print_format, kwargs["time_format"], kwargs["timestamp_format"]
         )
         observers.append(worker)
 
