@@ -48,7 +48,7 @@ _ArgsNamespece = namedtuple(
 
 
 @genty
-class TestCmdLineUtil(TestCase):
+class _TestCmdLineUtil(TestCase):
     @genty_dataset(
         no_record=("stream.ogg", False, None, "mix", "mix", False),
         no_record_plot=("stream.ogg", True, None, None, None, False),
@@ -139,3 +139,35 @@ class TestCmdLineUtil(TestCase):
         expected = KeywordArguments(io_kwargs, split_kwargs, miscellaneous)
         kwargs = make_kwargs(args_ns)
         self.assertEqual(kwargs, expected)
+
+    @genty_dataset(
+        only_seconds=("%S", 5400, "5400.000"),
+        only_millis=("%I", 5400, "5400000"),
+        full=("%h:%m:%s.%i", 3725.365, "01:02:05.365"),
+        full_zero_hours=("%h:%m:%s.%i", 1925.075, "00:32:05.075"),
+        full_zero_minutes=("%h:%m:%s.%i", 3659.075, "01:00:59.075"),
+        full_zero_seconds=("%h:%m:%s.%i", 3720.075, "01:02:00.075"),
+        full_zero_millis=("%h:%m:%s.%i", 3725, "01:02:05.000"),
+        duplicate_directive=(
+            "%h %h:%m:%s.%i %s",
+            3725.365,
+            "01 01:02:05.365 05",
+        ),
+        no_millis=("%h:%m:%s", 3725, "01:02:05"),
+        no_seconds=("%h:%m", 3725, "01:02"),
+        no_minutes=("%h", 3725, "01"),
+        no_hours=("%m:%s.%i", 3725, "02:05.000"),
+    )
+    def test_make_duration_fromatter(self, fmt, duration, expected):
+        formatter = make_duration_fromatter(fmt)
+        result = formatter(duration)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(
+        duplicate_only_seconds=("%S %S",),
+        duplicate_only_millis=("%I %I",),
+        unknown_directive=("%x",),
+    )
+    def test_make_duration_fromatter_error(self, fmt):
+        with self.assertRaises(TimeFormatError):
+            make_duration_fromatter(fmt)
