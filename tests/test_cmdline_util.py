@@ -1,4 +1,6 @@
+import os
 from unittest import TestCase
+from tempfile import TemporaryDirectory
 from collections import namedtuple
 from genty import genty, genty_dataset
 
@@ -171,3 +173,17 @@ class _TestCmdLineUtil(TestCase):
     def test_make_duration_fromatter_error(self, fmt):
         with self.assertRaises(TimeFormatError):
             make_duration_fromatter(fmt)
+
+    def test_make_logger_stdout_and_file(self):
+        with TemporaryDirectory() as tmpdir:
+            file = os.path.join(tmpdir, "file.log")
+            logger = make_logger(debug_stdout=True, debug_file=file)
+            self.assertEqual(logger.name, LOGGER_NAME)
+            self.assertEqual(len(logger.handlers), 2)
+            self.assertEqual(logger.handlers[0].stream.name, "<stdout>")
+            self.assertEqual(logger.handlers[1].stream.name, file)
+
+    def test_make_logger_None(self):
+        logger = make_logger(debug_stdout=False, debug_file=None)
+        self.assertIsNone(logger)
+        del logger
