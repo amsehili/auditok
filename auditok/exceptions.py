@@ -9,3 +9,7 @@ class TooSamllBlockDuration(ValueError):
         self.block_dur = block_dur
         self.sampling_rate = sampling_rate
         super(TooSamllBlockDuration, self).__init__(message)
+
+
+class TimeFormatError(Exception):
+    pass
