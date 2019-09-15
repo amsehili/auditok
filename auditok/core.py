@@ -465,7 +465,7 @@ class AudioRegion(object):
     def ch(self):
         return self._channels
 
-    def play(self, player=None, progress_bar=False, **progress_bar_kwargs):
+    def play(self, progress_bar=False, player=None, **progress_bar_kwargs):
         """Play audio region
 
         :Parameters:
