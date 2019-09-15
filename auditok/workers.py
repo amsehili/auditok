@@ -409,6 +409,12 @@ class RegionSaverWorker(Worker):
             self._log(message)
 
 
+class CommandLineWorker(Worker):
+    def __init__(self, command, timeout=0.2, logger=None):
+        self._command = command
+        Worker.__init__(self, timeout=timeout, logger=logger)
+
+
 class PrintWorker(Worker):
     def __init__(
         self,
