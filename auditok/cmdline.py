@@ -400,7 +400,7 @@ def main(argv=None):
                 )
                 detections = (
                     (det.start, det.end)
-                    for det in tokenizer_worker.audio_regions
+                    for det in tokenizer_worker.detections
                 )
                 plot_detections(
                     record,
