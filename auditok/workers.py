@@ -23,7 +23,7 @@ from .core import split
 from . import cmdline_util
 
 _STOP_PROCESSING = "STOP_PROCESSING"
-_AudioRegionMeta = namedtuple("_AudioRegionMeta", "id start end duration")
+_Detection = namedtuple("_Detection", "id start end duration")
 
 
 class EndOfProcessing(Exception):
@@ -101,14 +101,14 @@ class TokenizerWorker(Worker, AudioDataSource):
         self._observers = observers if observers is not None else []
         self._reader = reader
         self._audio_region_gen = split(self, **kwargs)
-        self._audio_regions = []
-        self._log_format = "[DET]: Detection {id} (start: {start:.3f}, "
-        self._log_format = "end: {end:.3f}, duration: {duration:.3f})"
-        Worker.__init__(self, timeout=0.5, logger=logger)
+        self._detections = []
+        self._log_format = "[DET]: Detection {0.id} (start: {0.start:.3f}, "
+        self._log_format += "end: {0.end:.3f}, duration: {0.duration:.3f})"
+        Worker.__init__(self, timeout=0.2, logger=logger)
 
     @property
-    def audio_regions(self):
-        return self._audio_regions
+    def detections(self):
+        return self._detections
 
     def _notify_observers(self, message):
         for observer in self._observers:
@@ -124,33 +124,19 @@ class TokenizerWorker(Worker, AudioDataSource):
         self._reader.open()
         self._init_start_processing_timestamp()
         for _id, audio_region in enumerate(self._audio_region_gen, start=1):
-            ar_meta = _AudioRegionMeta(
+            detection = _Detection(
                 _id,
                 audio_region.meta.start,
                 audio_region.meta.end,
                 audio_region.duration,
             )
-            self._audio_regions.append(ar_meta)
+            self._detections.append(detection)
             if self._logger is not None:
-                message = self._log_format.format(
-                    id=_id,
-                    start=audio_region.start,
-                    end=audio_region.end,
-                    duration=audio_region.duration,
-                )
-                self._log(
-                    message + " " + str(self._start_processing_timestamp)
-                )
+                message = self._log_format.format(detection)
+                self._log(message)
             self._notify_observers((_id, audio_region))
         self._notify_observers(_STOP_PROCESSING)
         self._reader.close()
-
-    def add_observer(self, observer):
-        observer.start_processing_timestamp = self._start_processing_timestamp
-        self._observers.append(observer)
-
-    def remove_observer(self, observer):
-        self._observers.remove(observer)
 
     def start_all(self):
         for observer in self._observers:
