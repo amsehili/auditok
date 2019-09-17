@@ -6,7 +6,7 @@ from collections import namedtuple
 from genty import genty, genty_dataset
 
 from auditok.cmdline_util import (
-    LOGGER_NAME,
+    _AUDITOK_LOGGER,
     make_kwargs,
     make_duration_fromatter,
     make_logger,
@@ -181,17 +181,17 @@ class _TestCmdLineUtil(TestCase):
         with self.assertRaises(TimeFormatError):
             make_duration_fromatter(fmt)
 
-    def test_make_logger_stdout_and_file(self):
+    def test_make_logger_stderr_and_file(self):
         with TemporaryDirectory() as tmpdir:
             file = os.path.join(tmpdir, "file.log")
-            logger = make_logger(debug_stdout=True, debug_file=file)
-            self.assertEqual(logger.name, LOGGER_NAME)
+            logger = make_logger(stderr=True, file=file)
+            self.assertEqual(logger.name, _AUDITOK_LOGGER)
             self.assertEqual(len(logger.handlers), 2)
-            self.assertEqual(logger.handlers[0].stream.name, "<stdout>")
+            self.assertEqual(logger.handlers[0].stream.name, "<stderr>")
             self.assertEqual(logger.handlers[1].stream.name, file)
 
     def test_make_logger_None(self):
-        logger = make_logger(debug_stdout=False, debug_file=None)
+        logger = make_logger(stderr=False, file=None)
         self.assertIsNone(logger)
 
     def test_initialize_workers_all(self):
