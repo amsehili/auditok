@@ -6,7 +6,7 @@ from .util import AudioDataSource
 from .io import player_for
 from .exceptions import TimeFormatError
 
-LOGGER_NAME = "AUDITOK_LOGGER"
+_AUDITOK_LOGGER = "AUDITOK_LOGGER"
 KeywordArguments = namedtuple(
     "KeywordArguments", ["io", "split", "miscellaneous"]
 )
@@ -96,17 +96,17 @@ def make_duration_fromatter(fmt):
     return fromatter
 
 
-def make_logger(debug_stdout=False, debug_file=None):
-    if not debug_stdout and debug_file is None:
+def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
+    if not stderr and file is None:
         return None
-    logger = logging.getLogger(LOGGER_NAME)
-    if debug_stdout:
-        handler = logging.StreamHandler(sys.stdout)
+    logger = logging.getLogger(name)
+    if stderr:
+        handler = logging.StreamHandler(sys.stderr)
         handler.setLevel(logging.DEBUG)
         logger.addHandler(handler)
 
-    if debug_file is not None:
-        handler = logging.FileHandler(debug_file, "w")
+    if file is not None:
+        handler = logging.FileHandler(file, "w")
         fmt = logging.Formatter("[%(asctime)s] | %(message)s")
         handler.setFormatter(fmt)
         handler.setLevel(logging.DEBUG)
