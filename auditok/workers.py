@@ -371,24 +371,29 @@ class PlayerWorker(Worker):
 
 class RegionSaverWorker(Worker):
     def __init__(
-        self, name_format, filetype=None, timeout=0.2, logger=None, **kwargs
+        self,
+        filename_format,
+        audio_format=None,
+        timeout=0.2,
+        logger=None,
+        **audio_parameters
     ):
-        self._name_format = name_format
-        self._filetype = filetype
-        self._audio_kwargs = kwargs
+        self._filename_format = filename_format
+        self._audio_format = audio_format
+        self._audio_parameters = audio_parameters
         self._debug_format = '[SAVE]: Detection {id} saved as "{filename}"'
         Worker.__init__(self, timeout=timeout, logger=logger)
 
     def _process_message(self, message):
         _id, audio_region = message
-        filename = self._name_format.format(
+        filename = self._filename_format.format(
             id=_id,
             start=audio_region.meta.start,
             end=audio_region.meta.end,
             duration=audio_region.duration,
         )
         filename = audio_region.save(
-            filename, self._filetype, **self._audio_kwargs
+            filename, self._audio_format, **self._audio_parameters
         )
         if self._logger:
             message = self._debug_format.format(id=_id, filename=filename)
