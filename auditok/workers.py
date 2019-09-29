@@ -72,7 +72,7 @@ class Worker(Thread):
         pass
 
     def _log(self, message):
-        self._logger.warning(message)
+        self._logger.info(message)
 
     def _stop_requested(self):
         try:
