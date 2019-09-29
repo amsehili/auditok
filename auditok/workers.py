@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 import sys
+from tempfile import NamedTemporaryFile
 from abc import ABCMeta, abstractmethod
 from threading import Thread
 from datetime import datetime, timedelta
@@ -381,7 +382,7 @@ class RegionSaverWorker(Worker):
         self._filename_format = filename_format
         self._audio_format = audio_format
         self._audio_parameters = audio_parameters
-        self._debug_format = '[SAVE]: Detection {id} saved as "{filename}"'
+        self._debug_format = "[SAVE]: Detection {id} saved as '{filename}'"
         Worker.__init__(self, timeout=timeout, logger=logger)
 
     def _process_message(self, message):
@@ -404,6 +405,17 @@ class CommandLineWorker(Worker):
     def __init__(self, command, timeout=0.2, logger=None):
         self._command = command
         Worker.__init__(self, timeout=timeout, logger=logger)
+        self._debug_format = "[COMMAND]: Detection {id} command: '{command}'"
+
+    def _process_message(self, message):
+        _id, audio_region = message
+        with NamedTemporaryFile(delete=False) as file:
+            filename = audio_region.save(file.name, "raw")
+            command = self._command.format(file=filename)
+            os.system(command)
+            if self._logger is not None:
+                message = self._debug_format.format(id=_id, command=command)
+                self._log(message)
 
 
 class PrintWorker(Worker):
