@@ -348,22 +348,16 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
 
 class PlayerWorker(Worker):
-    def __init__(self, player, progress_bar=False, timeout=0.5, logger=None):
+    def __init__(self, player, progress_bar=False, timeout=0.2, logger=None):
         self._player = player
         self._progress_bar = progress_bar
-        self._log_format = "[PLAY]: Detection {id} played (start:{start:.3f},"
-        self._log_format += "end:{end:.3f}, dur:{duration:.3f})"
+        self._log_format = "[PLAY]: Detection {id} played"
         Worker.__init__(self, timeout=timeout, logger=logger)
 
     def _process_message(self, message):
         _id, audio_region = message
         if self._logger is not None:
-            message = self._log_format.format(
-                id=_id,
-                start=audio_region.start,
-                end=audio_region.end,
-                duration=audio_region.duration,
-            )
+            message = self._log_format.format(id=_id)
             self._log(message)
         audio_region.play(
             player=self._player, progress_bar=self._progress_bar, leave=False
