@@ -178,20 +178,29 @@ class StreamSaverWorker(Worker, AudioDataSource):
         self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
         self._output_filename = filename
         self._export_format = _guess_audio_format(export_format, filename)
-        if self._export_format != "wav":
-            self._tmp_output_filename = self._output_filename + ".wav"
-        else:
-            self._tmp_output_filename = self._output_filename
-
-        self._wfp = wave.open(self._tmp_output_filename, "wb")
-        self._wfp.setframerate(self._reader.sr)
-        self._wfp.setsampwidth(self._reader.sw)
-        self._wfp.setnchannels(self._reader.ch)
-
+        self._init_output_stream()
         self._exported = False
         self._cache = []
         self._total_cached = 0
         Worker.__init__(self, timeout=timeout)
+
+    def _get_non_existent_filename(self):
+        filename = self._output_filename + ".wav"
+        i = 0
+        while os.path.exists(filename):
+            i += 1
+            filename = self._output_filename + "({}).wav".format(i)
+        return filename
+
+    def _init_output_stream(self):
+        if self._export_format != "wav":
+            self._tmp_output_filename = self._get_non_existent_filename()
+        else:
+            self._tmp_output_filename = self._output_filename
+        self._wfp = wave.open(self._tmp_output_filename, "wb")
+        self._wfp.setframerate(self._reader.sr)
+        self._wfp.setsampwidth(self._reader.sw)
+        self._wfp.setnchannels(self._reader.ch)
 
     @property
     def sr(self):
@@ -256,7 +265,6 @@ class StreamSaverWorker(Worker, AudioDataSource):
     def save_stream(self):
         if self._exported:
             return
-
         if self._export_format == "wav":
             self._exported = True
             return
@@ -265,11 +273,9 @@ class StreamSaverWorker(Worker, AudioDataSource):
             self._exported = True
             return
         try:
-            raise AudioEncodingError
             self._export_with_ffmpeg_or_avconv()
         except AudioEncodingError:
             try:
-                raise AudioEncodingError
                 self._export_with_sox()
             except AudioEncodingError:
                 warn_msg = "Couldn't save audio data in the desired format "
