@@ -196,124 +196,136 @@ class _TestCmdLineUtil(TestCase):
 
     def test_initialize_workers_all(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
-            reader, observers = initialize_workers(
-                input="tests/data/test_16KHZ_mono_400Hz.wav",
-                save_stream="output.wav",
-                export_format="wave",
-                save_detections_as="{id}.wav",
-                echo=True,
-                progress_bar=False,
-                command="some command",
-                quiet=False,
-                printf="abcd",
-                time_format="%S",
-                timestamp_format="%h:%M:%S",
-            )
-            reader.stop()
-            self.assertTrue(patched_player_for.called)
-            self.assertIsInstance(reader, StreamSaverWorker)
-            for obs, cls in zip(
-                observers,
-                [
-                    RegionSaverWorker,
-                    PlayerWorker,
-                    CommandLineWorker,
-                    PrintWorker,
-                ],
-            ):
-                self.assertIsInstance(obs, cls)
+            with TemporaryDirectory() as tmpdir:
+                export_filename = os.path.join(tmpdir, "output.wav")
+                reader, observers = initialize_workers(
+                    input="tests/data/test_16KHZ_mono_400Hz.wav",
+                    save_stream=export_filename,
+                    export_format="wave",
+                    save_detections_as="{id}.wav",
+                    echo=True,
+                    progress_bar=False,
+                    command="some command",
+                    quiet=False,
+                    printf="abcd",
+                    time_format="%S",
+                    timestamp_format="%h:%M:%S",
+                )
+                reader.stop()
+                self.assertTrue(patched_player_for.called)
+                self.assertIsInstance(reader, StreamSaverWorker)
+                for obs, cls in zip(
+                    observers,
+                    [
+                        RegionSaverWorker,
+                        PlayerWorker,
+                        CommandLineWorker,
+                        PrintWorker,
+                    ],
+                ):
+                    self.assertIsInstance(obs, cls)
 
     def test_initialize_workers_no_RegionSaverWorker(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
-            reader, observers = initialize_workers(
-                input="tests/data/test_16KHZ_mono_400Hz.wav",
-                save_stream="output.wav",
-                export_format="wave",
-                save_detections_as=None,
-                echo=True,
-                progress_bar=False,
-                command="some command",
-                quiet=False,
-                printf="abcd",
-                time_format="%S",
-                timestamp_format="%h:%M:%S",
-            )
-            reader.stop()
-            self.assertTrue(patched_player_for.called)
-            self.assertIsInstance(reader, StreamSaverWorker)
-            for obs, cls in zip(
-                observers, [PlayerWorker, CommandLineWorker, PrintWorker]
-            ):
-                self.assertIsInstance(obs, cls)
+            with TemporaryDirectory() as tmpdir:
+                export_filename = os.path.join(tmpdir, "output.wav")
+                reader, observers = initialize_workers(
+                    input="tests/data/test_16KHZ_mono_400Hz.wav",
+                    save_stream=export_filename,
+                    export_format="wave",
+                    save_detections_as=None,
+                    echo=True,
+                    progress_bar=False,
+                    command="some command",
+                    quiet=False,
+                    printf="abcd",
+                    time_format="%S",
+                    timestamp_format="%h:%M:%S",
+                )
+                reader.stop()
+                self.assertTrue(patched_player_for.called)
+                self.assertIsInstance(reader, StreamSaverWorker)
+                for obs, cls in zip(
+                    observers, [PlayerWorker, CommandLineWorker, PrintWorker]
+                ):
+                    self.assertIsInstance(obs, cls)
 
     def test_initialize_workers_no_PlayerWorker(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
-            reader, observers = initialize_workers(
-                input="tests/data/test_16KHZ_mono_400Hz.wav",
-                save_stream="output.wav",
-                export_format="wave",
-                save_detections_as="{id}.wav",
-                echo=False,
-                progress_bar=False,
-                command="some command",
-                quiet=False,
-                printf="abcd",
-                time_format="%S",
-                timestamp_format="%h:%M:%S",
-            )
-            reader.stop()
-            self.assertFalse(patched_player_for.called)
-            self.assertIsInstance(reader, StreamSaverWorker)
-            for obs, cls in zip(
-                observers, [RegionSaverWorker, CommandLineWorker, PrintWorker]
-            ):
-                self.assertIsInstance(obs, cls)
+            with TemporaryDirectory() as tmpdir:
+                export_filename = os.path.join(tmpdir, "output.wav")
+                reader, observers = initialize_workers(
+                    input="tests/data/test_16KHZ_mono_400Hz.wav",
+                    save_stream=export_filename,
+                    export_format="wave",
+                    save_detections_as="{id}.wav",
+                    echo=False,
+                    progress_bar=False,
+                    command="some command",
+                    quiet=False,
+                    printf="abcd",
+                    time_format="%S",
+                    timestamp_format="%h:%M:%S",
+                )
+                reader.stop()
+                self.assertFalse(patched_player_for.called)
+                self.assertIsInstance(reader, StreamSaverWorker)
+                for obs, cls in zip(
+                    observers,
+                    [RegionSaverWorker, CommandLineWorker, PrintWorker],
+                ):
+                    self.assertIsInstance(obs, cls)
 
     def test_initialize_workers_no_CommandLineWorker(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
-            reader, observers = initialize_workers(
-                input="tests/data/test_16KHZ_mono_400Hz.wav",
-                save_stream="output.wav",
-                export_format="wave",
-                save_detections_as="{id}.wav",
-                echo=True,
-                progress_bar=False,
-                command=None,
-                quiet=False,
-                printf="abcd",
-                time_format="%S",
-                timestamp_format="%h:%M:%S",
-            )
-            reader.stop()
-            self.assertTrue(patched_player_for.called)
-            self.assertIsInstance(reader, StreamSaverWorker)
-            for obs, cls in zip(
-                observers, [RegionSaverWorker, PlayerWorker, PrintWorker]
-            ):
-                self.assertIsInstance(obs, cls)
+            with TemporaryDirectory() as tmpdir:
+                export_filename = os.path.join(tmpdir, "output.wav")
+                reader, observers = initialize_workers(
+                    input="tests/data/test_16KHZ_mono_400Hz.wav",
+                    save_stream=export_filename,
+                    export_format="wave",
+                    save_detections_as="{id}.wav",
+                    echo=True,
+                    progress_bar=False,
+                    command=None,
+                    quiet=False,
+                    printf="abcd",
+                    time_format="%S",
+                    timestamp_format="%h:%M:%S",
+                )
+                reader.stop()
+                self.assertTrue(patched_player_for.called)
+                self.assertIsInstance(reader, StreamSaverWorker)
+                for obs, cls in zip(
+                    observers, [RegionSaverWorker, PlayerWorker, PrintWorker]
+                ):
+                    self.assertIsInstance(obs, cls)
 
     def test_initialize_workers_no_PrintWorker(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
-            reader, observers = initialize_workers(
-                input="tests/data/test_16KHZ_mono_400Hz.wav",
-                save_stream="output.wav",
-                export_format="wave",
-                save_detections_as="{id}.wav",
-                echo=True,
-                progress_bar=False,
-                command="some command",
-                quiet=True,
-                printf="abcd",
-                time_format="%S",
-                timestamp_format="%h:%M:%S",
-            )
-            reader.stop()
-            self.assertTrue(patched_player_for.called)
-            self.assertIsInstance(reader, StreamSaverWorker)
-            for obs, cls in zip(
-                observers, [RegionSaverWorker, PlayerWorker, CommandLineWorker]
-            ):
-                self.assertIsInstance(obs, cls)
+            with TemporaryDirectory() as tmpdir:
+                export_filename = os.path.join(tmpdir, "output.wav")
+                reader, observers = initialize_workers(
+                    input="tests/data/test_16KHZ_mono_400Hz.wav",
+                    save_stream=export_filename,
+                    export_format="wave",
+                    save_detections_as="{id}.wav",
+                    echo=True,
+                    progress_bar=False,
+                    command="some command",
+                    quiet=True,
+                    printf="abcd",
+                    time_format="%S",
+                    timestamp_format="%h:%M:%S",
+                )
+                reader.stop()
+                self.assertTrue(patched_player_for.called)
+                self.assertIsInstance(reader, StreamSaverWorker)
+                for obs, cls in zip(
+                    observers,
+                    [RegionSaverWorker, PlayerWorker, CommandLineWorker],
+                ):
+                    self.assertIsInstance(obs, cls)
 
     def test_initialize_workers_no_observers(self):
         with patch("auditok.cmdline_util.player_for") as patched_player_for:
