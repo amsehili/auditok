@@ -172,7 +172,6 @@ class StreamSaverWorker(Worker, AudioDataSource):
         cache_size_sec=0.5,
         timeout=0.2,
     ):
-
         self._reader = audio_reader
         sample_size_bytes = self._reader.sw * self._reader.ch
         self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
@@ -216,9 +215,12 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
     def __del__(self):
         self._post_process()
+
         if (
-            self._tmp_output_filename != self._output_filename
-        ) and self._exported:
+            (self._tmp_output_filename != self._output_filename)
+            and self._exported
+            and os.path.exists(self._tmp_output_filename)
+        ):
             os.remove(self._tmp_output_filename)
 
     def _process_message(self, data):
@@ -264,14 +266,14 @@ class StreamSaverWorker(Worker, AudioDataSource):
 
     def save_stream(self):
         if self._exported:
-            return
-        if self._export_format == "wav":
+            return self._output_filename
+
+        if self._export_format in ("raw", "wav"):
+            if self._export_format == "raw":
+                self._export_raw()
             self._exported = True
-            return
-        if self._export_format == "raw":
-            self._export_raw()
-            self._exported = True
-            return
+            return self._output_filename
+
         try:
             self._export_with_ffmpeg_or_avconv()
         except AudioEncodingError:
