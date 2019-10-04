@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch, call, Mock
 from tempfile import TemporaryDirectory
 from genty import genty, genty_dataset
-from auditok import AudioDataSource
+from auditok import AudioRegion, AudioDataSource
 from auditok.cmdline_util import make_logger
 from auditok.workers import (
     TokenizerWorker,
@@ -252,3 +252,97 @@ class TestWorkers(TestCase):
             start, end = exp
             self.assertAlmostEqual(det.start, start)
             self.assertAlmostEqual(det.end, end)
+
+    def test_StreamSaverWorker_wav(self):
+        with TemporaryDirectory() as tmpdir:
+            expected_filename = os.path.join(tmpdir, "output.wav")
+            saver = StreamSaverWorker(self.reader, expected_filename)
+            saver.start()
+
+            tokenizer = TokenizerWorker(saver)
+            tokenizer.start_all()
+            tokenizer.join()
+            saver.join()
+
+            output_filename = saver.save_stream()
+            region = AudioRegion.load(
+                "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
+            )
+
+            expected_region = AudioRegion.load(output_filename)
+            self.assertEqual(output_filename, expected_filename)
+            self.assertEqual(region, expected_region)
+            self.assertEqual(saver.data, bytes(expected_region))
+
+    def test_StreamSaverWorker_raw(self):
+        with TemporaryDirectory() as tmpdir:
+            expected_filename = os.path.join(tmpdir, "output")
+            saver = StreamSaverWorker(
+                self.reader, expected_filename, export_format="raw"
+            )
+            saver.start()
+            tokenizer = TokenizerWorker(saver)
+            tokenizer.start_all()
+            tokenizer.join()
+            saver.join()
+            output_filename = saver.save_stream()
+            region = AudioRegion.load(
+                "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
+            )
+            expected_region = AudioRegion.load(
+                output_filename, sr=10, sw=2, ch=1, audio_format="raw"
+            )
+            self.assertEqual(output_filename, expected_filename)
+            self.assertEqual(region, expected_region)
+            self.assertEqual(saver.data, bytes(expected_region))
+
+    def test_StreamSaverWorker_encode_audio(self):
+        with TemporaryDirectory() as tmpdir:
+            with patch("auditok.workers._run_subprocess") as patch_rsp:
+                patch_rsp.return_value = (1, None, None)
+                expected_filename = os.path.join(tmpdir, "output.ogg")
+                tmp_expected_filename = expected_filename + ".wav"
+                saver = StreamSaverWorker(self.reader, expected_filename)
+                saver.start()
+                tokenizer = TokenizerWorker(saver)
+                tokenizer.start_all()
+                tokenizer.join()
+                saver.join()
+                with self.assertRaises(RuntimeWarning) as rt_warn:
+                    saver.save_stream()
+            warn_msg = "Couldn't save audio data in the desired format "
+            warn_msg += "'ogg'. Either none of 'ffmpeg', 'avconv' or 'sox' "
+            warn_msg += "is installed or this format is not recognized.\n"
+            warn_msg += "Audio file was saved as '{}'"
+            self.assertEqual(
+                warn_msg.format(tmp_expected_filename), str(rt_warn.exception)
+            )
+            ffmpef_avconv = [
+                "-y",
+                "-f",
+                "wav",
+                "-i",
+                tmp_expected_filename,
+                "-f",
+                "ogg",
+                expected_filename,
+            ]
+            expected_calls = [
+                call(["ffmpeg"] + ffmpef_avconv),
+                call(["avconv"] + ffmpef_avconv),
+                call(
+                    [
+                        "sox",
+                        "-t",
+                        "wav",
+                        tmp_expected_filename,
+                        expected_filename,
+                    ]
+                ),
+            ]
+            self.assertEqual(patch_rsp.mock_calls, expected_calls)
+            region = AudioRegion.load(
+                "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
+            )
+            self.assertTrue(saver._exported)
+            self.assertEqual(saver.data, bytes(region))
