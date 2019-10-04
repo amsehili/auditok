@@ -177,6 +177,8 @@ class StreamSaverWorker(Worker, AudioDataSource):
         self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
         self._output_filename = filename
         self._export_format = _guess_audio_format(export_format, filename)
+        if self._export_format is None:
+            self._export_format = "wav"
         self._init_output_stream()
         self._exported = False
         self._cache = []
@@ -273,7 +275,6 @@ class StreamSaverWorker(Worker, AudioDataSource):
                 self._export_raw()
             self._exported = True
             return self._output_filename
-
         try:
             self._export_with_ffmpeg_or_avconv()
         except AudioEncodingError:
