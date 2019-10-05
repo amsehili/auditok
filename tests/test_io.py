@@ -67,6 +67,8 @@ class TestIO(TestCase):
         extention_no_format=(None, "filename.wav", "wav"),
         format_no_extension=("wav", "filename", "wav"),
         no_format_no_extension=(None, "filename", None),
+        wave_as_wav=("wave", "filename", "wav"),
+        wave_as_wav_extension=(None, "filename.wave", "wav"),
     )
     def test_guess_audio_format(self, fmt, filename, expected):
         result = _guess_audio_format(fmt, filename)
