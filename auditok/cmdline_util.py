@@ -59,7 +59,7 @@ def make_kwargs(args_ns):
     return KeywordArguments(io_kwargs, split_kwargs, miscellaneous)
 
 
-def make_duration_fromatter(fmt):
+def make_duration_formatter(fmt):
     """
     Accepted format directives: %i %s %m %h
     """
