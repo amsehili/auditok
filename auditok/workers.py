@@ -1,4 +1,3 @@
-from __future__ import print_function
 import os
 import sys
 from tempfile import NamedTemporaryFile
@@ -8,31 +7,16 @@ from datetime import datetime, timedelta
 from collections import namedtuple
 import wave
 import subprocess
+from queue import Queue, Empty
 from .io import _guess_audio_format
 from .util import AudioDataSource
-
-try:
-    import future
-    from queue import Queue, Empty
-except ImportError:
-    if sys.version_info >= (3, 0):
-        from queue import Queue, Empty
-    else:
-        from Queue import Queue, Empty
-
 from .core import split
 from . import cmdline_util
+from .exceptions import EndOfProcessing, AudioEncodingError
+
 
 _STOP_PROCESSING = "STOP_PROCESSING"
 _Detection = namedtuple("_Detection", "id start end duration")
-
-
-class EndOfProcessing(Exception):
-    pass
-
-
-class AudioEncodingError(Exception):
-    pass
 
 
 def _run_subprocess(command):
@@ -50,7 +34,7 @@ def _run_subprocess(command):
         raise AudioEncodingError(err_msg)
 
 
-class Worker(Thread):
+class Worker(Thread, metaclass=ABCMeta):
     def __init__(self, timeout=0.5, logger=None):
         self._timeout = timeout
         self._logger = logger
@@ -109,6 +93,9 @@ class TokenizerWorker(Worker, AudioDataSource):
         self._log_format = "[DET]: Detection {0.id} (start: {0.start:.3f}, "
         self._log_format += "end: {0.end:.3f}, duration: {0.duration:.3f})"
         Worker.__init__(self, timeout=0.2, logger=logger)
+
+    def _process_message(self):
+        pass
 
     @property
     def detections(self):
