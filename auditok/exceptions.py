@@ -12,4 +12,13 @@ class TooSamllBlockDuration(ValueError):
 
 
 class TimeFormatError(Exception):
-    pass
+    """Raised when duration formatting directicve is wrong"""
+
+
+class EndOfProcessing(Exception):
+    """Raised within command line script's main function to jump to 
+    postprocessing code"""
+
+
+class AudioEncodingError(Exception):
+    """Raised if audio data can not be encoded in the provided format"""
