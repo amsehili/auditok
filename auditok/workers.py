@@ -408,7 +408,7 @@ class PrintWorker(Worker):
     ):
 
         self._print_format = print_format
-        self._format_time = cmdline_util.make_duration_fromatter(time_format)
+        self._format_time = cmdline_util.make_duration_formatter(time_format)
         self._timestamp_format = timestamp_format
         self.detections = []
         Worker.__init__(self, timeout=timeout)

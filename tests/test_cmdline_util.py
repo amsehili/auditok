@@ -8,7 +8,7 @@ from genty import genty, genty_dataset
 from auditok.cmdline_util import (
     _AUDITOK_LOGGER,
     make_kwargs,
-    make_duration_fromatter,
+    make_duration_formatter,
     make_logger,
     initialize_workers,
     KeywordArguments,
@@ -167,8 +167,8 @@ class _TestCmdLineUtil(TestCase):
         no_minutes=("%h", 3725, "01"),
         no_hours=("%m:%s.%i", 3725, "02:05.000"),
     )
-    def test_make_duration_fromatter(self, fmt, duration, expected):
-        formatter = make_duration_fromatter(fmt)
+    def test_make_duration_formatter(self, fmt, duration, expected):
+        formatter = make_duration_formatter(fmt)
         result = formatter(duration)
         self.assertEqual(result, expected)
 
@@ -177,9 +177,9 @@ class _TestCmdLineUtil(TestCase):
         duplicate_only_millis=("%I %I",),
         unknown_directive=("%x",),
     )
-    def test_make_duration_fromatter_error(self, fmt):
+    def test_make_duration_formatter_error(self, fmt):
         with self.assertRaises(TimeFormatError):
-            make_duration_fromatter(fmt)
+            make_duration_formatter(fmt)
 
     def test_make_logger_stderr_and_file(self):
         with TemporaryDirectory() as tmpdir:
