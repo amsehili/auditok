@@ -25,13 +25,14 @@ def make_kwargs(args_ns):
     io_kwargs = {
         "input": args_ns.input,
         "audio_format": args_ns.input_format,
-        "max_read": args_ns.max_time,
+        "max_read": args_ns.max_read,
         "block_dur": args_ns.analysis_window,
         "sampling_rate": args_ns.sampling_rate,
         "sample_width": args_ns.sample_width,
         "channels": args_ns.channels,
         "use_channel": use_channel,
         "save_stream": args_ns.save_stream,
+        "save_detections_as": args_ns.save_detections_as,
         "export_format": args_ns.output_format,
         "large_file": args_ns.large_file,
         "frames_per_buffer": args_ns.frame_per_buffer,
@@ -50,6 +51,7 @@ def make_kwargs(args_ns):
 
     miscellaneous = {
         "echo": args_ns.echo,
+        "progress_bar": args_ns.progress_bar,
         "command": args_ns.command,
         "quiet": args_ns.quiet,
         "printf": args_ns.printf,

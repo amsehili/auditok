@@ -22,3 +22,9 @@ class EndOfProcessing(Exception):
 
 class AudioEncodingError(Exception):
     """Raised if audio data can not be encoded in the provided format"""
+
+
+class AudioEncodingWarning(RuntimeWarning):
+    """Raised if audio data can not be encoded in the provided format
+    but saved as wav.
+    """

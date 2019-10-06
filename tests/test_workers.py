@@ -4,6 +4,7 @@ from unittest.mock import patch, call, Mock
 from tempfile import TemporaryDirectory
 from genty import genty, genty_dataset
 from auditok import AudioRegion, AudioDataSource
+from auditok.exceptions import AudioEncodingWarning
 from auditok.cmdline_util import make_logger
 from auditok.workers import (
     TokenizerWorker,
@@ -308,7 +309,7 @@ class TestWorkers(TestCase):
                 tokenizer.start_all()
                 tokenizer.join()
                 saver.join()
-                with self.assertRaises(RuntimeWarning) as rt_warn:
+                with self.assertRaises(AudioEncodingWarning) as rt_warn:
                     saver.save_stream()
             warn_msg = "Couldn't save audio data in the desired format "
             warn_msg += "'ogg'. Either none of 'ffmpeg', 'avconv' or 'sox' "
