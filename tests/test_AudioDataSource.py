@@ -7,6 +7,8 @@ September 2015
 import unittest
 from functools import partial
 import sys
+import wave
+from genty import genty, genty_dataset
 from auditok import (
     dataset,
     ADSFactory,
@@ -15,14 +17,6 @@ from auditok import (
     WaveAudioSource,
     DuplicateArgument,
 )
-import wave
-
-
-try:
-    from builtins import range
-except ImportError:
-    if sys.version_info < (3, 0):
-        range = xrange
 
 
 class TestADSFactoryFileAudioSource(unittest.TestCase):
@@ -1012,6 +1006,34 @@ class TestADSFactoryAlias(unittest.TestCase):
             audio_source.position = (j + 1) * hop_size
         ads.close()
         audio_source.close()
+
+
+@genty
+class TestAudioReader(unittest.TestCase):
+
+    # TODO move all tests here when backward compatibility
+    # with ADSFactory is dropped
+
+    @genty_dataset(
+        mono=("mono_400", 0.5, 16000),
+        multichannel=("3channel_400-800-1600", 0.5, 16000 * 3),
+    )
+    def test_Limiter(self, file_id, max_read, size):
+        input_wav = "tests/data/test_16KHZ_{}Hz.wav".format(file_id)
+        input_raw = "tests/data/test_16KHZ_{}Hz.raw".format(file_id)
+        with open(input_raw, "rb") as fp:
+            expected = fp.read(size)
+
+        reader = AudioDataSource(input_wav, block_dur=0.1, max_read=max_read)
+        reader.open()
+        blocks = []
+        while True:
+            data = reader.read()
+            if data is None:
+                break
+            blocks.append(data)
+        data = b"".join(blocks)
+        self.assertEqual(data, expected)
 
 
 if __name__ == "__main__":

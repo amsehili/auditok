@@ -721,12 +721,13 @@ class _Limiter(_AudioSourceProxy):
         super(_Limiter, self).__init__(audio_source)
         self._max_read = max_read
         self._max_samples = round(max_read * self.sr)
+        self._bytes_per_sample = self.sw * self.ch
         self._read_samples = 0
 
     @property
     def data(self):
         data = self._audio_source.data
-        max_read_bytes = self._max_samples * self.sw * self.ch
+        max_read_bytes = self._max_samples * self._bytes_per_sample
         return data[:max_read_bytes]
 
     @property
@@ -737,12 +738,10 @@ class _Limiter(_AudioSourceProxy):
         size = min(self._max_samples - self._read_samples, size)
         if size <= 0:
             return None
-
         block = self._audio_source.read(size)
         if block is None:
             return None
-
-        self._read_samples += len(block) // self._audio_source.sw
+        self._read_samples += len(block) // self._bytes_per_sample
         return block
 
     def rewind(self):
