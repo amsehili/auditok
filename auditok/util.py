@@ -665,6 +665,7 @@ class _Recorder(_AudioSourceProxy):
         super(_Recorder, self).__init__(audio_source)
         self._cache = []
         self._read_block = self._read_and_cache
+        self._read_from_cache = False
         self._data = None
 
     def read(self, size):
@@ -682,14 +683,17 @@ class _Recorder(_AudioSourceProxy):
         return True
 
     def rewind(self):
-        if self._cache:
-            self._data = self._concatenate(self._cache)
+        if self._read_from_cache:
+            self._audio_source.rewind()
+        else:
+            self._data = b"".join(self._cache)
             self._cache = None
             self._audio_source = BufferAudioSource(
                 self._data, self.sr, self.sw, self.ch
             )
             self._read_block = self._audio_source.read
             self.open()
+            self._read_from_cache = True
 
     def _read_and_cache(self, size):
         # Read and save read data
@@ -697,17 +701,6 @@ class _Recorder(_AudioSourceProxy):
         if block is not None:
             self._cache.append(block)
         return block
-
-    def _concatenate(self, data):
-        try:
-            # should always work for python 2
-            # work for python 3 ONLY if data is a list (or an iterator)
-            # whose each element is a 'bytes' objects
-            data = b"".join(data)
-            return data
-        except TypeError:
-            # work for 'str' in python 2 and python 3
-            return "".join(data)
 
 
 class _Limiter(_AudioSourceProxy):

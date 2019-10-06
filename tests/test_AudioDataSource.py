@@ -670,7 +670,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
 
 class TestADSFactoryAlias(unittest.TestCase):
     def setUp(self):
-        self.signal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+        self.signal = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
 
     def test_sampling_rate_alias(self):
         ads = ADSFactory.ads(
@@ -1008,6 +1008,16 @@ class TestADSFactoryAlias(unittest.TestCase):
         audio_source.close()
 
 
+def _read_all_data(reader):
+    blocks = []
+    while True:
+        data = reader.read()
+        if data is None:
+            break
+        blocks.append(data)
+    return b"".join(blocks)
+
+
 @genty
 class TestAudioReader(unittest.TestCase):
 
@@ -1026,14 +1036,29 @@ class TestAudioReader(unittest.TestCase):
 
         reader = AudioDataSource(input_wav, block_dur=0.1, max_read=max_read)
         reader.open()
-        blocks = []
-        while True:
-            data = reader.read()
-            if data is None:
-                break
-            blocks.append(data)
-        data = b"".join(blocks)
+        data = _read_all_data(reader)
+        reader.close()
         self.assertEqual(data, expected)
+
+    @genty_dataset(mono=("mono_400",), multichannel=("3channel_400-800-1600",))
+    def test_Recorder(self, file_id):
+        input_wav = "tests/data/test_16KHZ_{}Hz.wav".format(file_id)
+        input_raw = "tests/data/test_16KHZ_{}Hz.raw".format(file_id)
+        with open(input_raw, "rb") as fp:
+            expected = fp.read()
+
+        reader = AudioDataSource(input_wav, block_dur=0.1, record=True)
+        reader.open()
+        data = _read_all_data(reader)
+        self.assertEqual(data, expected)
+
+        # rewind many times
+        for _ in range(3):
+            reader.rewind()
+            data = _read_all_data(reader)
+            self.assertEqual(data, expected)
+            self.assertEqual(data, reader.data)
+        reader.close()
 
 
 if __name__ == "__main__":
