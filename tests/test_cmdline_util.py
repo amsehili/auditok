@@ -26,7 +26,7 @@ _ArgsNamespece = namedtuple(
     "_ArgsNamespece",
     [
         "input",
-        "max_time",
+        "max_read",
         "analysis_window",
         "sampling_rate",
         "sample_width",
@@ -38,6 +38,7 @@ _ArgsNamespece = namedtuple(
         "frame_per_buffer",
         "input_device_index",
         "save_stream",
+        "save_detections_as",
         "plot",
         "save_image",
         "min_duration",
@@ -47,6 +48,7 @@ _ArgsNamespece = namedtuple(
         "strict_min_duration",
         "energy_threshold",
         "echo",
+        "progress_bar",
         "command",
         "quiet",
         "printf",
@@ -57,25 +59,28 @@ _ArgsNamespece = namedtuple(
 
 
 @genty
-class _TestCmdLineUtil(TestCase):
+class TestCmdLineUtil(TestCase):
     @genty_dataset(
-        no_record=("stream.ogg", False, None, "mix", "mix", False),
-        no_record_plot=("stream.ogg", True, None, None, None, False),
+        no_record=("stream.ogg", None, False, None, "mix", "mix", False),
+        no_record_plot=("stream.ogg", None, True, None, None, None, False),
         no_record_save_image=(
             "stream.ogg",
+            None,
             True,
             "image.png",
             None,
             None,
             False,
         ),
-        record_plot=(None, True, None, None, None, True),
-        record_save_image=(None, False, "image.png", None, None, True),
-        int_use_channel=("stream.ogg", False, None, "1", 1, False),
+        record_plot=(None, None, True, None, None, None, True),
+        record_save_image=(None, None, False, "image.png", None, None, True),
+        int_use_channel=("stream.ogg", None, False, None, "1", 1, False),
+        save_detections_as=("stream.ogg", "{id}.wav", False, None, None, None, False)
     )
     def test_make_kwargs(
         self,
         save_stream,
+        save_detections_as,
         plot,
         save_image,
         use_channel,
@@ -97,6 +102,7 @@ class _TestCmdLineUtil(TestCase):
             None,
             1,
             save_stream,
+            save_detections_as,
             plot,
             save_image,
             0.2,
@@ -106,8 +112,7 @@ class _TestCmdLineUtil(TestCase):
             False,
             55,
         )
-        misc = (False, None, True, None, "TIME_FORMAT", "TIMESTAMP_FORMAT")
-
+        misc = (False, False, None, True, None, "TIME_FORMAT", "TIMESTAMP_FORMAT")
         args_ns = _ArgsNamespece(*(args + misc))
 
         io_kwargs = {
@@ -119,6 +124,7 @@ class _TestCmdLineUtil(TestCase):
             "channels": 2,
             "use_channel": exp_use_channel,
             "save_stream": save_stream,
+            "save_detections_as": save_detections_as,
             "audio_format": "raw",
             "export_format": "ogg",
             "large_file": True,
@@ -139,6 +145,7 @@ class _TestCmdLineUtil(TestCase):
         miscellaneous = {
             "echo": False,
             "command": None,
+            "progress_bar": False,
             "quiet": True,
             "printf": None,
             "time_format": "TIME_FORMAT",
