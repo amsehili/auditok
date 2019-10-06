@@ -12,7 +12,11 @@ from .io import _guess_audio_format
 from .util import AudioDataSource
 from .core import split
 from . import cmdline_util
-from .exceptions import EndOfProcessing, AudioEncodingError
+from .exceptions import (
+    EndOfProcessing,
+    AudioEncodingError,
+    AudioEncodingWarning,
+)
 
 
 _STOP_PROCESSING = "STOP_PROCESSING"
@@ -150,7 +154,7 @@ class TokenizerWorker(Worker, AudioDataSource):
         return getattr(self._reader, name)
 
 
-class StreamSaverWorker(Worker, AudioDataSource):
+class StreamSaverWorker(Worker):
     def __init__(
         self,
         audio_reader,
@@ -272,7 +276,7 @@ class StreamSaverWorker(Worker, AudioDataSource):
                 warn_msg += "'{}'. Either none of 'ffmpeg', 'avconv' or 'sox' "
                 warn_msg += "is installed or this format is not recognized.\n"
                 warn_msg += "Audio file was saved as '{}'"
-                raise RuntimeWarning(
+                raise AudioEncodingWarning(
                     warn_msg.format(
                         self._export_format, self._tmp_output_filename
                     )

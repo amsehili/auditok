@@ -22,6 +22,7 @@ import threading
 
 from auditok import __version__, AudioRegion
 from .util import AudioDataSource
+from .exceptions import EndOfProcessing, AudioEncodingWarning
 from .io import player_for
 from .cmdline_util import make_logger, make_kwargs, initialize_workers
 from . import workers
@@ -374,7 +375,7 @@ def main(argv=None):
         logger = make_logger(args.debug, args.debug_file)
         kwargs = make_kwargs(args)
         reader, observers = initialize_workers(
-            args, logger=logger, **kwargs.io, **kwargs.miscellaneous
+            logger=logger, **kwargs.io, **kwargs.miscellaneous
         )
         tokenizer_worker = workers.TokenizerWorker(
             reader, observers, logger=logger, **kwargs.split
@@ -384,13 +385,19 @@ def main(argv=None):
         while True:
             time.sleep(1)
             if len(threading.enumerate()) == 1:
-                raise workers.EndOfProcessing
+                raise EndOfProcessing
 
-    except (KeyboardInterrupt, workers.EndOfProcessing):
+    except (KeyboardInterrupt, EndOfProcessing):
         if tokenizer_worker is not None:
             tokenizer_worker.stop_all()
-            if args.save_stream is not None:
-                reader.save_stream()
+
+            if isinstance(reader, workers.StreamSaverWorker):
+                reader.join()
+                try:
+                    reader.save_stream()
+                except AudioEncodingWarning as ae_warn:
+                    print(str(ae_warn), file=sys.stderr)
+
             if args.plot or args.save_image is not None:
                 from .plotting import plot_detections
 
@@ -399,8 +406,7 @@ def main(argv=None):
                     reader.data, reader.sr, reader.sw, reader.ch
                 )
                 detections = (
-                    (det.start, det.end)
-                    for det in tokenizer_worker.detections
+                    (det.start, det.end) for det in tokenizer_worker.detections
                 )
                 plot_detections(
                     record,
