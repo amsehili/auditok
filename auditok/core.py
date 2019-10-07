@@ -10,7 +10,7 @@ Class summary
 """
 import os
 import math
-from auditok.util import AudioDataSource, DataValidator, AudioEnergyValidator
+from auditok.util import AudioReader, DataValidator, AudioEnergyValidator
 from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
 
@@ -49,7 +49,7 @@ def split(
 
     :Parameters:
 
-    input: str, bytes, AudioSource, AudioRegion, AudioDataSource
+    input: str, bytes, AudioSource, AudioRegion, AudioReader
         input audio data. If str, it should be a path to an existing audio
         file. If bytes, input is considered as raw audio data.
     min_dur: float
@@ -108,7 +108,7 @@ def split(
     if max_silence < 0:
         raise ValueError("'max_silence' ({}) must be >= 0".format(max_silence))
 
-    if isinstance(input, AudioDataSource):
+    if isinstance(input, AudioReader):
         source = input
         analysis_window = source.block_dur
     else:
@@ -129,7 +129,7 @@ def split(
             params["channels"] = input.ch
             input = bytes(input)
         try:
-            source = AudioDataSource(
+            source = AudioReader(
                 input, block_dur=analysis_window, **params
             )
         except TooSamllBlockDuration as exc:
