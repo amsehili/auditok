@@ -13,6 +13,8 @@ from auditok import (
     dataset,
     ADSFactory,
     AudioDataSource,
+    AudioReader,
+    Recorder,
     BufferAudioSource,
     WaveAudioSource,
     DuplicateArgument,
@@ -1034,7 +1036,7 @@ class TestAudioReader(unittest.TestCase):
         with open(input_raw, "rb") as fp:
             expected = fp.read(size)
 
-        reader = AudioDataSource(input_wav, block_dur=0.1, max_read=max_read)
+        reader = AudioReader(input_wav, block_dur=0.1, max_read=max_read)
         reader.open()
         data = _read_all_data(reader)
         reader.close()
@@ -1047,7 +1049,27 @@ class TestAudioReader(unittest.TestCase):
         with open(input_raw, "rb") as fp:
             expected = fp.read()
 
-        reader = AudioDataSource(input_wav, block_dur=0.1, record=True)
+        reader = AudioReader(input_wav, block_dur=0.1, record=True)
+        reader.open()
+        data = _read_all_data(reader)
+        self.assertEqual(data, expected)
+
+        # rewind many times
+        for _ in range(3):
+            reader.rewind()
+            data = _read_all_data(reader)
+            self.assertEqual(data, expected)
+            self.assertEqual(data, reader.data)
+        reader.close()
+
+    @genty_dataset(mono=("mono_400",), multichannel=("3channel_400-800-1600",))
+    def test_Recorder_alias(self, file_id):
+        input_wav = "tests/data/test_16KHZ_{}Hz.wav".format(file_id)
+        input_raw = "tests/data/test_16KHZ_{}Hz.raw".format(file_id)
+        with open(input_raw, "rb") as fp:
+            expected = fp.read()
+
+        reader = Recorder(input_wav, block_dur=0.1)
         reader.open()
         data = _read_all_data(reader)
         self.assertEqual(data, expected)
