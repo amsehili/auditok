@@ -50,6 +50,7 @@ __all__ = [
     "StringDataSource",
     "ADSFactory",
     "AudioDataSource",
+    "AudioReader",
     "AudioEnergyValidator",
 ]
 
@@ -838,9 +839,9 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
         return getattr(self._audio_source, name)
 
 
-class AudioDataSource(DataSource):
+class AudioReader(DataSource):
     """
-    Base class for AudioDataSource objects.
+    Base class for AudioReader objects.
     It inherits from DataSource and encapsulates an AudioSource object.
     """
 
@@ -876,7 +877,7 @@ class AudioDataSource(DataSource):
         if self.max_read is not None:
             max_read = "{:.3f}".format(self.max_read)
         return (
-            "AudioDataSource(source, block_dur={block_dur}, "
+            "AudioReader(source, block_dur={block_dur}, "
             "hop_dur={hop_dur}, record={rewindable}, "
             "max_read={max_read})"
         ).format(
@@ -919,11 +920,15 @@ class AudioDataSource(DataSource):
     def __getattr__(self, name):
         if name in ("data", "rewind") and not self.rewindable:
             raise AttributeError(
-                "'AudioDataSource' has no attribute '{}'".format(name)
+                "'AudioReader' has no attribute '{}'".format(name)
             )
         try:
             return getattr(self._audio_source, name)
         except AttributeError:
             raise AttributeError(
-                "'AudioDataSource' has no attribute '{}'".format(name)
+                "'AudioReader' has no attribute '{}'".format(name)
             )
+
+# Keep AudioDataSource for compatibility
+# Remove in a future version when ADSFactory is dropped
+AudioDataSource = AudioReader
