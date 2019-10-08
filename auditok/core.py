@@ -129,9 +129,7 @@ def split(
             params["channels"] = input.ch
             input = bytes(input)
         try:
-            source = AudioReader(
-                input, block_dur=analysis_window, **params
-            )
+            source = AudioReader(input, block_dur=analysis_window, **params)
         except TooSamllBlockDuration as exc:
             err_msg = "Too small 'analysis_windows' ({0}) for sampling rate "
             err_msg += "({1}). Analysis windows should at least be 1/{1} to "
@@ -763,7 +761,8 @@ class StreamTokenizer:
     :Parameters:
 
         `validator` :
-            instance of `DataValidator` that implements `is_valid` method.
+            Callable or an instance of DataValidator that implements
+            `is_valid` method. 
 
         `min_length` : *(int)*
             Minimum number of frames of a valid token. This includes all \
@@ -795,7 +794,11 @@ class StreamTokenizer:
         `mode` : *(int, default=0)*
             `mode` can be:
 
-        1. `StreamTokenizer.STRICT_MIN_LENGTH`: 
+        1. `StreamTokenizer.NORMAL`:
+        Do not drop trailing silence, and accept a token shorter than 
+        `min_length` if it is the continuation of the latest delivered token.
+        
+        2. `StreamTokenizer.STRICT_MIN_LENGTH`: 
         if token *i* is delivered because `max_length`
         is reached, and token *i+1* is immediately adjacent to
         token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
@@ -852,7 +855,7 @@ class StreamTokenizer:
             [(['A', 'A', 'A', 'A'], 3, 6)]
 
 
-        2. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing non-valid frames
+        3. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing non-valid frames
         from a token to be delivered if and only if it is not **truncated**.
         This can be a bit tricky. A token is actually delivered if:
 
@@ -898,7 +901,7 @@ class StreamTokenizer:
             [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B', 'b', 'b', 'b'], 9, 13)]
 
 
-        3. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`:
+        4. `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`:
         use both options. That means: first remove tailing silence, then ckeck if the
         token still has at least a length of `min_length`.
     """
@@ -907,11 +910,9 @@ class StreamTokenizer:
     POSSIBLE_SILENCE = 1
     POSSIBLE_NOISE = 2
     NOISE = 3
-
+    NORMAL = 0
     STRICT_MIN_LENGTH = 2
     DROP_TRAILING_SILENCE = 4
-    # alias
-    DROP_TAILING_SILENCE = 4
 
     def __init__(
         self,
@@ -923,10 +924,13 @@ class StreamTokenizer:
         init_max_silence=0,
         mode=0,
     ):
-
-        if not isinstance(validator, DataValidator):
+        if callable(validator):
+            self._is_valid = validator
+        elif isinstance(validator, DataValidator):
+            self._is_valid = validator.is_valid
+        else:
             raise TypeError(
-                "'validator' must be an instance of 'DataValidator'"
+                "'validator' must be a callable or an instance of DataValidator"
             )
 
         if max_length <= 0:
@@ -961,67 +965,30 @@ class StreamTokenizer:
         self.max_continuous_silence = max_continuous_silence
         self.init_min = init_min
         self.init_max_silent = init_max_silence
-
-        self._mode = None
-        self.set_mode(mode)
-        self._strict_min_length = (mode & self.STRICT_MIN_LENGTH) != 0
-        self._drop_tailing_silence = (mode & self.DROP_TRAILING_SILENCE) != 0
-
+        self._set_mode(mode)
         self._deliver = None
         self._tokens = None
         self._state = None
         self._data = None
         self._contiguous_token = False
-
         self._init_count = 0
         self._silence_length = 0
         self._start_frame = 0
         self._current_frame = 0
 
-    def set_mode(self, mode):
-        # TODO: use properties and make these deprecated
-        """
-        :Parameters:
-
-            `mode` : *(int)*
-                New mode, must be one of:
-
-
-            - `StreamTokenizer.STRICT_MIN_LENGTH`
-
-            - `StreamTokenizer.DROP_TRAILING_SILENCE`
-
-            - `StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE`
-
-            - `0` TODO: this mode should have a name
-
-        See `StreamTokenizer.__init__` for more information about the mode.
-        """
-
+    def _set_mode(self, mode):
+        strict_min_and_drop_trailing = StreamTokenizer.STRICT_MIN_LENGTH
+        strict_min_and_drop_trailing |= StreamTokenizer.DROP_TRAILING_SILENCE
         if not mode in [
-            self.STRICT_MIN_LENGTH,
-            self.DROP_TRAILING_SILENCE,
-            self.STRICT_MIN_LENGTH | self.DROP_TRAILING_SILENCE,
-            0,
+            StreamTokenizer.NORMAL,
+            StreamTokenizer.STRICT_MIN_LENGTH,
+            StreamTokenizer.DROP_TRAILING_SILENCE,
+            strict_min_and_drop_trailing,
         ]:
-
             raise ValueError("Wrong value for mode")
-
         self._mode = mode
         self._strict_min_length = (mode & self.STRICT_MIN_LENGTH) != 0
-        self._drop_tailing_silence = (mode & self.DROP_TRAILING_SILENCE) != 0
-
-    def get_mode(self):
-        """
-        Return the current mode. To check whether a specific mode is activated use
-        the bitwise 'and' operator `&`. Example:
-
-        .. code:: python 
-
-            if mode & self.STRICT_MIN_LENGTH != 0:
-               do_something()
-        """
-        return self._mode
+        self._drop_trailing_silence = (mode & self.DROP_TRAILING_SILENCE) != 0
 
     def _reinitialize(self):
         self._contiguous_token = False
@@ -1056,7 +1023,6 @@ class StreamTokenizer:
 
            where `data` is a list of read frames, `start`: index of the first frame in the
            original data and `end` : index of the last frame. 
-
         """
         token_gen = self._iter_tokens(data_source)
         if callback:
@@ -1083,7 +1049,7 @@ class StreamTokenizer:
 
     def _process(self, frame):
 
-        frame_is_valid = self.validator.is_valid(frame)
+        frame_is_valid = self._is_valid(frame)
 
         if self._state == self.SILENCE:
 
@@ -1182,7 +1148,7 @@ class StreamTokenizer:
 
         if (
             not truncated
-            and self._drop_tailing_silence
+            and self._drop_trailing_silence
             and self._silence_length > 0
         ):
             # happens if max_continuous_silence is reached
