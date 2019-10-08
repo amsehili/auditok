@@ -99,15 +99,12 @@ class DataSource:
         """
 
 
-class DataValidator:
+class DataValidator(metaclass=ABCMeta):
     """
     Base class for a validator object used by :class:`.core.StreamTokenizer` to check
     if read data is valid.
     Subclasses should implement :func:`is_valid` method.
-    """
-
-    __metaclass__ = ABCMeta
-
+   """
     @abstractmethod
     def is_valid(self, data):
         """
