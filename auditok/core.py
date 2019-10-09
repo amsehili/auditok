@@ -15,14 +15,6 @@ from auditok.io import check_audio_data, to_file, player_for, get_audio_source
 from auditok.exceptions import TooSamllBlockDuration
 
 try:
-    from auditok.plotting import plot, plot_detections
-
-    _WITH_MATPLOTLIB = True
-except ImportError:
-    _WITH_MATPLOTLIB = False
-
-
-try:
     from . import signal_numpy as signal
 except ImportError:
     from . import signal
@@ -567,10 +559,28 @@ class AudioRegion(object):
             **kwargs
         )
 
-    def plot(self, show=True, **plot_kwargs):
-        if _WITH_MATPLOTLIB:
-            plot(self, self.sr, show=show, **plot_kwargs)
-        else:
+    def plot(
+        self,
+        scale_signal=True,
+        show=True,
+        figsize=None,
+        save_as=None,
+        dpi=120,
+        theme="auditok",
+    ):
+        try:
+            from auditok.plotting import plot
+
+            plot(
+                self,
+                scale_signal=scale_signal,
+                show=show,
+                figsize=figsize,
+                save_as=save_as,
+                dpi=dpi,
+                theme=theme,
+            )
+        except ImportError:
             raise RuntimeWarning("Plotting requires matplotlib")
 
     def split_and_plot(
@@ -580,14 +590,20 @@ class AudioRegion(object):
         max_silence=0.3,
         drop_trailing_silence=False,
         strict_min_dur=False,
+        scale_signal=True,
         show=True,
-        plot_kwargs=None,
+        figsize=None,
+        save_as=None,
+        dpi=120,
+        theme="auditok",
         **kwargs
     ):
         """Split region and plot signal and detection. Alias: `splitp`.
         See :auditok.split() for split parameters description.
         """
-        if _WITH_MATPLOTLIB:
+        try:
+            from auditok.plotting import plot
+
             regions = split(
                 self,
                 min_dur=min_dur,
@@ -599,13 +615,22 @@ class AudioRegion(object):
             )
             regions = list(regions)
             detections = ((reg.meta.start, reg.meta.end) for reg in regions)
-            if plot_kwargs is None:
-                plot_kwargs = {}
-            plot_detections(
-                self, self.sr, detections, show=show, **plot_kwargs
+            eth = kwargs.get(
+                "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
+            )
+            plot(
+                self,
+                scale_signal=scale_signal,
+                detections=detections,
+                energy_threshold=eth,
+                show=show,
+                figsize=figsize,
+                save_as=save_as,
+                dpi=dpi,
+                theme=theme,
             )
             return regions
-        else:
+        except ImportError:
             raise RuntimeWarning("Plotting requires matplotlib")
 
     def __array__(self):
