@@ -856,7 +856,7 @@ class TestSplit(TestCase):
             data = fp.read()
 
         region = AudioRegion(data, 10, 2, 1)
-        with patch("auditok.core.plot_detections") as patch_fn:
+        with patch("auditok.plotting.plot") as patch_fn:
             regions = region.split_and_plot(
                 min_dur=0.2,
                 max_dur=5,
