@@ -399,7 +399,7 @@ def main(argv=None):
                     print(str(ae_warn), file=sys.stderr)
 
             if args.plot or args.save_image is not None:
-                from .plotting import plot_detections
+                from .plotting import plot
 
                 reader.rewind()
                 record = AudioRegion(
@@ -408,10 +408,9 @@ def main(argv=None):
                 detections = (
                     (det.start, det.end) for det in tokenizer_worker.detections
                 )
-                plot_detections(
+                plot(
                     record,
-                    record.sr,
-                    detections,
+                    detections=detections,
                     show=True,
                     save_as=args.save_image,
                 )
