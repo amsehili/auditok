@@ -47,12 +47,12 @@ def main(argv=None):
         )
         group = parser.add_argument_group("Input-Output options")
         group.add_argument(
-            "-i",
-            "--input",
             dest="input",
             help="Input audio or video file. Use '-' for stdin "
             "[default: read from microphone using pyaudio]",
-            metavar="FILE",
+            metavar="input",
+            nargs='?',
+            default=None
         )
         group.add_argument(
             "-I",
