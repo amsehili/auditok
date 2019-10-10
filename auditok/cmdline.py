@@ -411,6 +411,7 @@ def main(argv=None):
                 plot(
                     record,
                     detections=detections,
+                    energy_threshold=args.energy_threshold,
                     show=True,
                     save_as=args.save_image,
                 )
