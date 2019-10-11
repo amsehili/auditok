@@ -549,6 +549,11 @@ class AudioRegion(object):
     ):
         """Split region. See :auditok.split() for split parameters description.
         """
+        if kwargs.get("max_read", kwargs.get("mr")) is not None:
+            warn_msg = "'max_read' (or 'mr') should not be used with "
+            warn_msg += "AudioRegion.split_and_plot(). You should rather "
+            warn_msg += "slice audio region before calling this method"
+            raise RuntimeWarning(warn_msg)
         return split(
             self,
             min_dur=min_dur,
@@ -604,8 +609,7 @@ class AudioRegion(object):
         try:
             from auditok.plotting import plot
 
-            regions = split(
-                self,
+            regions = self.split(
                 min_dur=min_dur,
                 max_dur=max_dur,
                 max_silence=max_silence,
