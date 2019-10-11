@@ -268,6 +268,12 @@ class TestSplit(TestCase):
         )
 
         region = AudioRegion(data, 10, 2, channels)
+        max_read = kwargs.get("max_read", kwargs.get("mr"))
+        if max_read is not None:
+            region = region.sec[:max_read]
+            kwargs.pop("max_read", None)
+            kwargs.pop("mr", None)
+
         regions_ar = region.split(
             min_dur=0.2,
             max_dur=5,
@@ -878,6 +884,15 @@ class TestSplit(TestCase):
             offset *= sample_width
             expected_regions.append(AudioRegion(data[onset:offset], 10, 2, 1))
         self.assertEqual(regions, expected_regions)
+
+    def test_split_exception(self):
+        with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+            data = fp.read()
+            region = AudioRegion(data, 10, 2, 1)
+
+        with self.assertRaises(RuntimeWarning):
+            # max_read is not accepted when calling AudioRegion.split
+            region.split(max_read=2)
 
 
 @genty
