@@ -37,7 +37,6 @@ def split(
     **kwargs
 ):
     """Splits audio data and returns a generator of `AudioRegion`s
-    TODO: implement max_trailing_silence
 
     :Parameters:
 
@@ -181,7 +180,6 @@ def split(
             )
         )
 
-    # print(min_length, max_length, max_continuous_silence)
     tokenizer = StreamTokenizer(
         validator, min_length, max_length, max_continuous_silence, mode=mode
     )
@@ -395,8 +393,12 @@ class AudioRegion(object):
         self._meta = _AudioRegionMetadata(new_meta)
 
     @classmethod
-    def load(cls, file, skip=0, max_read=None, **kwargs):
-        audio_source = get_audio_source(file, **kwargs)
+    def load(cls, input, skip=0, max_read=None, **kwargs):
+        if input is None and max_read is None:
+            raise ValueError(
+                "'max_read' should not be None when reading from microphone"
+            )
+        audio_source = get_audio_source(input, **kwargs)
         audio_source.open()
         if skip is not None and skip > 0:
             skip_samples = int(skip * audio_source.sampling_rate)

@@ -1079,6 +1079,14 @@ class TestAudioRegion(TestCase):
             str(audio_param_err.exception),
         )
 
+    def test_load_exception(self):
+        with self.assertRaises(ValueError) as val_err:
+            AudioRegion.load(None, sr=16000, sw=2, ch=1)
+        self.assertEqual(
+            "'max_read' should not be None when reading from microphone",
+            str(val_err.exception),
+        )
+
     @genty_dataset(
         simple=("output.wav", 1.230, "output.wav"),
         start=("output_{meta.start:g}.wav", 1.230, "output_1.23.wav"),
