@@ -273,6 +273,49 @@ def _make_audio_region(
     return AudioRegion(data, sampling_rate, sample_width, channels, meta)
 
 
+def _read_chunks_online(max_read, **kwargs):
+    reader = AudioReader(None, block_dur=0.5, max_read=max_read, **kwargs)
+    reader.open()
+    data = []
+    try:
+        while True:
+            frame = reader.read()
+            if frame is None:
+                break
+            data.append(frame)
+    except KeyboardInterrupt:
+        # Stop data acquisition from microphone when pressing
+        # Ctrl+C on a [i]python session or a notebook
+        pass
+    reader.close()
+    return (
+        b"".join(data),
+        reader.sampling_rate,
+        reader.sample_width,
+        reader.channels,
+    )
+
+
+def _read_offline(input, skip=0, max_read=None, **kwargs):
+    audio_source = get_audio_source(input, **kwargs)
+    audio_source.open()
+    if skip is not None and skip > 0:
+        skip_samples = round(skip * audio_source.sampling_rate)
+        audio_source.read(skip_samples)
+    if max_read is not None:
+        if max_read < 0:
+            max_read = None
+        else:
+            max_read = round(max_read * audio_source.sampling_rate)
+    data = audio_source.read(max_read)
+    return (
+        data,
+        audio_source.sampling_rate,
+        audio_source.sample_width,
+        audio_source.channels,
+    )
+
+
 def _check_convert_index(index, types, err_msg):
     if not isinstance(index, slice) or index.step is not None:
         raise TypeError(err_msg)
@@ -394,27 +437,24 @@ class AudioRegion(object):
 
     @classmethod
     def load(cls, input, skip=0, max_read=None, **kwargs):
-        if input is None and max_read is None:
-            raise ValueError(
-                "'max_read' should not be None when reading from microphone"
+        if input is None:
+            if max_read is None or max_read < 0:
+                raise ValueError(
+                    "'max_read' should not be None when reading from microphone"
+                )
+            if skip > 0:
+                raise ValueError(
+                    "'skip' should be 0 when reading from microphone"
+                )
+            data, sampling_rate, sample_width, channels = _read_chunks_online(
+                max_read, **kwargs
             )
-        audio_source = get_audio_source(input, **kwargs)
-        audio_source.open()
-        if skip is not None and skip > 0:
-            skip_samples = int(skip * audio_source.sampling_rate)
-            audio_source.read(skip_samples)
-        if max_read is None or max_read < 0:
-            max_read_samples = None
         else:
-            max_read_samples = round(max_read * audio_source.sampling_rate)
-        data = audio_source.read(max_read_samples)
-        audio_source.close()
-        return cls(
-            data,
-            audio_source.sampling_rate,
-            audio_source.sample_width,
-            audio_source.channels,
-        )
+            data, sampling_rate, sample_width, channels = _read_offline(
+                input, skip=skip, max_read=max_read, **kwargs
+            )
+
+        return cls(data, sampling_rate, sample_width, channels)
 
     @property
     def sec(self):
