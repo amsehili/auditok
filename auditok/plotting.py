@@ -82,18 +82,18 @@ def plot(
     plot_theme = theme.get("plot", {})
     plot_fc = plot_theme.get("facecolor", plot_theme.get("pfc"))
     for sid, samples in enumerate(y, 1):
-
         ax = fig.add_subplot(nb_subplots, 1, sid)
         ax.set_facecolor(plot_fc)
         if scale_signal:
-            mean = samples.mean()
             std = samples.std()
-            samples = (samples - mean) / std
-            max_ = samples.max()
-            plt.ylim(-1.5 * max_, 1.5 * max_)
-
+            if std > 0:
+                mean = samples.mean()
+                std = samples.std()
+                samples = (samples - mean) / std
+                max_ = samples.max()
+                plt.ylim(-1.5 * max_, 1.5 * max_)
         if amplitude_threshold is not None:
-            if scale_signal:
+            if scale_signal and std > 0:
                 amp_th = (amplitude_threshold - mean) / std
             else:
                 amp_th = amplitude_threshold
