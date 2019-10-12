@@ -30,8 +30,8 @@ def _plot_line(x, y, theme, xlabel=None, ylabel=None, **kwargs):
     ls = theme.get("linestyle", theme.get("ls"))
     lw = theme.get("linewidth", theme.get("lw"))
     plt.plot(x, y, c=color, ls=ls, lw=lw, **kwargs)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.xlabel(xlabel, fontsize=8)
+    plt.ylabel(ylabel, fontsize=8)
 
 
 def _plot_detections(subplot, detections, theme):
@@ -81,8 +81,16 @@ def plot(
 
     plot_theme = theme.get("plot", {})
     plot_fc = plot_theme.get("facecolor", plot_theme.get("pfc"))
+
+    if nb_subplots > 2 and nb_subplots % 2 == 0:
+        nb_rows = nb_subplots // 2
+        nb_columns = 2
+    else:
+        nb_rows = nb_subplots
+        nb_columns = 1
+
     for sid, samples in enumerate(y, 1):
-        ax = fig.add_subplot(nb_subplots, 1, sid)
+        ax = fig.add_subplot(nb_rows, nb_columns, sid)
         ax.set_facecolor(plot_fc)
         if scale_signal:
             std = samples.std()
@@ -124,8 +132,10 @@ def plot(
         )
         detections_theme = theme.get("detections", {})
         _plot_detections(ax, detections, detections_theme)
-        plt.title("Channel {}".format(sid))
+        plt.title("Channel {}".format(sid), fontsize=10)
 
+        plt.xticks(fontsize=8)
+        plt.yticks(fontsize=8)
     plt.tight_layout()
 
     if save_as is not None:
