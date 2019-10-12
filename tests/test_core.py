@@ -7,7 +7,7 @@ from unittest import TestCase
 from mock import patch
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
-from auditok.core import _duration_to_nb_windows
+from auditok.core import _duration_to_nb_windows, _read_chunks_online
 from auditok.util import AudioDataSource
 from auditok.io import (
     _normalize_use_channel,
@@ -1079,11 +1079,68 @@ class TestAudioRegion(TestCase):
             str(audio_param_err.exception),
         )
 
-    def test_load_exception(self):
+    @genty_dataset(
+        no_skip_read_all=(0, -1),
+        no_skip_read_all_stereo=(0, -1, 2),
+        skip_2_read_all=(2, -1),
+        skip_2_read_all_None=(2, None),
+        skip_2_read_3=(2, 3),
+        skip_2_read_3_5_stereo=(2, 3.5, 2),
+        skip_2_4_read_3_5_stereo=(2.4, 3.5, 2),
+    )
+    def test_load(self, skip, max_read, channels=1):
+        sampling_rate = 10
+        sample_width = 2
+        filename = "tests/data/test_split_10HZ_{}.raw"
+        filename = filename.format("mono" if channels == 1 else "stereo")
+        region = AudioRegion.load(
+            filename,
+            skip=skip,
+            max_read=max_read,
+            sr=sampling_rate,
+            sw=sample_width,
+            ch=channels,
+        )
+        with open(filename, "rb") as fp:
+            fp.read(round(skip * sampling_rate * sample_width * channels))
+            if max_read is None or max_read < 0:
+                to_read = -1
+            else:
+                to_read = round(
+                    max_read * sampling_rate * sample_width * channels
+                )
+            expected = fp.read(to_read)
+        self.assertEqual(bytes(region), expected)
+
+    def test_load_from_microphone(self):
+        with patch("auditok.io.PyAudioSource") as patch_pyaudio_source:
+            with patch("auditok.core.AudioReader.read") as patch_reader:
+                patch_reader.return_value = None
+                with patch(
+                    "auditok.core.AudioRegion.__init__"
+                ) as patch_AudioRegion:
+                    patch_AudioRegion.return_value = None
+                    AudioRegion.load(
+                        None, skip=0, max_read=5, sr=16000, sw=2, ch=1
+                    )
+        self.assertTrue(patch_pyaudio_source.called)
+        self.assertTrue(patch_reader.called)
+        self.assertTrue(patch_AudioRegion.called)
+
+    @genty_dataset(none=(None,), negative=(-1,))
+    def test_load_from_microphone_without_max_read_exception(self, max_read):
         with self.assertRaises(ValueError) as val_err:
-            AudioRegion.load(None, sr=16000, sw=2, ch=1)
+            AudioRegion.load(None, max_read=max_read, sr=16000, sw=2, ch=1)
         self.assertEqual(
             "'max_read' should not be None when reading from microphone",
+            str(val_err.exception),
+        )
+
+    def test_load_from_microphone_with_nonzero_skip_exception(self):
+        with self.assertRaises(ValueError) as val_err:
+            AudioRegion.load(None, skip=1, max_read=5, sr=16000, sw=2, ch=1)
+        self.assertEqual(
+            "'skip' should be 0 when reading from microphone",
             str(val_err.exception),
         )
 
