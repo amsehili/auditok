@@ -42,7 +42,6 @@ class Worker(Thread, metaclass=ABCMeta):
     def __init__(self, timeout=0.5, logger=None):
         self._timeout = timeout
         self._logger = logger
-        self._start_processing_timestamp = None
         self._inbox = Queue()
         Thread.__init__(self)
 
@@ -109,16 +108,14 @@ class TokenizerWorker(Worker, AudioDataSource):
         for observer in self._observers:
             observer.send(message)
 
-    def _init_start_processing_timestamp(self):
-        timestamp = datetime.now()
-        self._start_processing_timestamp = timestamp
-        for observer in self._observers:
-            observer._start_processing_timestamp = timestamp
-
     def run(self):
         self._reader.open()
-        self._init_start_processing_timestamp()
+        start_processing_timestamp = datetime.now()
         for _id, audio_region in enumerate(self._audio_region_gen, start=1):
+            timestamp = start_processing_timestamp + timedelta(
+                seconds=audio_region.meta.start
+            )
+            audio_region.meta.timestamp = timestamp
             detection = _Detection(
                 _id,
                 audio_region.meta.start,
@@ -419,9 +416,7 @@ class PrintWorker(Worker):
 
     def _process_message(self, message):
         _id, audio_region = message
-        timestamp = self._start_processing_timestamp + timedelta(
-            seconds=audio_region.meta.start
-        )
+        timestamp = audio_region.meta.timestamp
         timestamp = timestamp.strftime(self._timestamp_format)
         text = self._print_format.format(
             id=_id,
