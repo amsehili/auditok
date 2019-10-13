@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-auditok.auditok -- Audio Activity Detection tool
+auditok -- Audio Activity Detection tool
 
-auditok.auditok is a program that can be used for Audio/Acoustic
+``auditok`` is a program that can be used for Audio/Acoustic
 activity detection. It can read audio data from audio files as well
 as from built-in device(s) or standard input.
 
 @author:     Mohamed El Amine SEHILI
 @copyright:  2015-2019 Mohamed El Amine SEHILI
-@license:    GPL v3
+@license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 01 Dec 2018
+@deffield    updated: 13 Oct 2019
 """
 
 import sys
@@ -31,7 +31,7 @@ from . import workers
 __all__ = []
 version = __version__
 __date__ = "2015-11-23"
-__updated__ = "2018-12-01"
+__updated__ = "2018-10-13"
 
 
 def main(argv=None):
