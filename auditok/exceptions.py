@@ -20,6 +20,17 @@ class EndOfProcessing(Exception):
     postprocessing code"""
 
 
+class AudioIOError(Exception):
+    """Raised when a compressed audio file cannot be loaded or when trying
+    to read from a not yet open AudioSource"""
+
+
+class AudioParameterError(AudioIOError):
+    """Raised when one audio parameter is missing when loading raw data or
+    saving data to a format other than raw. Also raised when an audio
+    parameter has a wrong value"""
+
+
 class AudioEncodingError(Exception):
     """Raised if audio data can not be encoded in the provided format"""
 
