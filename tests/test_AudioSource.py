@@ -6,7 +6,6 @@ import unittest
 from genty import genty, genty_dataset
 from auditok.io import (
     AudioParameterError,
-    _array_to_bytes,
     DATA_FORMAT,
     BufferAudioSource,
     RawAudioSource,
@@ -61,9 +60,7 @@ class TestAudioSource(unittest.TestCase):
         audio_source.close()
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         fmt = DATA_FORMAT[audio_source.sample_width]
-        expected = _array_to_bytes(
-            array(fmt, _sample_generator(*mono_channels))
-        )
+        expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
 
         self.assertEqual(data_read_all, expected)
 
@@ -93,9 +90,7 @@ class TestAudioSource(unittest.TestCase):
         audio_source.close()
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         fmt = DATA_FORMAT[audio_source.sample_width]
-        expected = _array_to_bytes(
-            array(fmt, _sample_generator(*mono_channels))
-        )
+        expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
 
         self.assertEqual(data, expected)
 

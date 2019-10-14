@@ -5,6 +5,7 @@ from array import array
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import filecmp
 from unittest import TestCase
+from unittest.mock import patch, Mock
 from genty import genty, genty_dataset
 from test_util import _sample_generator, _generate_pure_tone, PURE_TONE_DICT
 from auditok.io import (
@@ -17,11 +18,7 @@ from auditok.io import (
     StdinAudioSource,
     check_audio_data,
     _guess_audio_format,
-    _normalize_use_channel,
     _get_audio_parameters,
-    _array_to_bytes,
-    _mix_audio_channels,
-    _extract_selected_channel,
     _load_raw,
     _load_wave,
     _load_with_pydub,
@@ -32,14 +29,6 @@ from auditok.io import (
     _save_with_pydub,
     to_file,
 )
-
-
-if sys.version_info >= (3, 0):
-    PYTHON_3 = True
-    from unittest.mock import patch, Mock
-else:
-    PYTHON_3 = False
-    from mock import patch, Mock
 
 AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
 
@@ -72,17 +61,6 @@ class TestIO(TestCase):
     )
     def test_guess_audio_format(self, fmt, filename, expected):
         result = _guess_audio_format(fmt, filename)
-        self.assertEqual(result, expected)
-
-    @genty_dataset(
-        none=(None, 0),
-        positive_int=(1, 0),
-        left=("left", 0),
-        right=("right", 1),
-        mix=("mix", "mix"),
-    )
-    def test_normalize_use_channel(self, use_channel, expected):
-        result = _normalize_use_channel(use_channel)
         self.assertEqual(result, expected)
 
     def test_get_audio_parameters_short_params(self):
@@ -121,103 +99,10 @@ class TestIO(TestCase):
     )
     def test_get_audio_parameters_invalid(self, values):
         params = dict(
-            zip(
-                ("sampling_rate", "sample_width", "channels"),
-                values,
-            )
+            zip(("sampling_rate", "sample_width", "channels"), values)
         )
         with self.assertRaises(AudioParameterError):
             _get_audio_parameters(params)
-
-    @genty_dataset(
-        mono_1byte=([400], 1),
-        stereo_1byte=([400, 600], 1),
-        three_channel_1byte=([400, 600, 2400], 1),
-        mono_2byte=([400], 2),
-        stereo_2byte=([400, 600], 2),
-        three_channel_2byte=([400, 600, 1150], 2),
-        mono_4byte=([400], 4),
-        stereo_4byte=([400, 600], 4),
-        four_channel_2byte=([400, 600, 1150, 7220], 4),
-    )
-    def test_mix_audio_channels(self, frequencies, sample_width):
-        sampling_rate = 16000
-        sample_width = 2
-        channels = len(frequencies)
-        mono_channels = [
-            _generate_pure_tone(
-                freq,
-                duration_sec=0.1,
-                sampling_rate=sampling_rate,
-                sample_width=sample_width,
-            )
-            for freq in frequencies
-        ]
-        fmt = DATA_FORMAT[sample_width]
-        expected = _array_to_bytes(
-            array(
-                fmt,
-                (sum(samples) // channels for samples in zip(*mono_channels)),
-            )
-        )
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
-        mixed = _mix_audio_channels(data, channels, sample_width)
-        self.assertEqual(mixed, expected)
-
-    @genty_dataset(
-        mono_1byte=([400], 1, 0),
-        stereo_1byte_2st_channel=([400, 600], 1, 1),
-        mono_2byte=([400], 2, 0),
-        stereo_2byte_1st_channel=([400, 600], 2, 0),
-        stereo_2byte_2nd_channel=([400, 600], 2, 1),
-        three_channel_2byte_last_negative_idx=([400, 600, 1150], 2, -1),
-        three_channel_2byte_2nd_negative_idx=([400, 600, 1150], 2, -2),
-        three_channel_2byte_1st_negative_idx=([400, 600, 1150], 2, -3),
-        three_channel_4byte_1st=([400, 600, 1150], 4, 0),
-        three_channel_4byte_last_negative_idx=([400, 600, 1150], 4, -1),
-    )
-    def test_extract_selected_channel(
-        self, frequencies, sample_width, use_channel
-    ):
-
-        mono_channels = [
-            _generate_pure_tone(
-                freq,
-                duration_sec=0.1,
-                sampling_rate=16000,
-                sample_width=sample_width,
-            )
-            for freq in frequencies
-        ]
-        channels = len(frequencies)
-        fmt = DATA_FORMAT[sample_width]
-        expected = _array_to_bytes(mono_channels[use_channel])
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
-        selected_channel = _extract_selected_channel(
-            data, channels, sample_width, use_channel
-        )
-        self.assertEqual(selected_channel, expected)
-
-    @genty_dataset(mono=([400],), three_channel=([600, 1150, 2400],))
-    def test_extract_selected_channel_mix(self, frequencies):
-
-        mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        channels = len(frequencies)
-        fmt = DATA_FORMAT[2]
-        expected = _array_to_bytes(
-            array(
-                fmt,
-                (sum(samples) // channels for samples in zip(*mono_channels)),
-            )
-        )
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
-        selected_channel = _extract_selected_channel(data, channels, 2, "mix")
-        self.assertEqual(selected_channel, expected)
-
-    @genty_dataset(positive=(2,), negative=(-3,))
-    def test_extract_selected_channel_invalid_use_channel(self, use_channel):
-        with self.assertRaises(AudioParameterError):
-            _extract_selected_channel(b"\0\0", 2, 2, use_channel)
 
     @genty_dataset(
         raw_with_audio_format=(
@@ -288,7 +173,6 @@ class TestIO(TestCase):
             with self.assertRaises(AudioIOError):
                 from_file("audio", "mp3")
 
-
     @patch("auditok.io._WITH_PYDUB", True)
     @patch("auditok.io.BufferAudioSource")
     @genty_dataset(
@@ -311,24 +195,26 @@ class TestIO(TestCase):
         segment_mock.sample_width = 2
         segment_mock.channels = 2
         segment_mock._data = b"abcd"
-        with patch(
-            "auditok.io.AudioSegment.{}".format(function)
-        ) as open_func:
+        with patch("auditok.io.AudioSegment.{}".format(function)) as open_func:
             open_func.return_value = segment_mock
             from_file(filename)
             self.assertTrue(open_func.called)
 
-
     @genty_dataset(
         mono=("mono_400", (400,)),
         three_channel=("3channel_400-800-1600", (400, 800, 1600)),
-
         mono_large_file=("mono_400", (400,), True),
-        three_channel_large_file=("3channel_400-800-1600", (400, 800, 1600), True),
+        three_channel_large_file=(
+            "3channel_400-800-1600",
+            (400, 800, 1600),
+            True,
+        ),
     )
     def test_load_raw(self, file_id, frequencies, large_file=False):
         filename = "tests/data/test_16KHZ_{}Hz.raw".format(file_id)
-        audio_source = _load_raw(filename, 16000, 2, len(frequencies), large_file=large_file)
+        audio_source = _load_raw(
+            filename, 16000, 2, len(frequencies), large_file=large_file
+        )
         audio_source.open()
         data = audio_source.read(-1)
         audio_source.close()
@@ -339,7 +225,7 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.channels, len(frequencies))
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         fmt = DATA_FORMAT[audio_source.sample_width]
-        expected =_array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
         self.assertEqual(data, expected)
 
     @genty_dataset(
@@ -357,9 +243,12 @@ class TestIO(TestCase):
     @genty_dataset(
         mono=("mono_400", (400,)),
         three_channel=("3channel_400-800-1600", (400, 800, 1600)),
-
         mono_large_file=("mono_400", (400,), True),
-        three_channel_large_file=("3channel_400-800-1600", (400, 800, 1600), True),
+        three_channel_large_file=(
+            "3channel_400-800-1600",
+            (400, 800, 1600),
+            True,
+        ),
     )
     def test_load_wave(self, file_id, frequencies, large_file=False):
         filename = "tests/data/test_16KHZ_{}Hz.wav".format(file_id)
@@ -374,9 +263,8 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.channels, len(frequencies))
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         fmt = DATA_FORMAT[audio_source.sample_width]
-        expected =_array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
         self.assertEqual(data, expected)
-
 
     @patch("auditok.io._WITH_PYDUB", True)
     @patch("auditok.io.BufferAudioSource")
@@ -394,21 +282,16 @@ class TestIO(TestCase):
         webm_right_channel=("webm", 2, "from_file"),
         webm_mix_channels=("webm", 4, "from_file"),
     )
-    def test_load_with_pydub(
-        self, audio_format, channels, function, *mocks
-    ):
+    def test_load_with_pydub(self, audio_format, channels, function, *mocks):
         filename = "audio.{}".format(audio_format)
         segment_mock = Mock()
         segment_mock.sample_width = 2
         segment_mock.channels = channels
         segment_mock._data = b"abcdefgh"
-        with patch(
-            "auditok.io.AudioSegment.{}".format(function)
-        ) as open_func:
+        with patch("auditok.io.AudioSegment.{}".format(function)) as open_func:
             open_func.return_value = segment_mock
             _load_with_pydub(filename, audio_format)
             self.assertTrue(open_func.called)
-
 
     @genty_dataset(
         mono=("mono_400Hz.raw", (400,)),
@@ -419,7 +302,7 @@ class TestIO(TestCase):
         sample_width = 2
         fmt = DATA_FORMAT[sample_width]
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        data = array(fmt, _sample_generator(*mono_channels)).tobytes()
         tmpfile = NamedTemporaryFile()
         _save_raw(data, tmpfile.name)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
@@ -435,7 +318,7 @@ class TestIO(TestCase):
         channels = len(frequencies)
         fmt = DATA_FORMAT[sample_width]
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        data = _array_to_bytes(array(fmt, _sample_generator(*mono_channels)))
+        data = array(fmt, _sample_generator(*mono_channels)).tobytes()
         tmpfile = NamedTemporaryFile()
         _save_wave(data, tmpfile.name, sampling_rate, sample_width, channels)
         self.assertTrue(filecmp.cmp(tmpfile.name, filename, shallow=False))
@@ -470,7 +353,7 @@ class TestIO(TestCase):
         exp_filename = "tests/data/test_16KHZ_mono_400Hz.raw"
         tmpdir = TemporaryDirectory()
         filename = os.path.join(tmpdir.name, filename)
-        data = _array_to_bytes(PURE_TONE_DICT[400])
+        data = PURE_TONE_DICT[400].tobytes()
         to_file(data, filename, audio_format=audio_format)
         self.assertTrue(filecmp.cmp(filename, exp_filename, shallow=False))
         tmpdir.cleanup()
@@ -487,7 +370,7 @@ class TestIO(TestCase):
         exp_filename = "tests/data/test_16KHZ_mono_400Hz.wav"
         tmpdir = TemporaryDirectory()
         filename = os.path.join(tmpdir.name, filename)
-        data = _array_to_bytes(PURE_TONE_DICT[400])
+        data = PURE_TONE_DICT[400].tobytes()
         to_file(
             data,
             filename,
