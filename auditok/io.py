@@ -30,11 +30,7 @@ import warnings
 import audioop
 from array import array
 from functools import partial
-
-if sys.version_info >= (3, 0):
-    PYTHON_3 = True
-else:
-    PYTHON_3 = False
+from .exceptions import AudioIOError, AudioParameterError
 
 try:
     from pydub import AudioSegment
@@ -74,14 +70,6 @@ DEFAULT_NB_CHANNELS = 1
 DATA_FORMAT = {1: "b", 2: "h", 4: "i"}
 
 
-class AudioIOError(Exception):
-    pass
-
-
-class AudioParameterError(AudioIOError):
-    pass
-
-
 def check_audio_data(data, sample_width, channels):
     sample_size_bytes = int(sample_width * channels)
     nb_samples = len(data) // sample_size_bytes
@@ -103,31 +91,6 @@ def _guess_audio_format(fmt, filename):
     if fmt == "wave":
         fmt = "wav"
     return fmt
-
-
-def _normalize_use_channel(use_channel):
-    """
-    Returns a value of `use_channel` as expected by audio read/write fuctions.
-    If `use_channel` is `None`, returns 0. If it's an integer, or the special
-    str 'mix' returns it as is. If it's `left` or `right` returns 0 or 1
-    respectively.
-    """
-    err_message = (
-        "'use_channel' parameter must be a non-zero integer or one of "
-    )
-    err_message += "('left', 'right', 'mix'), found: '{}'"
-    if use_channel is None:
-        return 0
-    if use_channel == "mix":
-        return "mix"
-    if isinstance(use_channel, int):
-        if use_channel == 0:
-            raise AudioParameterError(err_message.format(use_channel))
-        return use_channel - 1 if use_channel > 0 else use_channel
-    try:
-        return ["left", "right"].index(use_channel)
-    except ValueError:
-        raise AudioParameterError(err_message.format(use_channel))
 
 
 def _get_audio_parameters(param_dict):
@@ -164,51 +127,6 @@ def _get_audio_parameters(param_dict):
         parameters.append(param)
     sampling_rate, sample_width, channels = parameters
     return sampling_rate, sample_width, channels
-
-
-def _array_to_bytes(a):
-    """
-    Converts an `array.array` to `bytes`.
-    """
-    if PYTHON_3:
-        return a.tobytes()
-    else:
-        return a.tostring()
-
-
-def _mix_audio_channels(data, channels, sample_width):
-    if channels == 1:
-        return data
-    if channels == 2:
-        return audioop.tomono(data, sample_width, 0.5, 0.5)
-    fmt = DATA_FORMAT[sample_width]
-    buffer = array(fmt, data)
-    mono_channels = [
-        array(fmt, buffer[ch::channels]) for ch in range(channels)
-    ]
-    avg_arr = array(
-        fmt, (sum(samples) // channels for samples in zip(*mono_channels))
-    )
-    return _array_to_bytes(avg_arr)
-
-
-def _extract_selected_channel(data, channels, sample_width, use_channel):
-    if use_channel == "mix":
-        return _mix_audio_channels(data, channels, sample_width)
-
-    if use_channel >= channels or use_channel < -channels:
-        err_message = "use_channel == {} but audio data has only {} channel{}."
-        err_message += " Selected channel must be 'mix' or an integer >= "
-        err_message += "-channels and < channels"
-        err_message = err_message.format(
-            use_channel, channels, "s" if channels > 1 else ""
-        )
-        raise AudioParameterError(err_message)
-    elif use_channel < 0:
-        use_channel += channels
-    fmt = DATA_FORMAT[sample_width]
-    buffer = array(fmt, data)
-    return _array_to_bytes(buffer[use_channel::channels])
 
 
 class AudioSource:
@@ -675,10 +593,7 @@ class StdinAudioSource(_FileAudioSource):
         _FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._is_open = False
         self._sample_size = sample_width * channels
-        if PYTHON_3:
-            self._stream = sys.stdin.buffer
-        else:
-            self._stream = sys.stdin
+        self._stream = sys.stdin.buffer
 
     def is_open(self):
         return self._is_open
@@ -750,7 +665,7 @@ class PyAudioPlayer:
                 chunk_gen,
                 total=nb_chunks,
                 duration=duration,
-                **progress_bar_kwargs
+                **progress_bar_kwargs,
             )
         if self.stream.is_stopped():
             self.stream.start_stream()
