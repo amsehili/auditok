@@ -9,11 +9,7 @@ from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
 from auditok.core import _duration_to_nb_windows, _read_chunks_online
 from auditok.util import AudioDataSource
-from auditok.io import (
-    _normalize_use_channel,
-    _extract_selected_channel,
-    get_audio_source,
-)
+from auditok.io import get_audio_source
 
 
 def _make_random_length_regions(
@@ -597,6 +593,7 @@ class TestSplit(TestCase):
             sr=10,
             sw=2,
             ch=channels,
+            eth= 49.99,
             **kwargs
         )
 
@@ -607,6 +604,7 @@ class TestSplit(TestCase):
             max_silence=max_silence,
             drop_trailing_silence=False,
             strict_min_dur=False,
+            eth= 49.99,
             **kwargs
         )
 

@@ -4,16 +4,10 @@ Class summary
 
 .. autosummary::
 
-        DataSource
-        StringDataSource
-        ADSFactory
-        ADSFactory.AudioDataSource
-        ADSFactory.ADSDecorator
-        ADSFactory.OverlapADS
-        ADSFactory.LimiterADS
-        ADSFactory.RecorderADS
-        DataValidator
+        make_channel_selector
         AudioEnergyValidator
+        AudioReader
+        Recorder
 """
 from __future__ import division
 import sys
@@ -21,6 +15,7 @@ from abc import ABCMeta, abstractmethod
 import math
 from array import array
 from functools import partial
+from audioop import tomono
 from .io import (
     AudioIOError,
     AudioSource,
@@ -32,7 +27,7 @@ from .io import (
 from .exceptions import DuplicateArgument, TooSamllBlockDuration
 
 try:
-    import signal_numpy as signal
+    from . import signal_numpy as signal
 except ImportError as e:
     from . import signal
 
@@ -63,7 +58,7 @@ def make_channel_selector(sample_width, channels, selected=None):
         raise ValueError(err_msg.format(sample_width))
 
     if channels == 1:
-        return partial(signal.to_array, fmt=fmt)
+        return lambda x : x
 
     if isinstance(selected, int):
         if selected < 0:
@@ -77,10 +72,16 @@ def make_channel_selector(sample_width, channels, selected=None):
         )
 
     if selected in ("mix", "avg", "average"):
+        if channels == 2:
+            # when data is stereo, using audioop when possible is much faster
+            return partial(signal.average_channels_stereo, sample_width=sample_width)
+        
         return partial(signal.average_channels, fmt=fmt, channels=channels)
 
     if selected in (None, "any"):
         return partial(signal.separate_channels, fmt=fmt, channels=channels)
+    
+    raise ValueError("Selected channel must be an integer, None (alias 'any') or 'average' (alias 'avg' or 'mix')")
 
 
 class DataSource:
@@ -114,6 +115,7 @@ class DataValidator(metaclass=ABCMeta):
 
 class AudioEnergyValidator(DataValidator):
     def __init__(self, energy_threshold, sample_width, channels, use_channel=None):
+        self._sample_width = sample_width
         self._selector = make_channel_selector(sample_width, channels, use_channel)
         if channels == 1 or use_channel is not None:
             self._energy_fn = signal.calculate_energy_single_channel
@@ -122,7 +124,8 @@ class AudioEnergyValidator(DataValidator):
         self._energy_threshold = energy_threshold
 
     def is_valid(self, data):
-        return self._energy_fn(self._selector(data)) >= self._energy_threshold
+        log_energy = self._energy_fn(self._selector(data), self._sample_width)
+        return log_energy >= self._energy_threshold
 
 
 class StringDataSource(DataSource):
