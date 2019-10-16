@@ -685,13 +685,7 @@ class AudioRegion(object):
     @property
     def samples(self):
         if self._samples is None:
-            fmt = signal.FORMAT[self.sample_width]
-            if self.channels == 1:
-                self._samples = signal.to_array(self._data, fmt)
-            else:
-                self._samples = signal.separate_channels(
-                    self._data, fmt, self.channels
-                )
+            self._samples = signal.to_array(self._data, self.sample_width, self.channels)  
         return self._samples
 
     def __len__(self):
