@@ -389,6 +389,54 @@ class TestSplit(TestCase):
             {"aw": 0.4},
             [(4, 28), (36, 76)],
         ),
+        stereo_uc_None_analysis_window_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"analysis_window": 0.2},
+            [(2, 32), (34, 76)],
+        ),
+        stereo_uc_any_analysis_window_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"uc": None, "analysis_window": 0.2},
+            [(2, 32), (34, 76)],
+        ),
+        stereo_use_channel_None_aw_0_3_max_silence_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"use_channel": None, "analysis_window": 0.3},
+            [(3, 30), (36, 76)],
+        ),
+        stereo_use_channel_any_aw_0_3_max_silence_0_3=(
+            0.2,
+            5,
+            0.3,
+            2,
+            {"use_channel": "any", "analysis_window": 0.3},
+            [(3, 33), (36, 76)],
+        ),
+        stereo_use_channel_None_aw_0_4_max_silence_0_2=(
+            0.2,
+            5,
+            0.2,
+            2,
+            {"use_channel": None, "analysis_window": 0.4},
+            [(4, 28), (36, 76)],
+        ),
+        stereo_use_channel_any_aw_0_3_max_silence_0_4=(
+            0.2,
+            5,
+            0.4,
+            2,
+            {"use_channel": "any", "analysis_window": 0.4},
+            [(4, 32), (36, 76)],
+        ),
         stereo_uc_0_analysis_window_0_2=(
             0.2,
             5,
@@ -437,20 +485,20 @@ class TestSplit(TestCase):
             {"uc": "mix", "analysis_window": 0.1},
             [(10, 32), (36, 76)],
         ),
-        stereo_uc_mix_aw_0_2_max_silence_0_min_dur_0_3=(
+        stereo_uc_avg_aw_0_2_max_silence_0_min_dur_0_3=(
             0.3,
             5,
             0,
             2,
-            {"uc": "mix", "analysis_window": 0.2},
+            {"uc": "avg", "analysis_window": 0.2},
             [(10, 14), (16, 24), (36, 76)],
         ),
-        stereo_uc_mix_aw_0_2_max_silence_0_min_dur_0_41=(
+        stereo_uc_average_aw_0_2_max_silence_0_min_dur_0_41=(
             0.41,
             5,
             0,
             2,
-            {"uc": "mix", "analysis_window": 0.2},
+            {"uc": "average", "analysis_window": 0.2},
             [(16, 24), (36, 76)],
         ),
         stereo_uc_mix_aw_0_2_max_silence_0_1=(
@@ -593,7 +641,7 @@ class TestSplit(TestCase):
             sr=10,
             sw=2,
             ch=channels,
-            eth= 49.99,
+            eth=49.99,
             **kwargs
         )
 
@@ -604,7 +652,7 @@ class TestSplit(TestCase):
             max_silence=max_silence,
             drop_trailing_silence=False,
             strict_min_dur=False,
-            eth= 49.99,
+            eth=49.99,
             **kwargs
         )
 
