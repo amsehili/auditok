@@ -1,7 +1,12 @@
 import numpy as np
-from .signal import average_channels_stereo, calculate_energy_single_channel, calculate_energy_multichannel
+from .signal import (
+    average_channels_stereo,
+    calculate_energy_single_channel,
+    calculate_energy_multichannel,
+)
 
 FORMAT = {1: np.int8, 2: np.int16, 4: np.int32}
+
 
 def to_array(data, sample_width, channels):
     fmt = FORMAT[sample_width]
@@ -22,5 +27,4 @@ def average_channels(data, fmt, channels):
 
 def separate_channels(data, fmt, channels):
     array = np.frombuffer(data, dtype=fmt)
-    return array.reshape(-1, channels).T
-
+    return np.asanyarray(array.reshape(-1, channels).T, order="C")
