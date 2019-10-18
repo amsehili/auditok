@@ -11,9 +11,7 @@ Class summary
 """
 from __future__ import division
 import sys
-from abc import ABCMeta, abstractmethod
-import math
-from array import array
+from abc import ABC, abstractmethod
 from functools import partial
 from audioop import tomono
 from .io import (
@@ -90,13 +88,11 @@ def make_channel_selector(sample_width, channels, selected=None):
     )
 
 
-class DataSource:
+class DataSource(ABC):
     """
     Base class for objects passed to :func:`auditok.core.StreamTokenizer.tokenize`.
     Subclasses should implement a :func:`DataSource.read` method.
     """
-
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def read(self):
@@ -106,7 +102,7 @@ class DataSource:
         """
 
 
-class DataValidator(metaclass=ABCMeta):
+class DataValidator(ABC):
     """
     Base class for a validator object used by :class:`.core.StreamTokenizer` to check
     if read data is valid.
@@ -551,13 +547,8 @@ class ADSFactory:
             data = b''.join(data)
             assert len(data) == int(ads.get_sampling_rate() * 2.25 * ads.get_sample_width() * ads.get_channels())
         """
-
-        # copy user's dicionary (shallow copy)
-        kwargs = kwargs.copy()
-
         # check and normalize keyword arguments
         ADSFactory._check_normalize_args(kwargs)
-
         block_dur = kwargs.pop("bd")
         hop_dur = kwargs.pop("hd")
         block_size = kwargs.pop("bs")
@@ -587,7 +578,7 @@ class ADSFactory:
 
         # Case 3: a data_buffer is supplied
         elif data_buffer is not None:
-            audio_source = BufferAudioSource(data_buffer=data_buffer, **kwargs)
+            audio_source = BufferAudioSource(data=data_buffer, **kwargs)
 
         # Case 4: try to access native audio input
         else:
