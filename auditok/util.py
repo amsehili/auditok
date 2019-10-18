@@ -12,6 +12,7 @@ Class summary
 from __future__ import division
 import sys
 from abc import ABC, abstractmethod
+import warnings
 from functools import partial
 from audioop import tomono
 from .io import (
@@ -547,8 +548,15 @@ class ADSFactory:
             data = b''.join(data)
             assert len(data) == int(ads.get_sampling_rate() * 2.25 * ads.get_sample_width() * ads.get_channels())
         """
+        warnings.warn(
+            "'ADSFactory' is deprecated and will be removed in a future "
+            "release. Please use AudioReader(...) instead.",
+            DeprecationWarning
+        )
+
         # check and normalize keyword arguments
         ADSFactory._check_normalize_args(kwargs)
+
         block_dur = kwargs.pop("bd")
         hop_dur = kwargs.pop("hd")
         block_size = kwargs.pop("bs")
