@@ -27,7 +27,7 @@ import os
 import sys
 import wave
 import warnings
-import audioop
+from abc import ABC, abstractmethod
 from array import array
 from functools import partial
 from .exceptions import AudioIOError, AudioParameterError
@@ -67,7 +67,6 @@ __all__ = [
 DEFAULT_SAMPLING_RATE = 16000
 DEFAULT_SAMPLE_WIDTH = 2
 DEFAULT_NB_CHANNELS = 1
-DATA_FORMAT = {1: "b", 2: "h", 4: "i"}
 
 
 def check_audio_data(data, sample_width, channels):
@@ -129,7 +128,7 @@ def _get_audio_parameters(param_dict):
     return sampling_rate, sample_width, channels
 
 
-class AudioSource:
+class AudioSource(ABC):
     """ 
     Base class for audio source objects.
 
@@ -165,18 +164,19 @@ class AudioSource:
         self._sample_width = sample_width
         self._channels = channels
 
+    @abstractmethod
     def is_open(self):
         """ Return True if audio source is open, False otherwise """
-        raise NotImplementedError
 
+    @abstractmethod
     def open(self):
         """ Open audio source """
-        raise NotImplementedError
 
+    @abstractmethod
     def close(self):
         """ Close audio source """
-        raise NotImplementedError
 
+    @abstractmethod
     def read(self, size):
         """
         Read and return `size` audio samples at most.
@@ -195,10 +195,14 @@ class AudioSource:
 
             - 'left_samples' if `size` > 'left_samples' 
         """
-        raise NotImplementedError
 
     def get_sampling_rate(self):
         """ Return the number of samples per second of audio stream """
+        warnings.warn(
+            "'get_sampling_rate' is deprecated, use 'sampling_rate' "
+            "property instead",
+            DeprecationWarning,
+        )
         return self.sampling_rate
 
     @property
@@ -213,6 +217,11 @@ class AudioSource:
 
     def get_sample_width(self):
         """ Return the number of bytes used to represent one audio sample """
+        warnings.warn(
+            "'get_sample_width' is deprecated, use 'sample_width' "
+            "property instead",
+            DeprecationWarning,
+        )
         return self.sample_width
 
     @property
@@ -227,6 +236,11 @@ class AudioSource:
 
     def get_channels(self):
         """ Return the number of channels of this audio source """
+        warnings.warn(
+            "'get_channels' is deprecated, use 'channels' "
+            "property instead",
+            DeprecationWarning,
+        )
         return self.channels
 
     @property
@@ -252,35 +266,39 @@ class Rewindable(AudioSource):
     def rewindable(self):
         return True
 
+    @abstractmethod
     def rewind(self):
         """ Go back to the beginning of audio stream """
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def position(self):
-        """Stream position in number of samples"""
-        raise NotImplementedError
+        """Return stream position in number of samples"""
 
     @position.setter
+    @abstractmethod
     def position(self, position):
-        raise NotImplementedError
+        """Set stream position in number of samples"""
 
     @property
     def position_s(self):
-        """Stream position in seconds"""
+        """Return stream position in seconds"""
         return self.position / self.sampling_rate
 
     @position_s.setter
     def position_s(self, position_s):
+        """Set stream position in seconds"""
         self.position = int(self.sampling_rate * position_s)
 
     @property
     def position_ms(self):
-        """Stream position in milliseconds"""
+        """Return stream position in milliseconds"""
         return (self.position * 1000) // self.sampling_rate
 
     @position_ms.setter
     def position_ms(self, position_ms):
+        """Set stream position in milliseconds"""
         if not isinstance(position_ms, int):
             raise ValueError("position_ms should be an int")
         self.position = int(self.sampling_rate * position_ms / 1000)
@@ -338,14 +356,14 @@ class BufferAudioSource(Rewindable):
 
     def __init__(
         self,
-        data_buffer,
+        data,
         sampling_rate=DEFAULT_SAMPLING_RATE,
         sample_width=DEFAULT_SAMPLE_WIDTH,
         channels=DEFAULT_NB_CHANNELS,
     ):
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
-        check_audio_data(data_buffer, sample_width, channels)
-        self._buffer = data_buffer
+        check_audio_data(data, sample_width, channels)
+        self._data = data
         self._sample_size_all_channels = sample_width * channels
         self._current_position_bytes = 0
         self._is_open = False
@@ -368,7 +386,7 @@ class BufferAudioSource(Rewindable):
         else:
             bytes_to_read = self._sample_size_all_channels * size
             offset = self._current_position_bytes + bytes_to_read
-        data = self._buffer[self._current_position_bytes : offset]
+        data = self._data[self._current_position_bytes : offset]
         if data:
             self._current_position_bytes += len(data)
             return data
@@ -376,34 +394,7 @@ class BufferAudioSource(Rewindable):
 
     @property
     def data(self):
-        return self._buffer
-
-    def get_data_buffer(self):
-        """ Return all audio data as one string buffer. """
-        return self._buffer
-
-    def set_data(self, data_buffer):
-        """ Set new data for this audio stream. 
-
-        :Parameters:
-
-            `data_buffer` : str, basestring, Bytes
-                a string buffer with a length multiple of (sample_width * channels)
-        """
-        check_audio_data(data_buffer, self.sample_width, self.channels)
-        self._buffer = data_buffer
-        self._current_position_bytes = 0
-
-    def append_data(self, data_buffer):
-        """ Append data to this audio stream
-
-        :Parameters:
-
-            `data_buffer` : str, basestring, Bytes
-                a buffer with a length multiple of (sample_width * channels)
-        """
-        check_audio_data(data_buffer, self.sample_width, self.channels)
-        self._buffer += data_buffer
+        return self._data
 
     def rewind(self):
         self.position = 0
@@ -436,7 +427,7 @@ class BufferAudioSource(Rewindable):
         self.position = int(self.sampling_rate * position_ms / 1000)
 
 
-class _FileAudioSource(AudioSource):
+class FileAudioSource(AudioSource):
     def __init__(self, sampling_rate, sample_width, channels):
         AudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._audio_stream = None
@@ -453,8 +444,9 @@ class _FileAudioSource(AudioSource):
             self._audio_stream.close()
             self._audio_stream = None
 
+    @abstractmethod
     def _read_from_stream(self, size):
-        raise NotImplementedError
+        """Read data from stream"""
 
     def read(self, size):
         if not self.is_open():
@@ -465,9 +457,9 @@ class _FileAudioSource(AudioSource):
         return data
 
 
-class RawAudioSource(_FileAudioSource, Rewindable):
+class RawAudioSource(FileAudioSource):
     def __init__(self, file, sampling_rate, sample_width, channels):
-        _FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
+        FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._file = file
         self._audio_stream = None
         self._sample_size = sample_width * channels
@@ -485,7 +477,7 @@ class RawAudioSource(_FileAudioSource, Rewindable):
         return data
 
 
-class WaveAudioSource(_FileAudioSource, Rewindable):
+class WaveAudioSource(FileAudioSource):
     """
     A class for an `AudioSource` that reads data from a wave file.
     This class should be used for large wave files to avoid loading
@@ -501,7 +493,7 @@ class WaveAudioSource(_FileAudioSource, Rewindable):
         self._filename = filename
         self._audio_stream = None
         stream = wave.open(self._filename, "rb")
-        _FileAudioSource.__init__(
+        FileAudioSource.__init__(
             self,
             stream.getframerate(),
             stream.getsampwidth(),
@@ -578,7 +570,7 @@ class PyAudioSource(AudioSource):
         return None
 
 
-class StdinAudioSource(_FileAudioSource):
+class StdinAudioSource(FileAudioSource):
     """
     A class for an :class:`AudioSource` that reads data from standard input.
     """
@@ -590,7 +582,7 @@ class StdinAudioSource(_FileAudioSource):
         channels=DEFAULT_NB_CHANNELS,
     ):
 
-        _FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
+        FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._is_open = False
         self._sample_size = sample_width * channels
         self._stream = sys.stdin.buffer
@@ -613,8 +605,6 @@ class StdinAudioSource(_FileAudioSource):
 
 
 def make_tqdm_progress_bar(iterable, total, duration, **tqdm_kwargs):
-
-    tqdm_kwargs = tqdm_kwargs.copy()
     fmt = tqdm_kwargs.get("bar_format", DEFAULT_BAR_FORMAT_TQDM)
     fmt = fmt.replace("{duration}", "{:.3f}".format(duration))
     tqdm_kwargs["bar_format"] = fmt
@@ -838,7 +828,7 @@ def _load_with_pydub(filename, audio_format):
     open_function = func_dict.get(audio_format, AudioSegment.from_file)
     segment = open_function(filename)
     return BufferAudioSource(
-        data_buffer=segment._data,
+        data=segment.raw_data,
         sampling_rate=segment.frame_rate,
         sample_width=segment.sample_width,
         channels=segment.channels,
