@@ -1,5 +1,8 @@
+from unittest import TestCase
 import math
 from array import array
+from genty import genty, genty_dataset
+from auditok.util import AudioEnergyValidator
 from auditok.io import DATA_FORMAT
 
 
@@ -49,3 +52,49 @@ PURE_TONE_DICT.update(
         for freq in (600, 1150, 2400, 7220)
     }
 )
+
+
+@genty
+class TestAudioEnergyValidator(TestCase):
+    @genty_dataset(
+        mono_valid_uc_None=([350, 400], 1, None, True),
+        mono_valid_uc_any=([350, 400], 1, "any", True),
+        mono_valid_uc_0=([350, 400], 1, 0, True),
+        mono_valid_uc_mix=([350, 400], 1, "mix", True),
+        # previous cases are all the same since we have mono audio
+        mono_invalid_uc_None=([300, 300], 1, None, False),
+        stereo_valid_uc_None=([300, 400, 350, 300], 2, None, True),
+        stereo_valid_uc_any=([300, 400, 350, 300], 2, "any", True),
+        stereo_valid_uc_mix=([300, 400, 350, 300], 2, "mix", True),
+        stereo_valid_uc_avg=([300, 400, 350, 300], 2, "avg", True),
+        stereo_valid_uc_average=([300, 400, 300, 300], 2, "average", True),
+        stereo_valid_uc_mix_with_null_channel=(
+            [634, 0, 634, 0],
+            2,
+            "mix",
+            True,
+        ),
+        stereo_valid_uc_0=([320, 100, 320, 100], 2, 0, True),
+        stereo_valid_uc_1=([100, 320, 100, 320], 2, 1, True),
+        stereo_invalid_uc_None=([280, 100, 280, 100], 2, None, False),
+        stereo_invalid_uc_any=([280, 100, 280, 100], 2, "any", False),
+        stereo_invalid_uc_mix=([400, 200, 400, 200], 2, "mix", False),
+        stereo_invalid_uc_0=([300, 400, 300, 400], 2, 0, False),
+        stereo_invalid_uc_1=([400, 300, 400, 300], 2, 1, False),
+        zeros=([0, 0, 0, 0], 2, None, False),
+    )
+    def test_audio_energy_validator(
+        self, data, channels, use_channel, expected
+    ):
+
+        data = array("h", data)
+        sample_width = 2
+        energy_threshold = 50
+        validator = AudioEnergyValidator(
+            energy_threshold, sample_width, channels, use_channel
+        )
+
+        if expected:
+            self.assertTrue(validator.is_valid(data))
+        else:
+            self.assertFalse(validator.is_valid(data))
