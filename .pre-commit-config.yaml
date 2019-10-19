@@ -1,8 +1,8 @@
 
 repos:
 - repo: git://github.com/pre-commit/mirrors-autopep8
-  rev: v1.4
+  rev: v1.4.4
   hooks:
   - id: autopep8
-    args: ['-i', '--max-line-length=130']
+    args: ['-i', '--max-line-length=80']
 

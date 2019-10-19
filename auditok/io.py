@@ -44,6 +44,7 @@ try:
 
     DEFAULT_BAR_FORMAT_TQDM = "|" + "{bar}" + "|" + "[{elapsed}/{duration}]"
     DEFAULT_NCOLS_TQDM = 30
+    DEFAULT_NCOLS_TQDM = 30
     DEFAULT_MIN_INTERVAL_TQDM = 0.05
     _WITH_TQDM = True
 except ImportError:
@@ -386,7 +387,7 @@ class BufferAudioSource(Rewindable):
         else:
             bytes_to_read = self._sample_size_all_channels * size
             offset = self._current_position_bytes + bytes_to_read
-        data = self._data[self._current_position_bytes : offset]
+        data = self._data[self._current_position_bytes: offset]
         if data:
             self._current_position_bytes += len(data)
             return data
@@ -682,7 +683,7 @@ class PyAudioPlayer:
         if rest > 0:
             nb_chunks += 1
         chunk_gen = (
-            data[i : i + chunk_size] for i in range(0, len(data), chunk_size)
+            data[i: i + chunk_size] for i in range(0, len(data), chunk_size)
         )
         return chunk_gen, nb_chunks
 
