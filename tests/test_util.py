@@ -3,7 +3,7 @@ import math
 from array import array
 from genty import genty, genty_dataset
 from auditok.util import AudioEnergyValidator
-from auditok.io import DATA_FORMAT
+from auditok.signal import FORMAT
 
 
 def _sample_generator(*data_buffers):
@@ -29,7 +29,7 @@ def _generate_pure_tone(
     max_value = (2 ** (sample_width * 8) // 2) - 1
     if volume > max_value:
         volume = max_value
-    fmt = DATA_FORMAT[sample_width]
+    fmt = FORMAT[sample_width]
     total_samples = int(sampling_rate * duration_sec)
     step = frequency / sampling_rate
     two_pi_step = 2 * math.pi * step

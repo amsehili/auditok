@@ -8,8 +8,8 @@ from unittest import TestCase
 from unittest.mock import patch, Mock
 from genty import genty, genty_dataset
 from test_util import _sample_generator, _generate_pure_tone, PURE_TONE_DICT
+from auditok.signal import FORMAT
 from auditok.io import (
-    DATA_FORMAT,
     AudioIOError,
     AudioParameterError,
     BufferAudioSource,
@@ -224,7 +224,7 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.sample_width, 2)
         self.assertEqual(audio_source.channels, len(frequencies))
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        fmt = DATA_FORMAT[audio_source.sample_width]
+        fmt = FORMAT[audio_source.sample_width]
         expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
         self.assertEqual(data, expected)
 
@@ -262,7 +262,7 @@ class TestIO(TestCase):
         self.assertEqual(audio_source.sample_width, 2)
         self.assertEqual(audio_source.channels, len(frequencies))
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        fmt = DATA_FORMAT[audio_source.sample_width]
+        fmt = FORMAT[audio_source.sample_width]
         expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
         self.assertEqual(data, expected)
 
@@ -300,7 +300,7 @@ class TestIO(TestCase):
     def test_save_raw(self, filename, frequencies):
         filename = "tests/data/test_16KHZ_{}".format(filename)
         sample_width = 2
-        fmt = DATA_FORMAT[sample_width]
+        fmt = FORMAT[sample_width]
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         data = array(fmt, _sample_generator(*mono_channels)).tobytes()
         tmpfile = NamedTemporaryFile()
@@ -316,7 +316,7 @@ class TestIO(TestCase):
         sampling_rate = 16000
         sample_width = 2
         channels = len(frequencies)
-        fmt = DATA_FORMAT[sample_width]
+        fmt = FORMAT[sample_width]
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
         data = array(fmt, _sample_generator(*mono_channels)).tobytes()
         tmpfile = NamedTemporaryFile()
