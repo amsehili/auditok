@@ -6,11 +6,11 @@ import unittest
 from genty import genty, genty_dataset
 from auditok.io import (
     AudioParameterError,
-    DATA_FORMAT,
     BufferAudioSource,
     RawAudioSource,
     WaveAudioSource,
 )
+from auditok.signal import FORMAT
 from test_util import PURE_TONE_DICT, _sample_generator
 
 
@@ -59,7 +59,7 @@ class TestAudioSource(unittest.TestCase):
         data_read_all = b"".join(audio_source_read_all_gen(audio_source))
         audio_source.close()
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        fmt = DATA_FORMAT[audio_source.sample_width]
+        fmt = FORMAT[audio_source.sample_width]
         expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
 
         self.assertEqual(data_read_all, expected)
@@ -89,7 +89,7 @@ class TestAudioSource(unittest.TestCase):
         data = b"".join(audio_source_read_all_gen(audio_source))
         audio_source.close()
         mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-        fmt = DATA_FORMAT[audio_source.sample_width]
+        fmt = FORMAT[audio_source.sample_width]
         expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
 
         self.assertEqual(data, expected)
@@ -114,7 +114,7 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
     def setUp(self):
         self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         self.audio_source = BufferAudioSource(
-            data_buffer=self.data, sampling_rate=10, sample_width=1, channels=1
+            data=self.data, sampling_rate=10, sample_width=1, channels=1
         )
         self.audio_source.open()
 
@@ -441,15 +441,6 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp)
         )
 
-    def test_sr10_sw1_ch1_set_data(self):
-        self.audio_source.set_data(b"12345")
-        block = self.audio_source.read(9999)
-        self.assertEqual(
-            block,
-            b"12345",
-            msg="wrong block, expected: '12345', found: {0} ".format(block),
-        )
-
     def test_sr10_sw1_ch1_read_closed(self):
         self.audio_source.close()
         with self.assertRaises(Exception):
@@ -461,7 +452,7 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
     def setUp(self):
         self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         self.audio_source = BufferAudioSource(
-            data_buffer=self.data, sampling_rate=16, sample_width=2, channels=1
+            data=self.data, sampling_rate=16, sample_width=2, channels=1
         )
         self.audio_source.open()
 
@@ -737,39 +728,12 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
             tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp)
         )
 
-    def test_sr16_sw2_ch1_set_data(self):
-        self.audio_source.set_data(b"abcdef")
-        block = self.audio_source.read(9999)
-        self.assertEqual(
-            block,
-            b"abcdef",
-            msg="wrong block, expected: 'abcdef', found: {0} ".format(block),
-        )
-
-    def test_sr16_sw2_ch1_set_data_exception(self):
-        with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.set_data("abcde")
-            self.assertEqual(
-                "The length of audio data must be an integer "
-                "multiple of `sample_width * channels`",
-                str(audio_param_err.exception),
-            )
-
-    def test_sr16_sw2_ch1_append_data_exception(self):
-        with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.append_data("abcde")
-            self.assertEqual(
-                "The length of audio data must be an integer "
-                "multiple of `sample_width * channels`",
-                str(audio_param_err.exception),
-            )
-
 
 class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
     def setUp(self):
         self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefgh"
         self.audio_source = BufferAudioSource(
-            data_buffer=self.data, sampling_rate=11, sample_width=4, channels=1
+            data=self.data, sampling_rate=11, sample_width=4, channels=1
         )
         self.audio_source.open()
 
@@ -966,43 +930,12 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             tp, 0, msg="wrong position, expected: 0.0, found: {0} ".format(tp)
         )
 
-    def test_sr11_sw4_ch1_set_data(self):
-        self.audio_source.set_data(b"abcdefgh")
-        block = self.audio_source.read(9999)
-        exp = b"abcdefgh"
-        self.assertEqual(
-            block,
-            exp,
-            msg="wrong block, expected: {}, found: {} ".format(exp, block),
-        )
-
-    def test_sr11_sw4_ch1_set_data_exception(self):
-        with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.set_data(b"abcdef")
-        self.assertEqual(
-            "The length of audio data must be an integer "
-            "multiple of `sample_width * channels`",
-            str(audio_param_err.exception),
-        )
-
-    def test_sr11_sw4_ch1_append_data_exception(self):
-        with self.assertRaises(AudioParameterError) as audio_param_err:
-            self.audio_source.append_data(b"abcdef")
-        self.assertEqual(
-            "The length of audio data must be an integer "
-            "multiple of `sample_width * channels`",
-            str(audio_param_err.exception),
-        )
-
 
 class TestBufferAudioSourceCreationException(unittest.TestCase):
     def test_wrong_sample_width_value(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
             _ = BufferAudioSource(
-                data_buffer=b"ABCDEFGHI",
-                sampling_rate=9,
-                sample_width=3,
-                channels=1,
+                data=b"ABCDEFGHI", sampling_rate=9, sample_width=3, channels=1
             )
         self.assertEqual(
             "Sample width must be one of: 1, 2 or 4 (bytes)",
@@ -1012,10 +945,7 @@ class TestBufferAudioSourceCreationException(unittest.TestCase):
     def test_wrong_data_buffer_size(self):
         with self.assertRaises(AudioParameterError) as audio_param_err:
             _ = BufferAudioSource(
-                data_buffer=b"ABCDEFGHI",
-                sampling_rate=8,
-                sample_width=2,
-                channels=1,
+                data=b"ABCDEFGHI", sampling_rate=8, sample_width=2, channels=1
             )
         self.assertEqual(
             "The length of audio data must be an integer "
