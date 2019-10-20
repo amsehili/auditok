@@ -187,9 +187,9 @@ def split(
     token_gen = tokenizer.tokenize(source, generator=True)
     region_gen = (
         _make_audio_region(
-            source.block_dur,
-            token[1],
             token[0],
+            token[1],
+            source.block_dur,
             source.sr,
             source.sw,
             source.ch,
@@ -239,9 +239,9 @@ def _duration_to_nb_windows(
 
 
 def _make_audio_region(
-    frame_duration,
-    start_frame,
     data_frames,
+    start_frame,
+    frame_duration,
     sampling_rate,
     sample_width,
     channels,
@@ -280,6 +280,7 @@ def _read_chunks_online(max_read, **kwargs):
     try:
         while True:
             frame = reader.read()
+            print("read:", frame)
             if frame is None:
                 break
             data.append(frame)
@@ -308,6 +309,7 @@ def _read_offline(input, skip=0, max_read=None, **kwargs):
         else:
             max_read = round(max_read * audio_source.sampling_rate)
     data = audio_source.read(max_read)
+    audio_source.close()
     return (
         data,
         audio_source.sampling_rate,
@@ -685,7 +687,9 @@ class AudioRegion(object):
     @property
     def samples(self):
         if self._samples is None:
-            self._samples = signal.to_array(self._data, self.sample_width, self.channels)  
+            self._samples = signal.to_array(
+                self._data, self.sample_width, self.channels
+            )
         return self._samples
 
     def __len__(self):
