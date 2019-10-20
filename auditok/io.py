@@ -13,7 +13,6 @@ Class summary
         PyAudioSource
         StdinAudioSource
         PyAudioPlayer
-        
 
 Function summary
 ================
@@ -28,7 +27,6 @@ import sys
 import wave
 import warnings
 from abc import ABC, abstractmethod
-from array import array
 from functools import partial
 from .exceptions import AudioIOError, AudioParameterError
 
@@ -130,10 +128,10 @@ def _get_audio_parameters(param_dict):
 
 
 class AudioSource(ABC):
-    """ 
+    """
     Base class for audio source objects.
 
-    Subclasses should implement methods to open/close and audio stream 
+    Subclasses should implement methods to open/close and audio stream
     and read the desired amount of audio samples.
 
     :Parameters:
@@ -156,7 +154,7 @@ class AudioSource(ABC):
         channels=DEFAULT_NB_CHANNELS,
     ):
 
-        if not sample_width in (1, 2, 4):
+        if sample_width not in (1, 2, 4):
             raise AudioParameterError(
                 "Sample width must be one of: 1, 2 or 4 (bytes)"
             )
@@ -194,7 +192,7 @@ class AudioSource(ABC):
 
             - `size` if `size` < 'left_samples'
 
-            - 'left_samples' if `size` > 'left_samples' 
+            - 'left_samples' if `size` > 'left_samples'
         """
 
     def get_sampling_rate(self):
@@ -238,8 +236,7 @@ class AudioSource(ABC):
     def get_channels(self):
         """ Return the number of channels of this audio source """
         warnings.warn(
-            "'get_channels' is deprecated, use 'channels' "
-            "property instead",
+            "'get_channels' is deprecated, use 'channels' " "property instead",
             DeprecationWarning,
         )
         return self.channels
@@ -260,7 +257,7 @@ class Rewindable(AudioSource):
     Base class for rewindable audio streams.
     Subclasses should implement methods to return to the beginning of an
     audio stream as well as method to move to an absolute audio position
-    expressed in time or in number of samples. 
+    expressed in time or in number of samples.
     """
 
     @property
@@ -304,55 +301,12 @@ class Rewindable(AudioSource):
             raise ValueError("position_ms should be an int")
         self.position = int(self.sampling_rate * position_ms / 1000)
 
-    def get_position(self):
-        """ Return the total number of already read samples """
-        warnings.warn(
-            "'get_position' is deprecated, use 'position' property instead",
-            DeprecationWarning,
-        )
-        return self.position
-
-    def get_time_position(self):
-        """ Return the total duration in seconds of already read data """
-        warnings.warn(
-            "'get_time_position' is deprecated, use 'position_s' or 'position_ms' properties instead",
-            DeprecationWarning,
-        )
-        return self.position_s
-
-    def set_position(self, position):
-        """ Move to an absolute position 
-
-        :Parameters:
-
-            `position` : int
-                number of samples to skip from the start of the stream
-        """
-        warnings.warn(
-            "'set_position' is deprecated, set 'position' property instead",
-            DeprecationWarning,
-        )
-        self.position = position
-
-    def set_time_position(self, time_position):
-        """ Move to an absolute position expressed in seconds
-
-        :Parameters:
-
-            `time_position` : float
-                seconds to skip from the start of the stream
-        """
-        warnings.warn(
-            "'set_time_position' is deprecated, set 'position_s' or 'position_ms' properties instead",
-            DeprecationWarning,
-        )
-        self.position_s = time_position
-
 
 class BufferAudioSource(Rewindable):
     """
-    An :class:`AudioSource` that encapsulates and reads data from a memory buffer.
-    It implements methods from :class:`Rewindable` and is therefore a navigable :class:`AudioSource`.
+    An :class:`AudioSource` that encapsulates and reads data from a memory
+    buffer. It implements methods from :class:`Rewindable` and is therefore
+    a navigable :class:`AudioSource`.
     """
 
     def __init__(
@@ -387,7 +341,7 @@ class BufferAudioSource(Rewindable):
         else:
             bytes_to_read = self._sample_size_all_channels * size
             offset = self._current_position_bytes + bytes_to_read
-        data = self._data[self._current_position_bytes: offset]
+        data = self._data[self._current_position_bytes : offset]
         if data:
             self._current_position_bytes += len(data)
             return data
@@ -514,7 +468,8 @@ class WaveAudioSource(FileAudioSource):
 
 class PyAudioSource(AudioSource):
     """
-    A class for an `AudioSource` that reads data the built-in microphone using PyAudio. 
+    A class for an `AudioSource` that reads data built-in microphone using
+    PyAudio.
     """
 
     def __init__(
@@ -628,7 +583,7 @@ class PyAudioPlayer:
         sample_width=DEFAULT_SAMPLE_WIDTH,
         channels=DEFAULT_NB_CHANNELS,
     ):
-        if not sample_width in (1, 2, 4):
+        if sample_width not in (1, 2, 4):
             raise ValueError("Sample width must be one of: 1, 2 or 4 (bytes)")
 
         self.sampling_rate = sampling_rate
@@ -683,7 +638,7 @@ class PyAudioPlayer:
         if rest > 0:
             nb_chunks += 1
         chunk_gen = (
-            data[i: i + chunk_size] for i in range(0, len(data), chunk_size)
+            data[i : i + chunk_size] for i in range(0, len(data), chunk_size)
         )
         return chunk_gen, nb_chunks
 
