@@ -3,7 +3,7 @@ import math
 from random import random
 from tempfile import TemporaryDirectory
 from array import array as array_
-from unittest import TestCase
+from unittest import TestCase, mock
 from unittest.mock import patch
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
@@ -15,6 +15,8 @@ from auditok.core import (
 )
 from auditok.util import AudioDataSource
 from auditok.io import get_audio_source
+
+mock._magics.add("__round__")
 
 
 def _make_random_length_regions(
