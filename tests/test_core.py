@@ -4,10 +4,15 @@ from random import random
 from tempfile import TemporaryDirectory
 from array import array as array_
 from unittest import TestCase
-from mock import patch
+from unittest.mock import patch
 from genty import genty, genty_dataset
 from auditok import split, AudioRegion, AudioParameterError
-from auditok.core import _duration_to_nb_windows, _read_chunks_online
+from auditok.core import (
+    _duration_to_nb_windows,
+    _make_audio_region,
+    _read_chunks_online,
+    _read_offline,
+)
 from auditok.util import AudioDataSource
 from auditok.io import get_audio_source
 
@@ -50,6 +55,44 @@ class TestFunctions(TestCase):
                 duration, analysis_window, round_fn, **kwargs
             )
             self.assertEqual(result, expected)
+
+    @genty_dataset(
+        mono_skip_0_max_read_None=(1, 0, None),
+        mono_skip_3_max_read_None=(1, 3, None),
+        mono_skip_2_max_read_negative=(1, 2, -1),
+        mono_skip_2_max_read_3=(1, 2, 3),
+        stereo_skip_0_max_read_None=(2, 0, None),
+        stereo_skip_3_max_read_None=(2, 3, None),
+        stereo_skip_2_max_read_negative=(2, 2, -1),
+        stereo_skip_2_max_read_3=(2, 2, 3),
+    )
+    def test_read_offline(self, channels, skip, max_read=None):
+        sampling_rate = 10
+        sample_width = 2
+        mono_or_stereo = "mono" if channels == 1 else "stereo"
+        filename = "tests/data/test_split_10HZ_{}.raw".format(mono_or_stereo)
+        with open(filename, "rb") as fp:
+            data = fp.read()
+        onset = round(skip * sampling_rate * sample_width * channels)
+        if max_read in (-1, None):
+            offset = len(data) + 1
+        else:
+            offset = onset + round(
+                max_read * sampling_rate * sample_width * channels
+            )
+        expected_data = data[onset:offset]
+        read_data, *audio_params = _read_offline(
+            filename,
+            skip=skip,
+            max_read=max_read,
+            sr=sampling_rate,
+            sw=sample_width,
+            ch=channels,
+        )
+        self.assertEqual(read_data, expected_data)
+        self.assertEqual(
+            tuple(audio_params), (sampling_rate, sample_width, channels)
+        )
 
 
 @genty
