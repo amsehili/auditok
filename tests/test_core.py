@@ -1656,6 +1656,6 @@ class TestAudioRegion(TestCase):
         try:
             # for numpy
             equal = equal.all()
-        except:
+        except AttributeError:
             pass
         self.assertTrue(equal)
