@@ -8,3 +8,5 @@ repos:
     rev: v2.4.0
     hooks:
     - id: flake8
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace

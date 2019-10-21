@@ -280,7 +280,6 @@ def _read_chunks_online(max_read, **kwargs):
     try:
         while True:
             frame = reader.read()
-            print("read:", frame)
             if frame is None:
                 break
             data.append(frame)
@@ -831,7 +830,7 @@ class StreamTokenizer:
 
         `validator` :
             Callable or an instance of DataValidator that implements
-            `is_valid` method. 
+            `is_valid` method.
 
         `min_length` : *(int)*
             Minimum number of frames of a valid token. This includes all \
@@ -851,8 +850,8 @@ class StreamTokenizer:
             Minimum number of consecutive valid frames that must be **initially** \
             gathered before any sequence of non valid frames can be tolerated. This
             option is not always needed, it can be used to drop non-valid tokens as
-            early as possible. **Default = 0** means that the option is by default 
-            ineffective. 
+            early as possible. **Default = 0** means that the option is by default
+            ineffective.
 
         `init_max_silence` : *(int, default=0)*
             Maximum number of tolerated consecutive non-valid frames if the \
@@ -864,10 +863,10 @@ class StreamTokenizer:
             `mode` can be:
 
         1. `StreamTokenizer.NORMAL`:
-        Do not drop trailing silence, and accept a token shorter than 
+        Do not drop trailing silence, and accept a token shorter than
         `min_length` if it is the continuation of the latest delivered token.
-        
-        2. `StreamTokenizer.STRICT_MIN_LENGTH`: 
+
+        2. `StreamTokenizer.STRICT_MIN_LENGTH`:
         if token *i* is delivered because `max_length`
         is reached, and token *i+1* is immediately adjacent to
         token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
@@ -911,7 +910,7 @@ class StreamTokenizer:
         .. code:: python
 
             dsource = StringDataSource("aaaAAAABBbbb")
-            tokenizer = StreamTokenizer(validator=UpperCaseChecker(), 
+            tokenizer = StreamTokenizer(validator=UpperCaseChecker(),
                                         min_length=3, max_length=4,
                                         max_continuous_silence=0,
                                         mode=StreamTokenizer.STRICT_MIN_LENGTH)
@@ -1048,7 +1047,7 @@ class StreamTokenizer:
     def _set_mode(self, mode):
         strict_min_and_drop_trailing = StreamTokenizer.STRICT_MIN_LENGTH
         strict_min_and_drop_trailing |= StreamTokenizer.DROP_TRAILING_SILENCE
-        if not mode in [
+        if mode not in [
             StreamTokenizer.NORMAL,
             StreamTokenizer.STRICT_MIN_LENGTH,
             StreamTokenizer.DROP_TRAILING_SILENCE,
@@ -1091,7 +1090,7 @@ class StreamTokenizer:
                 (data, start, end)
 
            where `data` is a list of read frames, `start`: index of the first frame in the
-           original data and `end` : index of the last frame. 
+           original data and `end` : index of the last frame.
         """
         token_gen = self._iter_tokens(data_source)
         if callback:
@@ -1116,7 +1115,7 @@ class StreamTokenizer:
             if token is not None:
                 yield token
 
-    def _process(self, frame):
+    def _process(self, frame):  # noqa: C901
 
         frame_is_valid = self._is_valid(frame)
 
