@@ -27,16 +27,9 @@ from .exceptions import DuplicateArgument, TooSamllBlockDuration
 
 try:
     from . import signal_numpy as signal
-except ImportError as e:
+except ImportError:
     from . import signal
 
-try:
-    from builtins import str
-
-    basestring = str
-except ImportError as e:
-    if sys.version_info >= (3, 0):
-        basestring = str
 
 __all__ = [
     "DataSource",
@@ -145,7 +138,7 @@ class StringDataSource(DataSource):
     :Parameters:
 
         `data` :
-            a basestring object.
+            a str object.
 
     """
 
@@ -175,39 +168,43 @@ class StringDataSource(DataSource):
 
         :Parameters:
 
-            `data` : a basestring object
+            `data` : a str object
                 New data buffer.
         """
 
-        if not isinstance(data, basestring):
-            raise ValueError("data must an instance of basestring")
+        if not isinstance(data, str):
+            raise ValueError("data must an instance of str")
         self._data = data
         self._current = 0
 
 
 class ADSFactory:
     """
-    Factory class that makes it easy to create an :class:`ADSFactory.AudioDataSource` object that implements
-    :class:`DataSource` and can therefore be passed to :func:`auditok.core.StreamTokenizer.tokenize`.
+    Factory class that makes it easy to create an
+    :class:`ADSFactory.AudioDataSource` object that implements
+    :class:`DataSource` and can therefore be passed to
+    :func:`auditok.core.StreamTokenizer.tokenize`.
 
-    Whether you read audio data from a file, the microphone or a memory buffer, this factory
-    instantiates and returns the right :class:`ADSFactory.AudioDataSource` object.
+    Whether you read audio data from a file, the microphone or a memory buffer,
+    this factory instantiates and returns the right
+    :class:`ADSFactory.AudioDataSource` object.
 
-    There are many other features you want your :class:`ADSFactory.AudioDataSource` object to have, such as:
-    memorize all read audio data so that you can rewind and reuse it (especially useful when
-    reading data from the microphone), read a fixed amount of data (also useful when reading
-    from the microphone), read overlapping audio frames (often needed when dosing a spectral
-    analysis of data).
+    There are many other features you want your
+    :class:`ADSFactory.AudioDataSource` object to have, such as: memorize all
+    read audio data so that you can rewind and reuse it (especially useful when
+    reading data from the microphone), read a fixed amount of data (also useful
+    when reading from the microphone), read overlapping audio frames
+    (often needed when dosing a spectral analysis of data).
 
-    :func:`ADSFactory.ads` automatically creates and return object with the desired behavior according
-    to the supplied keyword arguments.
+    :func:`ADSFactory.ads` automatically creates and return object with the
+    desired behavior according to the supplied keyword arguments.
     """
 
-    @staticmethod
+    @staticmethod  # noqa: C901
     def _check_normalize_args(kwargs):
 
         for k in kwargs:
-            if not k in [
+            if k not in [
                 "block_dur",
                 "hop_dur",
                 "block_size",
@@ -279,7 +276,8 @@ class ADSFactory:
 
         if "frames_per_buffer" in kwargs and "fbb" in kwargs:
             raise DuplicateArgument(
-                "Either 'frames_per_buffer' or 'fpb' must be specified, not both"
+                "Either 'frames_per_buffer' or 'fpb' must be specified, not \
+                both"
             )
 
         if "sampling_rate" in kwargs and "sr" in kwargs:
@@ -323,7 +321,8 @@ class ADSFactory:
 
         kwargs["rec"] = record
 
-        # keep long names for arguments meant for BufferAudioSource and PyAudioSource
+        # keep long names for arguments meant for BufferAudioSource
+        # and PyAudioSource
         if "frames_per_buffer" in kwargs or "fpb" in kwargs:
             kwargs["frames_per_buffer"] = kwargs.pop(
                 "frames_per_buffer", None
@@ -347,15 +346,18 @@ class ADSFactory:
     @staticmethod
     def ads(**kwargs):
         """
-        Create an return an :class:`ADSFactory.AudioDataSource`. The type and behavior of the object is the result
+        Create an return an :class:`ADSFactory.AudioDataSource`. The type and
+        behavior of the object is the result
         of the supplied parameters.
 
         :Parameters:
 
         *No parameters* :
-           read audio data from the available built-in microphone with the default parameters.
-           The returned :class:`ADSFactory.AudioDataSource` encapsulate an :class:`io.PyAudioSource` object and hence
-           it accepts the next four parameters are passed to use instead of their default values.
+           read audio data from the available built-in microphone with the
+           default parameters. The returned :class:`ADSFactory.AudioDataSource`
+           encapsulate an :class:`io.PyAudioSource` object and hence it accepts
+           the next four parameters are passed to use instead of their default
+           values.
 
         `sampling_rate`, `sr` : *(int)*
             number of samples per second. Default = 16000.
@@ -364,7 +366,8 @@ class ADSFactory:
             number of bytes per sample (must be in (1, 2, 4)). Default = 2
 
         `channels`, `ch` : *(int)*
-            number of audio channels. Default = 1 (only this value is currently accepted)
+            number of audio channels. Default = 1 (only this value is currently
+            accepted)
 
         `frames_per_buffer`, `fpb` : *(int)*
             number of samples of PyAudio buffer. Default = 1024.
@@ -373,44 +376,56 @@ class ADSFactory:
             read data from this audio source
 
         `filename`, `fn` : *(string)*
-            build an `io.AudioSource` object using this file (currently only wave format is supported)
+            build an `io.AudioSource` object using this file (currently only
+            wave format is supported)
 
         `data_buffer`, `db` : *(string)*
-            build an `io.BufferAudioSource` using data in `data_buffer`. If this keyword is used,
-            `sampling_rate`, `sample_width` and `channels` are passed to `io.BufferAudioSource`
-            constructor and used instead of default values.
+            build an `io.BufferAudioSource` using data in `data_buffer`.
+            If this keyword is used,
+            `sampling_rate`, `sample_width` and `channels` are passed to
+            `io.BufferAudioSource` constructor and used instead of default
+            values.
 
         `max_time`, `mt` : *(float)*
-            maximum time (in seconds) to read. Default behavior: read until there is no more data
+            maximum time (in seconds) to read. Default behavior: read until
+            there is no more data
             available.
 
         `record`, `rec` : *(bool)*
-            save all read data in cache. Provide a navigable object which boasts a `rewind` method.
+            save all read data in cache. Provide a navigable object which has a
+            `rewind` method.
             Default = False.
 
         `block_dur`, `bd` : *(float)*
-            processing block duration in seconds. This represents the quantity of audio data to return
-            each time the :func:`read` method is invoked. If `block_dur` is 0.025 (i.e. 25 ms) and the sampling
-            rate is 8000 and the sample width is 2 bytes, :func:`read` returns a buffer of 0.025 * 8000 * 2 = 400
-            bytes at most. This parameter will be looked for (and used if available) before `block_size`.
-            If neither parameter is given, `block_dur` will be set to 0.01 second (i.e. 10 ms)
+            processing block duration in seconds. This represents the quantity
+            of audio data to return each time the :func:`read` method is
+            invoked. If `block_dur` is 0.025 (i.e. 25 ms) and the sampling rate
+            is 8000 and the sample width is 2 bytes, :func:`read` returns a
+            buffer of 0.025 * 8000 * 2 = 400 bytes at most. This parameter will
+            be looked for (and used if available) before `block_size`. If
+            neither parameter is given, `block_dur` will be set to 0.01 second
+            (i.e. 10 ms)
 
         `hop_dur`, `hd` : *(float)*
-            quantity of data to skip from current processing window. if `hop_dur` is supplied then there
-            will be an overlap of `block_dur` - `hop_dur` between two adjacent blocks. This
-            parameter will be looked for (and used if available) before `hop_size`. If neither parameter
-            is given, `hop_dur` will be set to `block_dur` which means that there will be no overlap
-            between two consecutively read blocks.
+            quantity of data to skip from current processing window. if
+            `hop_dur` is supplied then there will be an overlap of `block_dur`
+            - `hop_dur` between two adjacent blocks. This parameter will be
+            looked for (and used if available) before `hop_size`.
+            If neither parameter is given, `hop_dur` will be set to `block_dur`
+            which means that there will be no overlap between two consecutively
+            read blocks.
 
         `block_size`, `bs` : *(int)*
-            number of samples to read each time the `read` method is called. Default: a block size
-            that represents a window of 10ms, so for a sampling rate of 16000, the default `block_size`
-            is 160 samples, for a rate of 44100, `block_size` = 441 samples, etc.
+            number of samples to read each time the `read` method is called.
+            Default: a block size that represents a window of 10ms, so for a
+            sampling rate of 16000, the default `block_size` is 160 samples,
+            for a rate of 44100, `block_size` = 441 samples, etc.
 
         `hop_size`, `hs` : *(int)*
-            determines the number of overlapping samples between two adjacent read windows. For a
-            `hop_size` of value *N*, the overlap is `block_size` - *N*. Default : `hop_size` = `block_size`,
-            means that there is no overlap.
+            determines the number of overlapping samples between two adjacent
+            read windows. For a `hop_size` of value *N*, the overlap is
+            `block_size` - *N*. Default : `hop_size` = `block_size`, means that
+            there is no overlap.
 
         :Returns:
 
@@ -418,7 +433,8 @@ class ADSFactory:
 
         :Exampels:
 
-        1. **Create an AudioDataSource that reads data from the microphone (requires Pyaudio) with default audio parameters:**
+        1. **Create an AudioDataSource that reads data from the microphone
+        (requires Pyaudio) with default audio parameters:**
 
         .. code:: python
 
@@ -431,7 +447,8 @@ class ADSFactory:
             ads.get_channels()
             1
 
-        2. **Create an AudioDataSource that reads data from the microphone with a sampling rate of 48KHz:**
+        2. **Create an AudioDataSource that reads data from the microphone with
+        a sampling rate of 48KHz:**
 
         .. code:: python
 
@@ -444,9 +461,10 @@ class ADSFactory:
 
         .. code:: python
 
-            import auditok
             from auditok import ADSFactory
-            ads = ADSFactory.ads(fn=auditok.dataset.was_der_mensch_saet_mono_44100_lead_trail_silence)
+            from auditok import dataset
+            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
+            ads = ADSFactory.ads(fn=file)
             ads.get_sampling_rate()
             44100
             ads.get_sample_width()
@@ -458,14 +476,13 @@ class ADSFactory:
 
         .. code:: python
 
-            import auditok
             from auditok import ADSFactory
-            '''
-            we know samling rate for previous file is 44100 samples/second
-            so 10 ms are equivalent to 441 samples and 20 ms to 882
-            '''
+            from auditok import dataset
+            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
+            #we know samling rate for previous file is 44100 samples/second
+            #so 10 ms are equivalent to 441 samples and 20 ms to 882
             block_size = 882
-            ads = ADSFactory.ads(bs = 882, fn=auditok.dataset.was_der_mensch_saet_mono_44100_lead_trail_silence)
+            ads = ADSFactory.ads(bs=882, fn=file)
             ads.open()
             # read one block
             data = ads.read()
@@ -478,14 +495,15 @@ class ADSFactory:
 
         .. code:: python
 
-            import auditok
             from auditok import ADSFactory
+            from auditok import dataset
+            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
             dur = 0.25 # second
-            ads = ADSFactory.ads(bd = dur, fn=auditok.dataset.was_der_mensch_saet_mono_44100_lead_trail_silence)
-            '''
-            we know samling rate for previous file is 44100 samples/second
-            for a block duration of 250 ms, block size should be 0.25 * 44100 = 11025
-            '''
+            ads = ADSFactory.ads(bd=dur, fn=file)
+
+            # we know samling rate for previous file is 44100 samples/second
+            # for a block duration of 250 ms, block size should be
+            # 0.25 * 44100 = 11025
             ads.get_block_size()
             11025
             assert ads.get_block_size() ==  int(0.25 * 44100)
@@ -497,16 +515,18 @@ class ADSFactory:
             22050
             assert len(data) ==  ads.get_sample_width() * ads.get_block_size()
 
-        6. **Read overlapping blocks (one of hope_size, hs, hop_dur or hd > 0):**
+        6. **Read overlapping blocks (when one of hope_size, hs, hop_dur or hd
+            is > 0):**
 
-        For better readability we'd better use :class:`auditok.io.BufferAudioSource` with a string buffer:
+        For a better readability we'd use :class:`auditok.io.BufferAudioSource`
+        with a string buffer:
 
         .. code:: python
 
-            import auditok
             from auditok import ADSFactory
             '''
-            we supply a data beffer instead of a file (keyword 'bata_buffer' or 'db')
+            we supply a data beffer instead of a file (keyword 'bata_buffer' or
+            'db')
             sr : sampling rate = 16 samples/sec
             sw : sample width = 1 byte
             ch : channels = 1
@@ -514,7 +534,12 @@ class ADSFactory:
             buffer = "abcdefghijklmnop" # 16 bytes = 1 second of data
             bd = 0.250 # block duration = 250 ms = 4 bytes
             hd = 0.125 # hop duration = 125 ms = 2 bytes
-            ads = ADSFactory.ads(db = "abcdefghijklmnop", bd = bd, hd = hd, sr = 16, sw = 1, ch = 1)
+            ads = ADSFactory.ads(db="abcdefghijklmnop",
+                                 bd=bd,
+                                 hd=hd,
+                                 sr=16,
+                                 sw=1,
+                                 ch=1)
             ads.open()
             ads.read()
             'abcd'
@@ -535,7 +560,10 @@ class ADSFactory:
             We know audio file is larger than 2.25 seconds
             We want to read up to 2.25 seconds of audio data
             '''
-            ads = ADSFactory.ads(mt = 2.25, fn=auditok.dataset.was_der_mensch_saet_mono_44100_lead_trail_silence)
+            from auditok import dataset
+            from auditok import ADSFactory
+            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
+            ads = ADSFactory.ads(mt=2.25, fn=file)
             ads.open()
             data = []
             while True:
@@ -546,12 +574,14 @@ class ADSFactory:
 
             ads.close()
             data = b''.join(data)
-            assert len(data) == int(ads.get_sampling_rate() * 2.25 * ads.get_sample_width() * ads.get_channels())
+            assert len(data) == int(ads.get_sampling_rate() *
+                                 2.25 * ads.get_sample_width() *
+                                 ads.get_channels())
         """
         warnings.warn(
             "'ADSFactory' is deprecated and will be removed in a future "
             "release. Please use AudioReader(...) instead.",
-            DeprecationWarning
+            DeprecationWarning,
         )
 
         # check and normalize keyword arguments
@@ -571,8 +601,9 @@ class ADSFactory:
         if audio_source is not None:
             if (filename, data_buffer) != (None, None):
                 raise Warning(
-                    "You should provide one of 'audio_source', 'filename' or 'data_buffer'\
-                 keyword parameters. 'audio_source' will be used"
+                    "You should provide one of 'audio_source', 'filename' or \
+                    'data_buffer' keyword parameters. 'audio_source' will be \
+                    used"
                 )
 
         # Case 2: a file name is supplied
@@ -595,7 +626,8 @@ class ADSFactory:
         if block_dur is not None:
             if block_size is not None:
                 raise DuplicateArgument(
-                    "Either 'block_dur' or 'block_size' can be specified, not both"
+                    "Either 'block_dur' or 'block_size' can be specified, not \
+                    both"
                 )
         elif block_size is not None:
             block_dur = block_size / audio_source.sr
