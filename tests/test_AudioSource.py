@@ -385,7 +385,7 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
         with self.assertRaises(IndexError):
             self.audio_source.position_ms = position_ms
 
-    def test_sr10_sw1_ch1_position_s_0(self):
+    def test_sr10_sw1_ch1_initial_position_s_0(self):
         tp = self.audio_source.position_s
         self.assertEqual(
             tp,
@@ -393,8 +393,8 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr10_sw1_ch1_position_s_1(self):
-        srate = self.audio_source.get_sampling_rate()
+    def test_sr10_sw1_ch1_position_s_1_after_read(self):
+        srate = self.audio_source.sampling_rate
         # read one second
         self.audio_source.read(srate)
         tp = self.audio_source.position_s
@@ -834,7 +834,7 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             ),
         )
 
-    def test_sr11_sw4_ch1_position_0(self):
+    def test_sr11_sw4_ch1_intial_position_0(self):
         pos = self.audio_source.position
         self.assertEqual(
             pos, 0, msg="wrong position, expected: 0, found: {0} ".format(pos)
@@ -872,7 +872,7 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             msg="wrong position, expected: 10, found: {0} ".format(pos),
         )
 
-    def test_sr11_sw4_ch1_position_s_0(self):
+    def test_sr11_sw4_ch1_initial_position_s_0(self):
         tp = self.audio_source.position_s
         self.assertEqual(
             tp,
@@ -880,8 +880,8 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             msg="wrong time position, expected: 0.0, found: {0} ".format(tp),
         )
 
-    def test_sr11_sw4_ch1_position_s_1(self):
-        srate = self.audio_source.get_sampling_rate()
+    def test_sr11_sw4_ch1_position_s_1_after_read(self):
+        srate = self.audio_source.sampling_rate
         # read one second
         self.audio_source.read(srate)
         tp = self.audio_source.position_s
@@ -913,7 +913,6 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
         )
 
     def test_sr11_sw4_ch1_position_s_1(self):
-
         self.audio_source.position_s = 1
         tp = self.audio_source.position_s
         self.assertEqual(
