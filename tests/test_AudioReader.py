@@ -31,12 +31,10 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
 
         ads = ADSFactory.ads(audio_source=self.audio_source)
 
+        err_msg = "wrong type for ads object, expected: 'AudioDataSource', "
+        err_msg += "found: {0}"
         self.assertIsInstance(
-            ads,
-            AudioDataSource,
-            msg="wrong type for ads object, expected: 'AudioDataSource', found: {0}".format(
-                type(ads)
-            ),
+            ads, AudioDataSource, err_msg.format(type(ads)),
         )
 
     def test_default_block_size(self):
@@ -206,13 +204,12 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
             total_read += len(block)
 
         ads.close()
-
+        err_msg = "Wrong data length read from LimiterADS, expected: {0}, "
+        err_msg += "found: {1}"
         self.assertEqual(
             total_read,
             expected_read_bytes,
-            "Wrong data length read from LimiterADS, expected: {0}, found: {1}".format(
-                expected_read_bytes, total_read
-            ),
+            err_msg.format(expected_read_bytes, total_read),
         )
 
     def test_Recorder_Deco_read(self):
@@ -412,12 +409,12 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
             total_read += len(block) - cache_size
 
         ads.close()
+        err_msg = "Wrong data length read from LimiterADS, expected: {0}, "
+        err_msg += "found: {1}"
         self.assertEqual(
             total_read,
             expected_read_bytes,
-            "Wrong data length read from LimiterADS, expected: {0}, found: {1}".format(
-                expected_read_bytes, total_read
-            ),
+            err_msg.format(expected_read_bytes, total_read),
         )
 
     def test_Recorder_Overlap_Deco_is_rewindable(self):
@@ -569,12 +566,12 @@ class TestADSFactoryFileAudioSource(unittest.TestCase):
             total_read += len(block) - cache_size
 
         ads.close()
+        err_msg = "Wrong data length read from LimiterADS, expected: {0}, "
+        err_msg += "found: {1}"
         self.assertEqual(
             total_read,
             expected_read_bytes,
-            "Wrong data length read from LimiterADS, expected: {0}, found: {1}".format(
-                expected_read_bytes, total_read
-            ),
+            err_msg.format(expected_read_bytes, total_read),
         )
 
 
@@ -793,12 +790,10 @@ class TestADSFactoryAlias(unittest.TestCase):
         )
         # 0.75 ms = 0.75 * 16 = 12
         size = ads.block_size
+        err_msg = "Wrong block_size set with a block_dur alias 'bd', "
+        err_msg += "expected: 8, found: {0}"
         self.assertEqual(
-            size,
-            12,
-            "Wrong block_size set with a block_dur alias 'bd', expected: 8, found: {0}".format(
-                size
-            ),
+            size, 12, err_msg.format(size),
         )
 
     def test_block_duration_duplicate(self):
@@ -882,9 +877,6 @@ class TestADSFactoryAlias(unittest.TestCase):
             hs=8,
         )
         self.assertRaises(ValueError, func)
-
-    def test_filename_alias(self):
-        ads = ADSFactory.ads(fn=dataset.one_to_six_arabic_16000_mono_bc_noise)
 
     def test_filename_duplicate(self):
 
