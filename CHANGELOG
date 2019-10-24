@@ -41,7 +41,7 @@ Version 0.1.4
 - Read audio data from stdin
 - Add short alias for all ADSFactory.ads() keyword arguments
 - Add tests for alias
-- Break audio data into chunks for audio play back (to quickly detect interruptions like Ctrl-C) 
+- Break audio data into chunks for audio play back (to quickly detect interruptions like Ctrl-C)
 
 
 Version 0.1.3
