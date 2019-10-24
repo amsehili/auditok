@@ -11,7 +11,7 @@ as from built-in device(s) or standard input.
 @copyright:  2015-2019 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 13 Oct 2019
+@deffield    updated: 24 Oct 2019
 """
 
 import sys
@@ -29,9 +29,8 @@ from . import workers
 
 
 __all__ = []
-version = __version__
 __date__ = "2015-11-23"
-__updated__ = "2018-10-13"
+__updated__ = "2018-10-24"
 
 
 def main(argv=None):
@@ -43,7 +42,7 @@ def main(argv=None):
             prog=program_name, description="An Audio Tokenization tool"
         )
         parser.add_argument(
-            "--version", "-v", action="version", version=version
+            "--version", "-v", action="version", version=__version__
         )
         group = parser.add_argument_group("Input-Output options")
         group.add_argument(
@@ -51,8 +50,8 @@ def main(argv=None):
             help="Input audio or video file. Use '-' for stdin "
             "[default: read from microphone using pyaudio]",
             metavar="input",
-            nargs='?',
-            default=None
+            nargs="?",
+            default=None,
         )
         group.add_argument(
             "-I",
@@ -136,8 +135,8 @@ def main(argv=None):
             type=str,
             default=None,
             help="Audio format used to save detections and/or main stream. "
-            "If not supplied, then it will: (1. be guessed from extension or (2. "
-            "use raw format",
+            "If not supplied, then it will: (1. be guessed from extension or "
+            "(2. use raw format",
             metavar="STRING",
         )
         group.add_argument(
@@ -168,7 +167,8 @@ def main(argv=None):
             dest="analysis_window",
             default=0.01,
             type=float,
-            help="Size of analysis window in seconds [default: %(default)s (10ms)]",
+            help="Size of analysis window in seconds [default: %(default)s "
+            "(10ms)]",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -177,7 +177,8 @@ def main(argv=None):
             dest="min_duration",
             type=float,
             default=0.2,
-            help="Min duration of a valid audio event in seconds [default: %(default)s]",
+            help="Min duration of a valid audio event in seconds "
+            "[default: %(default)s]",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -186,7 +187,8 @@ def main(argv=None):
             dest="max_duration",
             type=float,
             default=5,
-            help="Max duration of a valid audio event in seconds [default: %(default)s]",
+            help="Max duration of a valid audio event in seconds "
+            "[default: %(default)s]",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -195,8 +197,8 @@ def main(argv=None):
             dest="max_silence",
             type=float,
             default=0.3,
-            help="Max duration of a consecutive silence within a valid audio event "
-            "in seconds [default: %(default)s]",
+            help="Max duration of a consecutive silence within a valid audio "
+            "event in seconds [default: %(default)s]",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -298,14 +300,15 @@ def main(argv=None):
             dest="plot",
             action="store_true",
             default=False,
-            help="Plot and show audio signal and detections (requires matplotlib)",
+            help="Plot and show audio signal and detections (requires "
+            "matplotlib)",
         )
         group.add_argument(
             "--save-image",
             dest="save_image",
             type=str,
-            help="Save plotted audio signal and detections as a picture or a PDF "
-            "file (requires matplotlib)",
+            help="Save plotted audio signal and detections as a picture or a "
+            "PDF file (requires matplotlib)",
             metavar="FILE",
         )
         group.add_argument(
@@ -332,9 +335,10 @@ def main(argv=None):
             "placeholders used with --printf [default= %(default)s]. The "
             "following formats are accepted:\n"
             "%%S: absolute time in seconds. %%I: absolute time in ms. If at "
-            "least one of (%%h, %%m, %%s, %%i) is used, convert time into hours, "
-            "minutes, seconds and millis (e.g. %%h:%%m:%%s.%%i). Only supplied "
-            "fields are printed. Note that %%S and %%I can only be used alone",
+            "least one of (%%h, %%m, %%s, %%i) is used, convert time into "
+            "hours, minutes, seconds and millis (e.g. %%h:%%m:%%s.%%i). Only "
+            "supplied fields are printed. Note that %%S and %%I can only be "
+            "used alone",
             metavar="STRING",
         )
         group.add_argument(
@@ -351,8 +355,8 @@ def main(argv=None):
             dest="quiet",
             action="store_true",
             default=False,
-            help="Do not print any information about detections [default: print "
-            "'id', 'start' and 'end' of each detection]",
+            help="Do not print any information about detections [default: "
+            "print 'id', 'start' and 'end' of each detection]",
         )
         parser.add_argument(
             "-D",

@@ -1,7 +1,7 @@
 `auditok` Command-line Usage Guide
 ==================================
 
-This user guide will go through a few of the most useful operations you can use **auditok** for and present two practical use cases. 
+This user guide will go through a few of the most useful operations you can use **auditok** for and present two practical use cases.
 
 .. contents:: `Contents`
    :depth: 3
@@ -49,7 +49,7 @@ The first thing you want to check is perhaps how **auditok** detects your voice.
 This will print **id** **start-time** and **end-time** for each detected activity. If you don't have `PyAudio`, you can use `sox` for data acquisition (`sudo apt-get install sox`) and tell **auditok** to read data from standard input:
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -r 16000 -w 2 -c 1
-    
+
 Note that when data is read from standard input the same audio parameters must be used for both `sox` (or any other data generation/acquisition tool) and **auditok**. The following table summarizes audio parameters.
 
 
@@ -89,7 +89,7 @@ Option `-E` stands for echo, so **auditok** will play back whatever it detects. 
 .. code:: bash
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i - -C "play -q -t raw -r 16000 -c 1 -b 16 -e signed $"
-    
+
 The `-C` option tells **auditok** to interpret its content as a command that should be run whenever **auditok** detects an audio activity, replacing the `$` by a name of a temporary file into which the activity is saved as raw audio. Here we use `play` to play the activity, giving the necessary `play` arguments for raw data.
 
 `rec` and `play` are just an alias for `sox`.
@@ -124,7 +124,7 @@ By default, **auditok** prints the **id**, **start-time** and **end-time** of ea
     2 3.05 3.73
     3 3.97 4.49
     ...
-    
+
 If you want to customize the output format, use `--printf` option:
 
 .. code:: bash
@@ -144,7 +144,7 @@ If you want to customize the output format, use `--printf` option:
 Keywords `{id}`, `{start}` and `{end}` can be placed and repeated anywhere in the text. Time is shown in seconds, if you want a more detailed time information, use `--time-format`:
 
     auditok -e 55 --printf "[{id}]: {start} to {end}" --time-format "%h:%m:%s.%i"
-    
+
 :output:
 
 .. code:: bash
@@ -161,7 +161,7 @@ Valid time directives are: `%h` (hours) `%m` (minutes) `%s` (seconds) `%i` (mill
 1st Practical use case example: generate a subtitles template
 #############################################################
 
-Using `--printf ` and `--time-format`, the following command, used with an input audio or video file, will generate and an **srt** file template that can be later edited with a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends: 
+Using `--printf ` and `--time-format`, the following command, used with an input audio or video file, will generate and an **srt** file template that can be later edited with a subtitles editor in a way that reduces the time needed to define when each utterance starts and where it ends:
 
 .. code:: bash
 
@@ -174,7 +174,7 @@ Using `--printf ` and `--time-format`, the following command, used with an input
     1
     00:00:00.730 --> 00:00:01.460
     Put some text here...
-    
+
     2
     00:00:02.440 --> 00:00:03.900
     Put some text here...
@@ -213,7 +213,7 @@ Assume you have installed **sox** and downloaded the Speech Recognition script. 
 .. code:: bash
 
     speech-rec.sh -i output.flac -r 16000
-    
+
 3- Use **grep** to select lines that contain *transcript*:
 
 .. code:: bash
@@ -319,7 +319,7 @@ You can use a free text and place `{N}`, `{start}` and `{end}` wherever you want
 .. code:: bash
 
     auditok -o {start}-{end}.wav ...
-    
+
 Install `pydub` for more audio formats.
 
 
@@ -352,7 +352,7 @@ Normally, `auditok` does keeps trailing silence of a detected activity. Trailing
     :alt: Output from a detector that keeps trailing silence
     :figclass: align-center
     :scale: 40 %
-    
+
 
 .. code:: bash
 
@@ -364,7 +364,7 @@ Normally, `auditok` does keeps trailing silence of a detected activity. Trailing
     :alt: Output from a detector that drop trailing silence
     :figclass: align-center
     :scale: 40 %
-    
+
 You might want to only consider audio activities if they are above a certain duration. The next figure is the result of a detector that only accepts detections of 0.8 second and longer:
 
 .. code:: bash
@@ -377,8 +377,8 @@ You might want to only consider audio activities if they are above a certain dur
     :alt: Output from a detector that detect activities of 800 ms or over
     :figclass: align-center
     :scale: 40 %
-    
-    
+
+
 Finally it is almost always interesting to limit the length of detected audio activities. In any case, one does not want a too long audio event such as an alarm or a drill to hog the detector. For illustration purposes, we set the maximum duration to 0.4 second for this detector, so an audio activity is delivered as soon as it reaches 0.4 second:
 
 .. code:: bash
@@ -391,7 +391,7 @@ Finally it is almost always interesting to limit the length of detected audio ac
     :alt: Output from a detector that delivers audio activities that reach 400 ms
     :figclass: align-center
     :scale: 40 %
-    
+
 
 Debugging
 #########

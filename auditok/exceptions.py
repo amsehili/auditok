@@ -16,7 +16,7 @@ class TimeFormatError(Exception):
 
 
 class EndOfProcessing(Exception):
-    """Raised within command line script's main function to jump to 
+    """Raised within command line script's main function to jump to
     postprocessing code"""
 
 
