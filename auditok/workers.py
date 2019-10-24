@@ -33,7 +33,7 @@ def _run_subprocess(command):
         ) as proc:
             stdout, stderr = proc.communicate()
             return proc.returncode, stdout, stderr
-    except:
+    except Exception:
         err_msg = "Couldn't export audio using command: '{}'".format(command)
         raise AudioEncodingError(err_msg)
 
