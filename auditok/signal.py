@@ -17,6 +17,7 @@ def extract_single_channel(data, fmt, channels, selected):
     samples = array(fmt, data)
     return samples[selected::channels]
 
+
 def average_channels(data, fmt, channels):
     all_channels = array(fmt, data)
     mono_channels = [
@@ -27,6 +28,7 @@ def average_channels(data, fmt, channels):
         (round(sum(samples) / channels) for samples in zip(*mono_channels)),
     )
     return avg_arr
+
 
 def average_channels_stereo(data, sample_width):
     fmt = FORMAT[sample_width]

@@ -3,7 +3,7 @@ auditok, an AUDIo TOKenization tool
 
 .. image:: https://travis-ci.org/amsehili/auditok.svg?branch=master
     :target: https://travis-ci.org/amsehili/auditok
-    
+
 .. image:: https://readthedocs.org/projects/auditok/badge/?version=latest
     :target: http://auditok.readthedocs.org/en/latest/?badge=latest
     :alt: Documentation Status

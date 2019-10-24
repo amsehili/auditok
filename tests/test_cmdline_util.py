@@ -75,7 +75,15 @@ class TestCmdLineUtil(TestCase):
         record_plot=(None, None, True, None, None, None, True),
         record_save_image=(None, None, False, "image.png", None, None, True),
         int_use_channel=("stream.ogg", None, False, None, "1", 1, False),
-        save_detections_as=("stream.ogg", "{id}.wav", False, None, None, None, False)
+        save_detections_as=(
+            "stream.ogg",
+            "{id}.wav",
+            False,
+            None,
+            None,
+            None,
+            False,
+        ),
     )
     def test_make_kwargs(
         self,
@@ -112,7 +120,15 @@ class TestCmdLineUtil(TestCase):
             False,
             55,
         )
-        misc = (False, False, None, True, None, "TIME_FORMAT", "TIMESTAMP_FORMAT")
+        misc = (
+            False,
+            False,
+            None,
+            True,
+            None,
+            "TIME_FORMAT",
+            "TIMESTAMP_FORMAT",
+        )
         args_ns = _ArgsNamespece(*(args + misc))
 
         io_kwargs = {
