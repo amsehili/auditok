@@ -78,13 +78,15 @@ def make_channel_selector(sample_width, channels, selected=None):
         return partial(signal.separate_channels, fmt=fmt, channels=channels)
 
     raise ValueError(
-        "Selected channel must be an integer, None (alias 'any') or 'average' (alias 'avg' or 'mix')"
+        "Selected channel must be an integer, None (alias 'any') or 'average' "
+        "(alias 'avg' or 'mix')"
     )
 
 
 class DataSource(ABC):
     """
-    Base class for objects passed to :func:`auditok.core.StreamTokenizer.tokenize`.
+    Base class for objects passed to
+    :func:`auditok.core.StreamTokenizer.tokenize`.
     Subclasses should implement a :func:`DataSource.read` method.
     """
 
@@ -98,8 +100,8 @@ class DataSource(ABC):
 
 class DataValidator(ABC):
     """
-    Base class for a validator object used by :class:`.core.StreamTokenizer` to check
-    if read data is valid.
+    Base class for a validator object used by :class:`.core.StreamTokenizer`
+    to check if read data is valid.
     Subclasses should implement :func:`is_valid` method.
    """
 
@@ -132,8 +134,9 @@ class AudioEnergyValidator(DataValidator):
 class StringDataSource(DataSource):
     """
     A class that represent a :class:`DataSource` as a string buffer.
-    Each call to :func:`DataSource.read` returns on character and moves one step forward.
-    If the end of the buffer is reached, :func:`read` returns None.
+    Each call to :func:`DataSource.read` returns on character and moves one
+    step forward. If the end of the buffer is reached, :func:`read` returns
+    None.
 
     :Parameters:
 
@@ -276,8 +279,8 @@ class ADSFactory:
 
         if "frames_per_buffer" in kwargs and "fbb" in kwargs:
             raise DuplicateArgument(
-                "Either 'frames_per_buffer' or 'fpb' must be specified, not \
-                both"
+                "Either 'frames_per_buffer' or 'fpb' must be specified, not "
+                "both"
             )
 
         if "sampling_rate" in kwargs and "sr" in kwargs:

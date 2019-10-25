@@ -441,7 +441,8 @@ class AudioRegion(object):
         if input is None:
             if max_read is None or max_read < 0:
                 raise ValueError(
-                    "'max_read' should not be None when reading from microphone"
+                    "'max_read' should not be None when reading from "
+                    "microphone"
                 )
             if skip > 0:
                 raise ValueError(
@@ -855,8 +856,8 @@ class StreamTokenizer:
 
         `init_max_silence` : *(int, default=0)*
             Maximum number of tolerated consecutive non-valid frames if the
-            number already gathered valid frames has not yet reached 'init_min'.
-            This argument is normally used if `init_min` is used.
+            number already gathered valid frames has not yet reached
+            'init_min'.This argument is normally used if `init_min` is used.
             **Default = 0**, by default this argument is not taken into
             consideration.
 
@@ -884,7 +885,9 @@ class StreamTokenizer:
 
         .. code:: python
 
-            from auditok import StreamTokenizer, StringDataSource, DataValidator
+            from auditok import (StreamTokenizer,
+                                 StringDataSource,
+                                 DataValidator)
 
             class UpperCaseChecker(DataValidator):
                 def is_valid(self, frame):
@@ -939,10 +942,10 @@ class StreamTokenizer:
         truncated at a non-valid but tolerated frame (`max_length` is reached
         but `max_continuous_silence` not yet) any tailing silence will be kept
         because it can potentially be part of valid token (if `max_length` was
-        bigger). But if `max_continuous_silence` is reached before `max_length`,
-        the delivered token will not be considered as truncated but a result of
-        *normal* end of detection (i.e. no more valid data). In that case the
-        tariling silence can be removed if you use the
+        bigger). But if `max_continuous_silence` is reached before
+        `max_length`, the delivered token will not be considered as truncated
+        but a result of *normal* end of detection (i.e. no more valid data).
+        In that case the tariling silence can be removed if you use the
         `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
 
         :Example:
@@ -1009,7 +1012,8 @@ class StreamTokenizer:
             self._is_valid = validator.is_valid
         else:
             raise TypeError(
-                "'validator' must be a callable or an instance of DataValidator"
+                "'validator' must be a callable or an instance of "
+                "DataValidator"
             )
 
         if max_length <= 0:
@@ -1077,7 +1081,8 @@ class StreamTokenizer:
     def tokenize(self, data_source, callback=None, generator=False):
         """
         Read data from `data_source`, one frame a time, and process the read
-        frames in order to detect sequences of frames that make up valid tokens.
+        frames in order to detect sequences of frames that make up valid
+        tokens.
 
         :Parameters:
            `data_source` : instance of the :class:`DataSource` class that
