@@ -1,5 +1,5 @@
 """
-This module contains links to audio files you can use for test purposes.
+This module contains links to audio files that can be used for test purposes.
 """
 
 import os
@@ -22,4 +22,5 @@ der_mensch_saet_das_wird_er_vielfach_ernten_44100Hz_mono_lead_trail_\
 silence.wav".format(
     cd=_current_dir, sep=os.path.sep
 )
-""" A wave file that contains a sentence between long leading and trailing periods of silence"""
+"""A wave file that contains a sentence between long leading and trailing
+periods of silence"""
