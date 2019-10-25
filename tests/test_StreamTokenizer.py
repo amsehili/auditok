@@ -57,23 +57,24 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AaaaAaAaaAaAaaaa",
-            msg="wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: {0} ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', "
+                "found: {0} "
+            ).format(data),
         )
         self.assertEqual(
             start,
             1,
-            msg="wrong start frame for token 1, expected: 1, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 1, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             16,
-            msg="wrong end frame for token 1, expected: 16, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 16, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -82,23 +83,23 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAAAA', found: {0} ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAA', found: {0} "
+            ).format(data),
         )
         self.assertEqual(
             start,
             20,
-            msg="wrong start frame for token 2, expected: 20, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 20, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             27,
-            msg="wrong end frame for token 2, expected: 27, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 27, found: {0} "
+            ).format(end),
         )
 
     # A valid token is considered as so iff the tokenizer encounters
@@ -121,8 +122,8 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         data_source = StringDataSource(
             "aAaaaAaAaaAaAaaaaaAAAAAAAAAaaaaaaAAAAA"
         )
-        #                                                 ^           ^  ^   ^
-        #                                                 18          30 33  37
+        #                      ^           ^  ^   ^
+        #                      18          30 33  37
 
         tokens = tokenizer.tokenize(data_source)
 
@@ -141,23 +142,24 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAAAaaaa",
-            msg="wrong data for token 1, expected: 'AAAAAAAAAaaaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAAAaaaa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             18,
-            msg="wrong start frame for token 1, expected: 18, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 18, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             30,
-            msg="wrong end frame for token 1, expected: 30, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 30, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -166,23 +168,23 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 1, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             33,
-            msg="wrong start frame for token 2, expected: 33, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 33, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             37,
-            msg="wrong end frame for token 2, expected: 37, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 37, found: {0} "
+            ).format(end),
         )
 
     # A valid token is considered iff the tokenizer encounters
@@ -203,8 +205,8 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         data_source = StringDataSource(
             "aAaaaAaAaaAaAaaaaaaAAAAAAAAAaaaaaaaAAAAA"
         )
-        #                                    ^          ^  ^           ^   ^   ^
-        #                                    5          16 19          31  35  39
+        #         ^          ^  ^           ^   ^   ^
+        #         5          16 19          31  35  39
         tokens = tokenizer.tokenize(data_source)
 
         self.assertEqual(
@@ -222,23 +224,23 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AaAaaAaAaaaa",
-            msg="wrong data for token 1, expected: 'AaAaaAaA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AaAaaAaA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             5,
-            msg="wrong start frame for token 1, expected: 5, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 5, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             16,
-            msg="wrong end frame for token 1, expected: 16, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 16, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -247,23 +249,24 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAAAaaaa",
-            msg="wrong data for token 2, expected: 'AAAAAAAAAaaaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 2, expected: 'AAAAAAAAAaaaa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             19,
-            msg="wrong start frame for token 2, expected: 19, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 19, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             31,
-            msg="wrong end frame for token 2, expected: 31, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 31, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok3[0])
@@ -272,23 +275,23 @@ class TestStreamTokenizerInitParams(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 3, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 3, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             35,
-            msg="wrong start frame for token 2, expected: 35, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 35, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             39,
-            msg="wrong end frame for token 2, expected: 39, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 39, found: {0} "
+            ).format(end),
         )
 
 
@@ -329,23 +332,24 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AaaaAaAaaAaAaa",
-            msg="wrong data for token 1, expected: 'AaaaAaAaaAaAaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AaaaAaAaaAaAaa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             1,
-            msg="wrong start frame for token 1, expected: 1, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 1, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             14,
-            msg="wrong end frame for token 1, expected: 14, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 14, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -354,23 +358,24 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAAAaa",
-            msg="wrong data for token 2, expected: 'AAAAAAAAAaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 2, expected: 'AAAAAAAAAaa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             18,
-            msg="wrong start frame for token 2, expected: 18, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 18, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             28,
-            msg="wrong end frame for token 2, expected: 28, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 28, found: {0} "
+            ).format(end),
         )
 
     def test_min_length_1_init_max_length_1(self):
@@ -414,8 +419,8 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         data_source = StringDataSource(
             "aAaaaAaAaaAaAaaaaaaAAAAAaaaaaaAAAAAaaAAaaAAA"
         )
-        #                                ^              ^             ^            ^
-        #                                1              16            30           45
+        #     ^              ^             ^            ^
+        #     1              16            30           45
 
         tokens = tokenizer.tokenize(data_source)
 
@@ -434,23 +439,24 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AaaaAaAaaAaAaaaa",
-            msg="wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             1,
-            msg="wrong start frame for token 1, expected: 1, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 1, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             16,
-            msg="wrong end frame for token 1, expected: 16, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 16, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -459,23 +465,24 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAaaAAaaAAA",
-            msg="wrong data for token 2, expected: 'AAAAAaaAAaaAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 2, expected: 'AAAAAaaAAaaAAA', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             30,
-            msg="wrong start frame for token 2, expected: 30, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 30, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             43,
-            msg="wrong end frame for token 2, expected: 43, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 43, found: {0} "
+            ).format(end),
         )
 
     def test_min_length_4_init_max_length_5(self):
@@ -493,8 +500,8 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         data_source = StringDataSource(
             "aAaaaAaAaaAaAaaaaaAAAAAAAAaaaaaaAAAAAaaaaaAAaaAaa"
         )
-        #                                                 ^   ^^   ^    ^   ^     ^   ^
-        #                                                 18 2223  27   32  36    42  46
+        #                      ^   ^^   ^    ^   ^     ^   ^
+        #                      18 2223  27   32  36    42  46
 
         tokens = tokenizer.tokenize(data_source)
 
@@ -513,23 +520,23 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 1, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             18,
-            msg="wrong start frame for token 1, expected: 18, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 18, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             22,
-            msg="wrong end frame for token 1, expected: 22, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 22, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -538,23 +545,23 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAaa",
-            msg="wrong data for token 1, expected: 'AAAaa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAaa', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             23,
-            msg="wrong start frame for token 1, expected: 23, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 23, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             27,
-            msg="wrong end frame for token 1, expected: 27, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 27, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok3[0])
@@ -563,23 +570,23 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 1, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             32,
-            msg="wrong start frame for token 1, expected: 1, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 1, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             36,
-            msg="wrong end frame for token 1, expected: 7, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 7, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok4[0])
@@ -588,23 +595,23 @@ class TestStreamTokenizerMinMaxLength(unittest.TestCase):
         self.assertEqual(
             data,
             "AAaaA",
-            msg="wrong data for token 2, expected: 'AAaaA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 2, expected: 'AAaaA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             42,
-            msg="wrong start frame for token 2, expected: 17, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 2, expected: 17, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             46,
-            msg="wrong end frame for token 2, expected: 22, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 2, expected: 22, found: {0} "
+            ).format(end),
         )
 
 
@@ -645,23 +652,23 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 1, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             3,
-            msg="wrong start frame for token 1, expected: 3, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 3, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             7,
-            msg="wrong end frame for token 1, expected: 7, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 7, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -670,23 +677,23 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             9,
-            msg="wrong start frame for token 1, expected: 9, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 9, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             14,
-            msg="wrong end frame for token 1, expected: 14, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 14, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok3[0])
@@ -695,23 +702,23 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             17,
-            msg="wrong start frame for token 1, expected: 17, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 17, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             25,
-            msg="wrong end frame for token 1, expected: 25, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 25, found: {0} "
+            ).format(end),
         )
 
     def test_min_5_max_10_max_continuous_silence_1(self):
@@ -748,23 +755,24 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAaAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAaAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAaAAAA', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             3,
-            msg="wrong start frame for token 1, expected: 3, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 3, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             12,
-            msg="wrong end frame for token 1, expected: 10, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 10, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok2[0])
@@ -773,23 +781,23 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAa",
-            msg="wrong data for token 1, expected: 'AAa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAa', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             13,
-            msg="wrong start frame for token 1, expected: 9, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 9, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             15,
-            msg="wrong end frame for token 1, expected: 14, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 14, found: {0} "
+            ).format(end),
         )
 
         data = "".join(tok3[0])
@@ -798,23 +806,24 @@ class TestStreamTokenizerMaxContinuousSilence(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAAAa",
-            msg="wrong data for token 1, expected: 'AAAAAAAAAa', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAAAa', "
+                "found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             17,
-            msg="wrong start frame for token 1, expected: 17, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 17, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             26,
-            msg="wrong end frame for token 1, expected: 26, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 26, found: {0} "
+            ).format(end),
         )
 
 
@@ -855,23 +864,23 @@ class TestStreamTokenizerModes(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             2,
-            msg="wrong start frame for token 1, expected: 2, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 2, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             9,
-            msg="wrong end frame for token 1, expected: 9, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 9, found: {0} "
+            ).format(end),
         )
 
     def test_DROP_TAILING_SILENCE(self):
@@ -907,23 +916,23 @@ class TestStreamTokenizerModes(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAA",
-            msg="wrong data for token 1, expected: 'AAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             2,
-            msg="wrong start frame for token 1, expected: 2, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 2, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             6,
-            msg="wrong end frame for token 1, expected: 6, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 6, found: {0} "
+            ).format(end),
         )
 
     def test_STRICT_MIN_LENGTH_and_DROP_TAILING_SILENCE(self):
@@ -960,23 +969,23 @@ class TestStreamTokenizerModes(unittest.TestCase):
         self.assertEqual(
             data,
             "AAAAAAAA",
-            msg="wrong data for token 1, expected: 'AAAAAAAA', found: '{0}' ".format(
-                data
-            ),
+            msg=(
+                "wrong data for token 1, expected: 'AAAAAAAA', found: '{0}' "
+            ).format(data),
         )
         self.assertEqual(
             start,
             2,
-            msg="wrong start frame for token 1, expected: 2, found: {0} ".format(
-                start
-            ),
+            msg=(
+                "wrong start frame for token 1, expected: 2, found: {0} "
+            ).format(start),
         )
         self.assertEqual(
             end,
             9,
-            msg="wrong end frame for token 1, expected: 9, found: {0} ".format(
-                end
-            ),
+            msg=(
+                "wrong end frame for token 1, expected: 9, found: {0} "
+            ).format(end),
         )
 
 
