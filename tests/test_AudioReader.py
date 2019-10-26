@@ -594,7 +594,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
             "Wrong sampling rate, expected: 16000, found: {0}".format(srate),
         )
 
-    def test_ADS_BAS_get_sample_width(self):
+    def test_ADS_BAS_sample_width(self):
         swidth = self.ads.sample_width
         self.assertEqual(
             swidth,
@@ -602,7 +602,7 @@ class TestADSFactoryBufferAudioSource(unittest.TestCase):
             "Wrong sample width, expected: 2, found: {0}".format(swidth),
         )
 
-    def test_ADS_BAS_get_channels(self):
+    def test_ADS_BAS_channels(self):
         channels = self.ads.channels
         self.assertEqual(
             channels,
