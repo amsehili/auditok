@@ -189,24 +189,24 @@ class TestBufferAudioSource_SR10_SW1_CH1(unittest.TestCase):
             msg="wrong block, expected: {}, found: {} ".format(None, block),
         )
 
-    def test_sr10_sw1_ch1_get_sampling_rate(self):
-        srate = self.audio_source.get_sampling_rate()
+    def test_sr10_sw1_ch1_sampling_rate(self):
+        srate = self.audio_source.sampling_rate
         self.assertEqual(
             srate,
             10,
             msg="wrong sampling rate, expected: 10, found: {0} ".format(srate),
         )
 
-    def test_sr10_sw1_ch1_get_sample_width(self):
-        swidth = self.audio_source.get_sample_width()
+    def test_sr10_sw1_ch1_sample_width(self):
+        swidth = self.audio_source.sample_width
         self.assertEqual(
             swidth,
             1,
             msg="wrong sample width, expected: 1, found: {0} ".format(swidth),
         )
 
-    def test_sr10_sw1_ch1_get_channels(self):
-        channels = self.audio_source.get_channels()
+    def test_sr10_sw1_ch1_channels(self):
+        channels = self.audio_source.channels
         self.assertEqual(
             channels,
             1,
@@ -527,25 +527,25 @@ class TestBufferAudioSource_SR16_SW2_CH1(unittest.TestCase):
             msg="wrong block, expected: {0}, found: {1} ".format(None, block),
         )
 
-    def test_sr16_sw2_ch1_get_sampling_rate(self):
-        srate = self.audio_source.get_sampling_rate()
+    def test_sr16_sw2_ch1_sampling_rate(self):
+        srate = self.audio_source.sampling_rate
         self.assertEqual(
             srate,
             16,
             msg="wrong sampling rate, expected: 10, found: {0} ".format(srate),
         )
 
-    def test_sr16_sw2_ch1_get_sample_width(self):
-        swidth = self.audio_source.get_sample_width()
+    def test_sr16_sw2_ch1_sample_width(self):
+        swidth = self.audio_source.sample_width
         self.assertEqual(
             swidth,
             2,
             msg="wrong sample width, expected: 1, found: {0} ".format(swidth),
         )
 
-    def test_sr16_sw2_ch1_get_channels(self):
+    def test_sr16_sw2_ch1_channels(self):
 
-        channels = self.audio_source.get_channels()
+        channels = self.audio_source.channels
         self.assertEqual(
             channels,
             1,
@@ -808,24 +808,24 @@ class TestBufferAudioSource_SR11_SW4_CH1(unittest.TestCase):
             msg="wrong block, expected: {0}, found: {1} ".format(None, block),
         )
 
-    def test_sr11_sw4_ch1_get_sampling_rate(self):
-        srate = self.audio_source.get_sampling_rate()
+    def test_sr11_sw4_ch1_sampling_rate(self):
+        srate = self.audio_source.sampling_rate
         self.assertEqual(
             srate,
             11,
             msg="wrong sampling rate, expected: 10, found: {0} ".format(srate),
         )
 
-    def test_sr11_sw4_ch1_get_sample_width(self):
-        swidth = self.audio_source.get_sample_width()
+    def test_sr11_sw4_ch1_sample_width(self):
+        swidth = self.audio_source.sample_width
         self.assertEqual(
             swidth,
             4,
             msg="wrong sample width, expected: 1, found: {0} ".format(swidth),
         )
 
-    def test_sr11_sw4_ch1_get_channels(self):
-        channels = self.audio_source.get_channels()
+    def test_sr11_sw4_ch1_channels(self):
+        channels = self.audio_source.channels
         self.assertEqual(
             channels,
             1,

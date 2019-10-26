@@ -195,15 +195,6 @@ class AudioSource(ABC):
             - 'left_samples' if `size` > 'left_samples'
         """
 
-    def get_sampling_rate(self):
-        """ Return the number of samples per second of audio stream """
-        warnings.warn(
-            "'get_sampling_rate' is deprecated, use 'sampling_rate' "
-            "property instead",
-            DeprecationWarning,
-        )
-        return self.sampling_rate
-
     @property
     def sampling_rate(self):
         """ Number of samples per second of audio stream """
@@ -214,15 +205,6 @@ class AudioSource(ABC):
         """ Number of samples per second of audio stream """
         return self._sampling_rate
 
-    def get_sample_width(self):
-        """ Return the number of bytes used to represent one audio sample """
-        warnings.warn(
-            "'get_sample_width' is deprecated, use 'sample_width' "
-            "property instead",
-            DeprecationWarning,
-        )
-        return self.sample_width
-
     @property
     def sample_width(self):
         """ Number of bytes used to represent one audio sample """
@@ -232,14 +214,6 @@ class AudioSource(ABC):
     def sw(self):
         """ Number of bytes used to represent one audio sample """
         return self._sample_width
-
-    def get_channels(self):
-        """ Return the number of channels of this audio source """
-        warnings.warn(
-            "'get_channels' is deprecated, use 'channels' " "property instead",
-            DeprecationWarning,
-        )
-        return self.channels
 
     @property
     def channels(self):
