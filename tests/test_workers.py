@@ -1,4 +1,5 @@
 import os
+import unittest
 from unittest import TestCase
 from unittest.mock import patch, call, Mock
 from tempfile import TemporaryDirectory
@@ -347,3 +348,7 @@ class TestWorkers(TestCase):
             )
             self.assertTrue(saver._exported)
             self.assertEqual(saver.data, bytes(region))
+
+
+if __name__ == "__main__":
+    unittest.main()
