@@ -3,6 +3,7 @@ import math
 from random import random
 from tempfile import TemporaryDirectory
 from array import array as array_
+import unittest
 from unittest import TestCase, mock
 from unittest.mock import patch
 from genty import genty, genty_dataset
@@ -1659,3 +1660,7 @@ class TestAudioRegion(TestCase):
         except AttributeError:
             pass
         self.assertTrue(equal)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,4 +1,5 @@
 import os
+import unittest
 from unittest import TestCase
 from unittest.mock import patch
 from tempfile import TemporaryDirectory
@@ -368,3 +369,7 @@ class TestCmdLineUtil(TestCase):
             self.assertTrue(patched_player_for.called)
             self.assertFalse(isinstance(reader, StreamSaverWorker))
             self.assertTrue(len(observers), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

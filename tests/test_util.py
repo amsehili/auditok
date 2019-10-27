@@ -1,3 +1,4 @@
+import unittest
 from unittest import TestCase
 import math
 from array import array
@@ -98,3 +99,7 @@ class TestAudioEnergyValidator(TestCase):
             self.assertTrue(validator.is_valid(data))
         else:
             self.assertFalse(validator.is_valid(data))
+
+
+if __name__ == "__main__":
+    unittest.main()
