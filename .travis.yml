@@ -1,15 +1,16 @@
 before_install:
   - sudo apt-get update --fix-missing
 install:
-  - pip install six
+  - pip install numpy
   - pip install genty
 language: python
 python:
-  - "2.7"
   - "3.2"
   - "3.3"
   - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
 script:
   - python -m unittest discover tests/
