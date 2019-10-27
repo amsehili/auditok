@@ -1,11 +1,11 @@
 """
-This module gathers processing (i.e. tokenization) classes.
 
-Class summary
-=============
+Summary
+=======
 
 .. autosummary::
-
+        split
+        AudioRegion
         StreamTokenizer
 """
 import os
