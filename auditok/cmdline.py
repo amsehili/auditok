@@ -11,7 +11,7 @@ as from built-in device(s) or standard input.
 @copyright:  2015-2019 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 24 Oct 2019
+@deffield    updated: 27 Oct 2019
 """
 
 import sys

@@ -20,6 +20,7 @@ Function summary
 .. autosummary::
 
         from_file
+        to_file
         player_for
 """
 import os
@@ -50,16 +51,16 @@ except ImportError:
 
 
 __all__ = [
-    "AudioIOError",
-    "AudioParameterError",
     "AudioSource",
     "Rewindable",
     "BufferAudioSource",
+    "RawAudioSource",
     "WaveAudioSource",
     "PyAudioSource",
     "StdinAudioSource",
     "PyAudioPlayer",
     "from_file",
+    "to_file",
     "player_for",
 ]
 

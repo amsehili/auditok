@@ -4,7 +4,6 @@ Class summary
 
 .. autosummary::
 
-        make_channel_selector
         AudioEnergyValidator
         AudioReader
         Recorder
