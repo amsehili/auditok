@@ -4,6 +4,7 @@ import math
 from array import array
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import filecmp
+import unittest
 from unittest import TestCase
 from unittest.mock import patch, Mock
 from genty import genty, genty_dataset
@@ -439,3 +440,7 @@ class TestIO(TestCase):
             kwargs.update(extra_args)
         audio_source = get_audio_source(input, **kwargs)
         self.assertIsInstance(audio_source, expected_type)
+
+
+if __name__ == "__main__":
+    unittest.main()
