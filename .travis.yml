@@ -3,10 +3,10 @@ before_install:
 install:
   - pip install numpy
   - pip install genty
+  - pip install pydub
+  - pip install matplotlib
 language: python
 python:
-  - "3.2"
-  - "3.3"
   - "3.4"
   - "3.5"
   - "3.6"
