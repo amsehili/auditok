@@ -243,7 +243,7 @@ class TestWorkers(TestCase):
         expected_print_calls = [
             call(
                 "[{}] {:.3f} {:.3f}, dur: {:.3f}".format(
-                    i, *exp, exp[1] - exp[0]
+                    i, exp[0], exp[1], exp[1] - exp[0]
                 )
             )
             for i, exp in enumerate(self.expected, 1)
