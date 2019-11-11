@@ -4,7 +4,6 @@ from collections import namedtuple
 from auditok import workers
 from .util import AudioDataSource
 from .io import player_for
-from .exceptions import TimeFormatError
 
 _AUDITOK_LOGGER = "AUDITOK_LOGGER"
 KeywordArguments = namedtuple(
@@ -61,43 +60,6 @@ def make_kwargs(args_ns):
     return KeywordArguments(io_kwargs, split_kwargs, miscellaneous)
 
 
-def make_duration_formatter(fmt):
-    """
-    Accepted format directives: %i %s %m %h
-    """
-    if fmt == "%S":
-
-        def fromatter(seconds):
-            return "{:.3f}".format(seconds)
-
-    elif fmt == "%I":
-
-        def fromatter(seconds):
-            return "{0}".format(int(seconds * 1000))
-
-    else:
-        fmt = fmt.replace("%h", "{hrs:02d}")
-        fmt = fmt.replace("%m", "{mins:02d}")
-        fmt = fmt.replace("%s", "{secs:02d}")
-        fmt = fmt.replace("%i", "{millis:03d}")
-        try:
-            i = fmt.index("%")
-            raise TimeFormatError(
-                "Unknow time format directive '{0}'".format(fmt[i : i + 2])
-            )
-        except ValueError:
-            pass
-
-        def fromatter(seconds):
-            millis = int(seconds * 1000)
-            hrs, millis = divmod(millis, 3600000)
-            mins, millis = divmod(millis, 60000)
-            secs, millis = divmod(millis, 1000)
-            return fmt.format(hrs=hrs, mins=mins, secs=secs, millis=millis)
-
-    return fromatter
-
-
 def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
     if not stderr and file is None:
         return None
@@ -118,7 +80,6 @@ def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
 
 def initialize_workers(logger=None, **kwargs):
     observers = []
-
     reader = AudioDataSource(source=kwargs["input"], **kwargs)
     if kwargs["save_stream"] is not None:
         reader = workers.StreamSaverWorker(

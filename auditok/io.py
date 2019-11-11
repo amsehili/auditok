@@ -586,7 +586,7 @@ class PyAudioPlayer:
                 chunk_gen,
                 total=nb_chunks,
                 duration=duration,
-                **progress_bar_kwargs,
+                **progress_bar_kwargs
             )
         if self.stream.is_stopped():
             self.stream.start_stream()
@@ -667,7 +667,7 @@ def get_audio_source(input=None, **kwargs):
         return PyAudioSource(
             *_get_audio_parameters(kwargs),
             frames_per_buffer=frames_per_buffer,
-            input_device_index=input_device_index,
+            input_device_index=input_device_index
         )
 
 

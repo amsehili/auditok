@@ -22,7 +22,11 @@ from .io import (
     PyAudioSource,
     get_audio_source,
 )
-from .exceptions import DuplicateArgument, TooSamllBlockDuration
+from .exceptions import (
+    DuplicateArgument,
+    TooSamllBlockDuration,
+    TimeFormatError,
+)
 
 try:
     from . import signal_numpy as signal
@@ -31,6 +35,7 @@ except ImportError:
 
 
 __all__ = [
+    "make_duration_formatter",
     "DataSource",
     "DataValidator",
     "StringDataSource",
@@ -40,6 +45,43 @@ __all__ = [
     "Recorder",
     "AudioEnergyValidator",
 ]
+
+
+def make_duration_formatter(fmt):
+    """
+    Accepted format directives: %i %s %m %h
+    """
+    if fmt == "%S":
+
+        def fromatter(seconds):
+            return "{:.3f}".format(seconds)
+
+    elif fmt == "%I":
+
+        def fromatter(seconds):
+            return "{0}".format(int(seconds * 1000))
+
+    else:
+        fmt = fmt.replace("%h", "{hrs:02d}")
+        fmt = fmt.replace("%m", "{mins:02d}")
+        fmt = fmt.replace("%s", "{secs:02d}")
+        fmt = fmt.replace("%i", "{millis:03d}")
+        try:
+            i = fmt.index("%")
+            raise TimeFormatError(
+                "Unknow time format directive '{0}'".format(fmt[i : i + 2])
+            )
+        except ValueError:
+            pass
+
+        def fromatter(seconds):
+            millis = int(seconds * 1000)
+            hrs, millis = divmod(millis, 3600000)
+            mins, millis = divmod(millis, 60000)
+            secs, millis = divmod(millis, 1000)
+            return fmt.format(hrs=hrs, mins=mins, secs=secs, millis=millis)
+
+    return fromatter
 
 
 def make_channel_selector(sample_width, channels, selected=None):

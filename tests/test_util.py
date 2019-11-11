@@ -3,8 +3,9 @@ from unittest import TestCase
 import math
 from array import array
 from genty import genty, genty_dataset
-from auditok.util import AudioEnergyValidator
+from auditok.util import AudioEnergyValidator, make_duration_formatter
 from auditok.signal import FORMAT
+from auditok.exceptions import TimeFormatError
 
 
 def _sample_generator(*data_buffers):
@@ -53,6 +54,41 @@ PURE_TONE_DICT.update(
         for freq in (600, 1150, 2400, 7220)
     }
 )
+
+
+@genty
+class TestFunctions(TestCase):
+    @genty_dataset(
+        only_seconds=("%S", 5400, "5400.000"),
+        only_millis=("%I", 5400, "5400000"),
+        full=("%h:%m:%s.%i", 3725.365, "01:02:05.365"),
+        full_zero_hours=("%h:%m:%s.%i", 1925.075, "00:32:05.075"),
+        full_zero_minutes=("%h:%m:%s.%i", 3659.075, "01:00:59.075"),
+        full_zero_seconds=("%h:%m:%s.%i", 3720.075, "01:02:00.075"),
+        full_zero_millis=("%h:%m:%s.%i", 3725, "01:02:05.000"),
+        duplicate_directive=(
+            "%h %h:%m:%s.%i %s",
+            3725.365,
+            "01 01:02:05.365 05",
+        ),
+        no_millis=("%h:%m:%s", 3725, "01:02:05"),
+        no_seconds=("%h:%m", 3725, "01:02"),
+        no_minutes=("%h", 3725, "01"),
+        no_hours=("%m:%s.%i", 3725, "02:05.000"),
+    )
+    def test_make_duration_formatter(self, fmt, duration, expected):
+        formatter = make_duration_formatter(fmt)
+        result = formatter(duration)
+        self.assertEqual(result, expected)
+
+    @genty_dataset(
+        duplicate_only_seconds=("%S %S",),
+        duplicate_only_millis=("%I %I",),
+        unknown_directive=("%x",),
+    )
+    def test_make_duration_formatter_error(self, fmt):
+        with self.assertRaises(TimeFormatError):
+            make_duration_formatter(fmt)
 
 
 @genty

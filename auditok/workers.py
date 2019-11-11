@@ -9,9 +9,8 @@ import wave
 import subprocess
 from queue import Queue, Empty
 from .io import _guess_audio_format
-from .util import AudioDataSource
+from .util import AudioDataSource, make_duration_formatter
 from .core import split
-from . import cmdline_util
 from .exceptions import (
     EndOfProcessing,
     AudioEncodingError,
@@ -409,7 +408,7 @@ class PrintWorker(Worker):
     ):
 
         self._print_format = print_format
-        self._format_time = cmdline_util.make_duration_formatter(time_format)
+        self._format_time = make_duration_formatter(time_format)
         self._timestamp_format = timestamp_format
         self.detections = []
         Worker.__init__(self, timeout=timeout)
