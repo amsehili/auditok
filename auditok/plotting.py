@@ -59,7 +59,8 @@ def plot(
     if len(y.shape) == 1:
         y = y.reshape(1, -1)
     nb_subplots, nb_samples = y.shape
-    time_axis = _make_time_axis(nb_samples, audio_region.sampling_rate)
+    sampling_rate = audio_region.sampling_rate
+    time_axis = _make_time_axis(nb_samples, sampling_rate)
     if energy_threshold is not None:
         eth_log10 = energy_threshold * np.log(10) / 10
         amplitude_threshold = np.sqrt(np.exp(eth_log10))
@@ -68,7 +69,12 @@ def plot(
     if detections is None:
         detections = []
     else:
-        detections = list(detections)
+        # End of detection corresponds to the end of the last sample but
+        # to stay compatible with the time axis of signal plotting we want end
+        # of detection to correspond to the *start* of the that last sample.
+        detections = [
+            (start, end - (1 / sampling_rate)) for (start, end) in detections
+        ]
     if theme == "auditok":
         theme = AUDITOK_PLOT_THEME
 
@@ -140,6 +146,5 @@ def plot(
 
     if save_as is not None:
         plt.savefig(save_as, dpi=dpi)
-
     if show:
         plt.show()
