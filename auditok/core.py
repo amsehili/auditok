@@ -402,7 +402,7 @@ class AudioRegion(object):
 
             data: bytes
                 audio data
-            samling_rate: int
+            sampling_rate: int
                 sampling rate of audio data
             sample_width: int
                 number of bytes of one audio sample
