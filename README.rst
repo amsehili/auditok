@@ -20,7 +20,7 @@ A basic version of ``auditok`` will run with standard Python (>=3.4). Without in
 
 - `tqdm <https://github.com/tqdm/tqdm>`_ : show progress bar while playing audio clips.
 
-- `matplotlib <http://matplotlib.org/>`_ : plot audio signal and detections (see figures above ).
+- `matplotlib <http://matplotlib.org/>`_ : plot audio signal and detections.
 
 - `numpy <http://www.numpy.org>`_ : required by matplotlib. Also used for some math operations instead of standard python if available.
 
@@ -29,9 +29,8 @@ Installation
 
 .. code:: bash
 
-    git clone https://github.com/amsehili/auditok.git
-    cd auditok
-    python setup.py install
+    pip install git+https://github.com/amsehili/auditok
+
 
 Basic example
 -------------
