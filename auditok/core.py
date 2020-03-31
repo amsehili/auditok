@@ -250,7 +250,6 @@ def _duration_to_nb_windows(
 
     Parameters
     ----------
-
     duration : float
         a given duration in seconds or ms.
     analysis_window: float
@@ -292,7 +291,6 @@ def _make_audio_region(
 
     Parameters
     ----------
-
     frame_duration: float
         duration of analysis window in seconds
     start_frame : int
@@ -499,7 +497,7 @@ class AudioRegion(object):
         ----------
         data : bytes
             raw audio data as a bytes object
-        samling_rate : int
+        sampling_rate : int
             sampling rate of audio data
         sample_width : int
             number of bytes of one audio sample
@@ -513,6 +511,7 @@ class AudioRegion(object):
         See also
         --------
         AudioRegion.load
+
         """
         check_audio_data(data, sample_width, channels)
         self._data = data
@@ -985,7 +984,6 @@ class StreamTokenizer:
 
     Parameters
     ----------
-
     validator : callable, DataValidator (must implement `is_valid`)
         called with each data frame read from source. Should take one positional
         argument and return True or False for valid and invalid frames
