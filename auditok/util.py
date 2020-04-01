@@ -69,7 +69,7 @@ def make_duration_formatter(fmt):
         try:
             i = fmt.index("%")
             raise TimeFormatError(
-                "Unknow time format directive '{0}'".format(fmt[i : i + 2])
+                "Unknown time format directive '{0}'".format(fmt[i : i + 2])
             )
         except ValueError:
             pass
@@ -85,6 +85,53 @@ def make_duration_formatter(fmt):
 
 
 def make_channel_selector(sample_width, channels, selected=None):
+    """Create and return a callable used for audio channel selection. The
+    returned selector can be used as `selector(audio_data)` and returns data
+    that contains selected channel only.
+
+    Importantly, if `selected` is None or equals "any", `selector(audio_data)`
+    will separate and return a list of available channels:
+    `[data_channe_1, data_channe_2, ...].`
+
+    Note also that returned `selector` expects `bytes` format for input data but
+    does notnecessarily return a `bytes` object. In fact, in order to extract
+    the desired channel (or compute the average channel if `selected` = "avg"),
+    it first converts input data into a `array.array` (or `numpy.ndarray`)
+    object. After channel of interst is selected/computed, it is returned as
+    such, without any reconversion to `bytes`. This behavior is wanted for
+    efficiency purposes because returned objects can be directly used as buffers
+    of bytes. In any case, returned objects can be converted back to `bytes`
+    using `bytes(obj)`.
+
+    Exception to this is the special case where `channels` = 1 in which input
+    data is returned without any processing.
+
+
+    Parameters
+    ----------
+    sample_width : int
+        number of bytes used to encode one audio sample, should be 1, 2 or 4.
+    channels : int
+        number of channels of raw audio data that the returned selector should
+        expect.
+    selected : int or str
+        audio channel to select and return when calling `selector(raw_data)`. It
+        should be an int >= `-channels` and < `channels`. If one of "mix",
+        "avg" or "average" is passed then `selector` will return the average
+        channel of audio data. If None or "any", return a list of all available
+        channels at each call.
+
+    Returns
+    -------
+    selector : callable
+        a callable that can be used as `selector(audio_data)` and returns data
+        that contains channel of interst.
+
+    Raises
+    ------
+    ValueError if `sample_width` is not one of 1, 2 or 4, or if `selected` has
+        an unexpected value.
+    """
     fmt = signal.FORMAT.get(sample_width)
     if fmt is None:
         err_msg = "'sample_width' must be 1, 2 or 4, given: {}"
@@ -96,7 +143,7 @@ def make_channel_selector(sample_width, channels, selected=None):
         if selected < 0:
             selected += channels
         if selected < 0 or selected >= channels:
-            err_msg = "Selected channel must be >= -channels and < 'channels'"
+            err_msg = "Selected channel must be >= -channels and < channels"
             err_msg += ", given: {}"
             raise ValueError(err_msg.format(selected))
         return partial(
