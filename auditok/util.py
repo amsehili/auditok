@@ -157,10 +157,13 @@ def make_channel_selector(sample_width, channels, selected=None):
         if channels == 2:
             # when data is stereo, using audioop when possible is much faster
             return partial(
-                signal.average_channels_stereo, sample_width=sample_width
+                signal.compute_average_channel_stereo,
+                sample_width=sample_width,
             )
 
-        return partial(signal.average_channels, fmt=fmt, channels=channels)
+        return partial(
+            signal.compute_average_channel, fmt=fmt, channels=channels
+        )
 
     if selected in (None, "any"):
         return partial(signal.separate_channels, fmt=fmt, channels=channels)

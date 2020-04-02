@@ -18,7 +18,7 @@ def extract_single_channel(data, fmt, channels, selected):
     return samples[selected::channels]
 
 
-def average_channels(data, fmt, channels):
+def compute_average_channel(data, fmt, channels):
     all_channels = array(fmt, data)
     mono_channels = [
         array(fmt, all_channels[ch::channels]) for ch in range(channels)
@@ -30,7 +30,23 @@ def average_channels(data, fmt, channels):
     return avg_arr
 
 
-def average_channels_stereo(data, sample_width):
+def compute_average_channel_stereo(data, sample_width):
+    """Compute and return average channel (i.e., mix down channels) of stereo
+    data. When data is 2-channel, using standard `audioop` module is *much*
+    faster.
+
+    Parameters
+    ----------
+    data : bytes
+        2-channel audio data to mix down.
+    sample_width : int
+        size of audio samples (for 1 channel) in bytes.
+
+    Returns
+    -------
+    mono_audio : bytes
+        mixed down audio data.
+    """
     fmt = FORMAT[sample_width]
     arr = array(fmt, audioop.tomono(data, sample_width, 0.5, 0.5))
     return arr
