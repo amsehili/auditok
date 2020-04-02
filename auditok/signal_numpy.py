@@ -1,6 +1,6 @@
 import numpy as np
 from .signal import (
-    average_channels_stereo,
+    compute_average_channel_stereo,
     calculate_energy_single_channel,
     calculate_energy_multichannel,
 )
@@ -20,7 +20,7 @@ def extract_single_channel(data, fmt, channels, selected):
     return np.asanyarray(samples[selected::channels], order="C")
 
 
-def average_channels(data, fmt, channels):
+def compute_average_channel(data, fmt, channels):
     array = np.frombuffer(data, dtype=fmt).astype(np.float64)
     return array.reshape(-1, channels).mean(axis=1).round().astype(fmt)
 
