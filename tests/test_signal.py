@@ -30,11 +30,11 @@ class TestSignal(TestCase):
         else:
             channels = 1
             expected = array_(signal_.FORMAT[sample_width], expected)
-        resutl = signal_.to_array(self.data, sample_width, channels)
-        resutl_numpy = signal_numpy.to_array(self.data, sample_width, channels)
-        self.assertEqual(resutl, expected)
-        self.assertTrue((resutl_numpy == np.asarray(expected)).all())
-        self.assertEqual(resutl_numpy.dtype, np.float64)
+        result = signal_.to_array(self.data, sample_width, channels)
+        result_numpy = signal_numpy.to_array(self.data, sample_width, channels)
+        self.assertEqual(result, expected)
+        self.assertTrue((result_numpy == np.asarray(expected)).all())
+        self.assertEqual(result_numpy.dtype, np.float64)
 
     @genty_dataset(
         int8_1channel_select_0=(
@@ -70,17 +70,17 @@ class TestSignal(TestCase):
         int32_3channel_select_2=("i", 3, 2, [1128415545]),
     )
     def test_extract_single_channel(self, fmt, channels, selected, expected):
-        resutl = signal_.extract_single_channel(
+        result = signal_.extract_single_channel(
             self.data, fmt, channels, selected
         )
         expected = array_(fmt, expected)
         expected_numpy_fmt = self.numpy_fmt[fmt]
-        self.assertEqual(resutl, expected)
-        resutl_numpy = signal_numpy.extract_single_channel(
+        self.assertEqual(result, expected)
+        result_numpy = signal_numpy.extract_single_channel(
             self.data, self.numpy_fmt[fmt], channels, selected
         )
-        self.assertTrue(all(resutl_numpy == expected))
-        self.assertEqual(resutl_numpy.dtype, expected_numpy_fmt)
+        self.assertTrue(all(result_numpy == expected))
+        self.assertEqual(result_numpy.dtype, expected_numpy_fmt)
 
     @genty_dataset(
         int8_2channel=("b", 2, [48, 50, 52, 54, 61, 66]),
@@ -90,15 +90,25 @@ class TestSignal(TestCase):
         int32_3channel=("i", 3, [971214132]),
     )
     def test_average_channels(self, fmt, channels, expected):
-        resutl = signal_.average_channels(self.data, fmt, channels)
+        result = signal_.average_channels(self.data, fmt, channels)
         expected = array_(fmt, expected)
         expected_numpy_fmt = self.numpy_fmt[fmt]
-        self.assertEqual(resutl, expected)
-        resutl_numpy = signal_numpy.average_channels(
+        self.assertEqual(result, expected)
+        result_numpy = signal_numpy.average_channels(
             self.data, self.numpy_fmt[fmt], channels
         )
-        self.assertTrue(all(resutl_numpy == expected))
-        self.assertEqual(resutl_numpy.dtype, expected_numpy_fmt)
+        self.assertTrue(all(result_numpy == expected))
+        self.assertEqual(result_numpy.dtype, expected_numpy_fmt)
+
+    @genty_dataset(
+        int8_2channel=(1, [48, 50, 52, 54, 61, 66]),
+        int16_2channel=(2, [12849, 13877, 16957]),
+    )
+    def test_average_channels_stereo(self, sample_width, expected):
+        result = signal_.average_channels_stereo(self.data, sample_width)
+        fmt = signal_.FORMAT[sample_width]
+        expected = array_(fmt, expected)
+        self.assertEqual(result, expected)
 
     @genty_dataset(
         int8_1channel=(
@@ -124,16 +134,16 @@ class TestSignal(TestCase):
         int32_3channel=("i", 3, [[858927408], [926299444], [1128415545]]),
     )
     def test_separate_channels(self, fmt, channels, expected):
-        resutl = signal_.separate_channels(self.data, fmt, channels)
+        result = signal_.separate_channels(self.data, fmt, channels)
         expected = [array_(fmt, exp) for exp in expected]
         expected_numpy_fmt = self.numpy_fmt[fmt]
-        self.assertEqual(resutl, expected)
+        self.assertEqual(result, expected)
 
-        resutl_numpy = signal_numpy.separate_channels(
+        result_numpy = signal_numpy.separate_channels(
             self.data, self.numpy_fmt[fmt], channels
         )
-        self.assertTrue((resutl_numpy == expected).all())
-        self.assertEqual(resutl_numpy.dtype, expected_numpy_fmt)
+        self.assertTrue((result_numpy == expected).all())
+        self.assertEqual(result_numpy.dtype, expected_numpy_fmt)
 
     @genty_dataset(
         simple=([300, 320, 400, 600], 2, 52.50624901923348),
