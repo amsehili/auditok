@@ -89,12 +89,12 @@ class TestSignal(TestCase):
         int16_2channel=("h", 2, [12849, 13877, 16958]),
         int32_3channel=("i", 3, [971214132]),
     )
-    def test_average_channels(self, fmt, channels, expected):
-        result = signal_.average_channels(self.data, fmt, channels)
+    def test_compute_average_channel(self, fmt, channels, expected):
+        result = signal_.compute_average_channel(self.data, fmt, channels)
         expected = array_(fmt, expected)
         expected_numpy_fmt = self.numpy_fmt[fmt]
         self.assertEqual(result, expected)
-        result_numpy = signal_numpy.average_channels(
+        result_numpy = signal_numpy.compute_average_channel(
             self.data, self.numpy_fmt[fmt], channels
         )
         self.assertTrue(all(result_numpy == expected))
@@ -104,8 +104,10 @@ class TestSignal(TestCase):
         int8_2channel=(1, [48, 50, 52, 54, 61, 66]),
         int16_2channel=(2, [12849, 13877, 16957]),
     )
-    def test_average_channels_stereo(self, sample_width, expected):
-        result = signal_.average_channels_stereo(self.data, sample_width)
+    def test_compute_average_channel_stereo(self, sample_width, expected):
+        result = signal_.compute_average_channel_stereo(
+            self.data, sample_width
+        )
         fmt = signal_.FORMAT[sample_width]
         expected = array_(fmt, expected)
         self.assertEqual(result, expected)
