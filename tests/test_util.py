@@ -191,10 +191,57 @@ class TestFunctions(TestCase):
         else:
             self.assertTrue(all(result_numpy == expected))
 
-    # def test_make_channel_selector_any(
-    #     self, sample_width, channels, selected, expected
-    # ):
-    #     pass
+    @genty_dataset(
+        int8_1channel=(
+            1,
+            1,
+            "any",
+            [[48, 49, 50, 51, 52, 53, 54, 55, 57, 65, 66, 67]],
+        ),
+        int8_2channel=(
+            1,
+            2,
+            None,
+            [[48, 50, 52, 54, 57, 66], [49, 51, 53, 55, 65, 67]],
+        ),
+        int8_4channel=(
+            1,
+            4,
+            "any",
+            [[48, 52, 57], [49, 53, 65], [50, 54, 66], [51, 55, 67]],
+        ),
+        int16_2channel=(
+            2,
+            2,
+            None,
+            [[12592, 13620, 16697], [13106, 14134, 17218]],
+        ),
+        int32_3channel=(4, 3, "any", [[858927408], [926299444], [1128415545]]),
+    )
+    def test_make_channel_selector_any(
+        self, sample_width, channels, selected, expected
+    ):
+
+        # force using signal functions with standard python implementation
+        with patch("auditok.util.signal", signal_):
+            selector = make_channel_selector(sample_width, channels, selected)
+            result = selector(self.data)
+
+        fmt = signal_.FORMAT[sample_width]
+        expected = [array_(fmt, exp) for exp in expected]
+        if channels == 1:
+            expected = bytes(expected[0])
+        self.assertEqual(result, expected)
+
+        # Use signal functions with numpy implementation
+        with patch("auditok.util.signal", signal_numpy):
+            selector = make_channel_selector(sample_width, channels, selected)
+            result_numpy = selector(self.data)
+
+        if channels == 1:
+            self.assertEqual(result_numpy, expected)
+        else:
+            self.assertTrue((result_numpy == expected).all())
 
 
 @genty
