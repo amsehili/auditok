@@ -146,14 +146,55 @@ class TestFunctions(TestCase):
         # Use signal functions with numpy implementation
         with patch("auditok.util.signal", signal_numpy):
             selector = make_channel_selector(sample_width, channels, selected)
-            resutl_numpy = selector(self.data)
+            result_numpy = selector(self.data)
 
         expected = array_(fmt, expected)
         if channels == 1:
             expected = bytes(expected)
-            self.assertEqual(resutl_numpy, expected)
+            self.assertEqual(result_numpy, expected)
         else:
-            self.assertTrue(all(resutl_numpy == expected))
+            self.assertTrue(all(result_numpy == expected))
+
+    @genty_dataset(
+        int8_2channel=(1, 2, "avg", [48, 50, 52, 54, 61, 66]),
+        int8_4channel=(1, 4, "average", [50, 54, 64]),
+        int16_1channel=(
+            2,
+            1,
+            "mix",
+            [12592, 13106, 13620, 14134, 16697, 17218],
+        ),
+        int16_2channel=(2, 2, "avg", [12849, 13877, 16957]),
+        int32_3channel=(4, 3, "average", [971214132]),
+    )
+    def test_make_channel_selector_average(
+        self, sample_width, channels, selected, expected
+    ):
+        # force using signal functions with standard python implementation
+        with patch("auditok.util.signal", signal_):
+            selector = make_channel_selector(sample_width, channels, selected)
+            result = selector(self.data)
+
+        fmt = signal_.FORMAT[sample_width]
+        expected = array_(fmt, expected)
+        if channels == 1:
+            expected = bytes(expected)
+        self.assertEqual(result, expected)
+
+        # Use signal functions with numpy implementation
+        with patch("auditok.util.signal", signal_numpy):
+            selector = make_channel_selector(sample_width, channels, selected)
+            result_numpy = selector(self.data)
+
+        if channels in (1, 2):
+            self.assertEqual(result_numpy, expected)
+        else:
+            self.assertTrue(all(result_numpy == expected))
+
+    # def test_make_channel_selector_any(
+    #     self, sample_width, channels, selected, expected
+    # ):
+    #     pass
 
 
 @genty
