@@ -224,7 +224,7 @@ class AudioEnergyValidator(DataValidator):
 
 class StringDataSource(DataSource):
     """
-    A class that represent a :class:`DataSource` as a string buffer.
+    Class that represent a :class:`DataSource` as a string buffer.
     Each call to :func:`DataSource.read` returns on character and moves one
     step forward. If the end of the buffer is reached, :func:`read` returns
     None.
@@ -747,7 +747,7 @@ class ADSFactory:
         return ads
 
 
-class _AudioSourceProxy:
+class _AudioReadingProxy:
     def __init__(self, audio_source):
 
         self._audio_source = audio_source
@@ -778,7 +778,7 @@ class _AudioSourceProxy:
 
     @property
     def data(self):
-        err_msg = "AudioDataSource is not a recorder, no recorded data can "
+        err_msg = "This AudioReader is not a recorder, no recorded data can "
         err_msg += "be retrieved"
         raise AttributeError(err_msg)
 
@@ -786,10 +786,10 @@ class _AudioSourceProxy:
         return getattr(self._audio_source, name)
 
 
-class _Recorder(_AudioSourceProxy):
+class _Recorder(_AudioReadingProxy):
     """
-    A class for AudioSource objects that can record all audio data they read,
-    with a rewind facility.
+    Class for `AudioReader` objects that can record all data they read. Useful
+    when reading data from microphone.
     """
 
     def __init__(self, audio_source):
@@ -805,8 +805,8 @@ class _Recorder(_AudioSourceProxy):
     @property
     def data(self):
         if self._data is None:
-            err_msg = "Unrewinded recorder. Call rewind before accessing "
-            err_msg += "recorded data"
+            err_msg = "Unrewinded recorder. `rewind` should be called before "
+            err_msg += "accessing recorded data"
             raise RuntimeError(err_msg)
         return self._data
 
@@ -834,9 +834,9 @@ class _Recorder(_AudioSourceProxy):
         return block
 
 
-class _Limiter(_AudioSourceProxy):
+class _Limiter(_AudioReadingProxy):
     """
-    A class for AudioDataSource objects that can read a fixed amount of data.
+    Class for `AudioReader` objects that can read a fixed amount of data.
     This can be useful when reading data from the microphone or from large
     audio files.
     """
@@ -873,7 +873,11 @@ class _Limiter(_AudioSourceProxy):
         self._read_samples = 0
 
 
-class _FixedSizeAudioReader(_AudioSourceProxy):
+class _FixedSizeAudioReader(_AudioReadingProxy):
+    """
+    Class to read fixed-size audio windows from source.
+    """
+
     def __init__(self, audio_source, block_dur):
         super(_FixedSizeAudioReader, self).__init__(audio_source)
 
@@ -908,8 +912,8 @@ class _FixedSizeAudioReader(_AudioSourceProxy):
 
 class _OverlapAudioReader(_FixedSizeAudioReader):
     """
-    A class for AudioDataSource objects that can read and return overlapping
-    audio frames
+    Class for `AudioReader` objects that can read and return overlapping audio
+    windows.
     """
 
     def __init__(self, audio_source, block_dur, hop_dur):
@@ -971,8 +975,80 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
 
 class AudioReader(DataSource):
     """
-    Base class for AudioReader objects.
-    It inherits from DataSource and encapsulates an AudioSource object.
+    Class to read fixed-size chunks of audio data from a source. A source can
+    be a file on disk, standard input (with `input` = "-") or microphone. This
+    is normally used by tokenization algorithms that expect source objects with
+    a `read` function that returns a windows of data of the same size at each
+    call expect when remaining data does not make up a full window.
+
+    Objects of this class can be set up to return audio windows with a given
+    overlap and to record the whole stream for later access. They can also have
+    a limit for the maximum amount of data to read.
+
+    Parameters
+    ----------
+    input : str, bytes, AudioSource, AudioReader, AudioRegion or None
+        input audio data. If str, it should be a path to an existing audio file.
+        "-" is interpreted as standard input. If bytes, input is considered as
+        raw audio data. If None, read audio from microphone.
+        Every object that is not an ´AudioReader´ will be transformed into an
+        `AudioReader` before processing. If it is an `str` that refers to a raw
+        audio file, `bytes` or None, audio parameters should be provided using
+        kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or their
+        alias).
+    block_dur: float, default: 0.01
+        length in seconds of audio windows to return at each `read` call.
+    hop_dur: float, default: None
+        length in seconds of data amount to skip from previous window. If
+        defined, it is used to compute the temporal overlap between previous and
+        current window (nameply `overlap = block_dur - hop_dur`). Default, None,
+        means that consecutive windows do not overlap.
+    record: bool, default: False
+        whether to record read audio data for later access. If True, audio data
+        can be retrieved by first calling `rewind()`, then using the `data`
+        property. Note that once `rewind()` is called, no new data will be read
+        from source (subsequent `read()` call will read data from cache) and
+        that there's no need to call `rewind()` again to access `data` property.
+    max_read: float, default: None
+        maximum amount of audio data to read in seconds. Default is None meaning
+        that data will be read until end of stream is reached or, when reading
+        from microphone a Ctrl-C is sent.
+
+    When `input` is None, of type bytes or a raw audio files some of the
+    follwing kwargs are mandatory.
+
+    Kwargs
+    ------
+    audio_format, fmt : str
+        type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only be
+        used if ´input´ is a string path to an audio file. If not given, audio
+        type will be guessed from file name extension or from file header.
+    sampling_rate, sr : int
+        sampling rate of audio data. Required if `input` is a raw audio file, is
+        a bytes object or None (i.e., read from microphone).
+    sample_width, sw : int
+        number of bytes used to encode one audio sample, typically 1, 2 or 4.
+        Required for raw data, see `sampling_rate`.
+    channels, ch : int
+        number of channels of audio data. Required for raw data, see
+        `sampling_rate`.
+    use_channel, uc : {None, "mix"} or int
+        which channel to use for split if `input` has multiple audio channels.
+        Regardless of which channel is used for splitting, returned audio events
+        contain data from *all* channels, just as `input`.
+        The following values are accepted:
+            - None (alias "any"): accept audio activity from any channel, even
+            if other channels are silent. This is the default behavior.
+            - "mix" ("avg" or "average"): mix down all channels (i.e. compute
+            average channel) and split the resulting channel.
+            - int (0 <=, > `channels`): use one channel, specified by integer
+            id, for split.
+    large_file : bool, default: False
+        If True, AND if `input` is a path to a *wav* of a *raw* audio file
+        (and only these two formats) then audio data is lazily loaded to memory
+        (i.e., one analysis window a time). Otherwise the whole file is loaded
+        to memory before split. Set to True if the size of the file is larger
+        than available memory.
     """
 
     def __init__(
