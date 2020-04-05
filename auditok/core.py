@@ -43,8 +43,8 @@ def split(
     ----------
     input : str, bytes, AudioSource, AudioReader, AudioRegion or None
         input audio data. If str, it should be a path to an existing audio file.
-        If bytes, input is considered as raw audio data. If None, read audio
-        from microphone.
+        "-" is interpreted as standard input. If bytes, input is considered as
+        raw audio data. If None, read audio from microphone.
         Every object that is not an ´AudioReader´ will be transformed into an
         `AudioReader` before processing. If it is an `str` that refers to a raw
         audio file, `bytes` or None, audio parameters should be provided using
@@ -57,7 +57,7 @@ def split(
     min_dur : float, default: 0.2
         minimun duration in seconds of a detected audio event. By using large
         values for `min_dur`, very short audio events (e.g., very short 1-word
-        utterances like 'yes' or 'no') can be misdetected. Using very short
+        utterances like 'yes' or 'no') can be mis detected. Using very short
         values might result in a high number of short, unuseful audio events.
     max_dur : float, default: 5
         maximum duration in seconds of a detected audio event. If an audio event
@@ -77,7 +77,7 @@ def split(
         detection, it
     strict_min_dur : bool, default: False
         strict minimum duration. Do not accept an audio event if it is shorter
-        than ´min_dur´ even if it is continguous to the latest valid event. This
+        than ´min_dur´ even if it is contiguous to the latest valid event. This
         happens if the the latest detected event had reached ´max_dur´.
 
     Kwargs
@@ -90,13 +90,13 @@ def split(
         used if ´input´ is a string path to an audio file. If not given, audio
         type will be guessed from file name extension or from file header.
     sampling_rate, sr : int
-        sampling rate of audio data. Reauired if `input` is a raw audio file, is
+        sampling rate of audio data. Required if `input` is a raw audio file, is
         a bytes object or None (i.e., read from microphone).
     sample_width, sw : int
         number of bytes used to encode one audio sample, typically 1, 2 or 4.
         Required for raw data, see `sampling_rate`.
     channels, ch : int
-        nuumber of channels of audio data. Required for raw data, see
+        number of channels of audio data. Required for raw data, see
         `sampling_rate`.
     use_channel, uc : {None, "mix"} or int
         which channel to use for split if `input` has multiple audio channels.
@@ -119,16 +119,16 @@ def split(
         maximum data to read from source in seconds.
     validator, val : callable, DataValidator
         custom data validator. If ´None´ (default), an `AudioEnergyValidor` is
-        used with the given energy threshold. Can be a callable or an instnace
+        used with the given energy threshold. Can be a callable or an instance
         of `DataValidator` that implements `is_valid`. In either case, it'll be
         called with with a window of audio data as the first parameter.
     energy_threshold, eth : float, default: 50
-        energy threshlod for audio activity detection. Audio regions that have
+        energy threshold for audio activity detection. Audio regions that have
         enough windows of with a signal energy equal to or above this threshold
-        are considered valid audio events. Here we are referring to this quntity
-        as enegry of this signal but to be more accurate, it is the log energy
-        of the signal computed as: 10 . log10 dot(x, x) / |x|
-        If `validator` is given, this argumemt is ignored.
+        are considered valid audio events. Here we are referring to this amount
+        as the energy of the signal but to be more accurate, it is the log
+        energy of computed as: 10 . log10 dot(x, x) / |x|
+        If `validator` is given, this argument is ignored.
     """
     if min_dur <= 0:
         raise ValueError("'min_dur' ({}) must be > 0".format(min_dur))
@@ -687,7 +687,7 @@ class AudioRegion(object):
             name as ´{meta.start}´ and ´{meta.end}´. See examples using
             placeholders with formatting.
 
-        audio_format : str
+        audio_format : str, default: None
             format used to save audio data. If None (default), format is guessed
             from file name's extension. If file name has no extension, audio
             data is saved as a raw (headerless) audio file.
@@ -702,13 +702,11 @@ class AudioRegion(object):
         -------
         file: str
             name of output file with replaced placehoders.
-
         Raises
             IOError if ´file´ exists and ´exists_ok´ is False.
 
         Example
         -------
-
         .. code:: python
             region = AudioRegion(b'\0' * 2 * 24000,
                                     sampling_rate=16000,
@@ -1101,7 +1099,7 @@ class StreamTokenizer:
     bigger). But if `max_continuous_silence` is reached before
     `max_length`, the delivered token will not be considered as truncated
     but a result of *normal* end of detection (i.e. no more valid data).
-    In that case the tariling silence can be removed if you use the
+    In that case the trailing silence can be removed if you use the
     `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
 
     :Example:
