@@ -86,7 +86,7 @@ def _guess_audio_format(fmt, filename):
             fmt = extension
         else:
             return None
-    fmt == fmt.lower()
+    fmt = fmt.lower()
     if fmt == "wave":
         fmt = "wav"
     return fmt
