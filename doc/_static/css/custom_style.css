@@ -1,0 +1,29 @@
+div.wy-side-nav-search .version {
+    color: #DDDDDD;
+    font-weight: bold;
+}
+
+nav.wy-nav-top {
+    background: #343131;
+}
+
+div.wy-nav-content {
+    max-width: 980px;
+}
+
+span.caption-text {
+    color: #45ea77;
+    font-size: 1.1em;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.toctree-wrapper span.caption-text  {
+    color: #e4188b;
+    font-size: 1.1em;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+h1, h2 {
+
+    font-family: Arial, Helvetica, sans-serif;
+}
