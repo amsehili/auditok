@@ -1,7 +1,7 @@
 import sys
 import logging
 from collections import namedtuple
-from auditok import workers
+from . import workers
 from .util import AudioDataSource
 from .io import player_for
 
