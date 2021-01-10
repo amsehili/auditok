@@ -1,5 +1,5 @@
-auditok.util
-------------
+Util
+----
 
 .. automodule:: auditok.util
    :members:

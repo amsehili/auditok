@@ -1,5 +1,6 @@
-auditok.dataset
----------------
+
+Dataset
+-------
 
 .. automodule:: auditok.dataset
    :members:
