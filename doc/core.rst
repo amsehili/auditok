@@ -1,5 +1,5 @@
-auditok.core
-------------
+Core
+----
 
 .. automodule:: auditok.core
    :members:
