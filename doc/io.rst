@@ -1,5 +1,5 @@
-auditok.io
-----------
+Low-level IO
+------------
 
 .. automodule:: auditok.io
    :members:
