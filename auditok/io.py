@@ -701,9 +701,9 @@ def get_audio_source(input=None, **kwargs):
     Parameters
     ----------
     input : str, bytes, "-" or None (default)
-        source to read audio data from. If str, it should be a path to a valid
-        audio file. If bytes, it is interpreted as raw audio data. If it is "-",
-        raw data will be read from stdin. If None, read audio data from built-in
+        source to read audio data from. If `str`, it should be a path to a valid
+        audio file. If `bytes`, it is used as raw audio data. If it is "-",
+        raw data will be read from stdin. If None, read audio data from the
         microphone using PyAudio.
     kwargs
         audio parameters used to build the `AudioSource` object. Depending on
@@ -868,8 +868,11 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
     Note that the current implementation supports only wave and raw formats for
     lazy audio loading.
 
-    If an audio format other than `raw` is used then sampling rate, sample width
-    and channels are required.
+    If an audio format is `raw`, the following keyword arguments are required:
+
+        - `sampling_rate`, `sr`: int,  sampling rate of audio data.
+        - `sample_width`, `sw`: int, size in bytes of one audio sample.
+        - `channels`, `ch`: int, number of channels of audio data.
 
     See also
     --------
@@ -980,11 +983,11 @@ def to_file(data, file, audio_format=None, **kwargs):
         audio data to be written. Can be a `bytes`, `bytearray`,
         `memoryview`, `array` or `numpy.ndarray` object.
     file : str
-        path to output audio file
+        path to output audio file.
     audio_format : str
         audio format used to save data (e.g. raw, webm, wav, ogg)
     kwargs: dict
-        If an audio format other than raw is used, the following keyword
+        If an audio format other than `raw` is used, the following keyword
         arguments are required:
 
         - `sampling_rate`, `sr`: int,  sampling rate of audio data.
