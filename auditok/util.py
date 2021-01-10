@@ -1,19 +1,16 @@
 """
-Class summary
-=============
-
 .. autosummary::
+    :toctree: generated/
 
-        AudioEnergyValidator
-        AudioReader
-        Recorder
+    AudioEnergyValidator
+    AudioReader
+    Recorder
+    make_duration_formatter
+    make_channel_selector
 """
-from __future__ import division
-import sys
 from abc import ABC, abstractmethod
 import warnings
 from functools import partial
-from audioop import tomono
 from .io import (
     AudioIOError,
     AudioSource,
@@ -36,6 +33,7 @@ except ImportError:
 
 __all__ = [
     "make_duration_formatter",
+    "make_channel_selector",
     "DataSource",
     "DataValidator",
     "StringDataSource",
@@ -49,7 +47,64 @@ __all__ = [
 
 def make_duration_formatter(fmt):
     """
-    Accepted format directives: %i %s %m %h
+    Make and return a function used to format durations in seconds. Accepted
+    format directives are:
+
+    - ``%S`` : absolute number of seconds with 3 decimals. This direction should
+      be used alone.
+    - ``%i`` : milliseconds
+    - ``%s`` : seconds
+    - ``%m`` : minutes
+    - ``%h`` : hours
+
+    These last 4 directives should all be specified. They can be placed anywhere
+    in the input string.
+
+    Parameters
+    ----------
+    fmt : str
+        duration format.
+
+    Returns
+    -------
+    formatter : callable
+        a function that takes a duration in seconds (float) and returns a string
+        that corresponds to that duration.
+
+    Raises
+    ------
+    TimeFormatError
+        if the format contains an unknown directive.
+
+    Examples
+    --------
+
+    Using ``%S``:
+
+    .. code:: python
+
+        formatter = make_duration_formatter("%S")
+        formatter(123.589)
+        '123.589'
+        formatter(123)
+        '123.000'
+
+    Using the other directives:
+
+    .. code:: python
+
+        formatter = make_duration_formatter("%h:%m:%s.%i")
+        formatter(3600+120+3.25)
+        '01:02:03.250'
+
+        formatter = make_duration_formatter("%h hrs, %m min, %s sec and %i ms")
+        formatter(3600+120+3.25)
+        '01 hrs, 02 min, 03 sec and 250 ms'
+
+        # omitting one of the 4 directives might result in a wrong duration
+        formatter = make_duration_formatter("%m min, %s sec and %i ms")
+        formatter(3600+120+3.25)
+        '02 min, 03 sec and 250 ms'
     """
     if fmt == "%S":
 
@@ -114,7 +169,7 @@ def make_channel_selector(sample_width, channels, selected=None):
     channels : int
         number of channels of raw audio data that the returned selector should
         expect.
-    selected : int or str
+    selected : int or str, default: None
         audio channel to select and return when calling `selector(raw_data)`. It
         should be an int >= `-channels` and < `channels`. If one of "mix",
         "avg" or "average" is passed then `selector` will return the average
@@ -129,8 +184,9 @@ def make_channel_selector(sample_width, channels, selected=None):
 
     Raises
     ------
-    ValueError if `sample_width` is not one of 1, 2 or 4, or if `selected` has
-        an unexpected value.
+    ValueError
+        if `sample_width` is not one of 1, 2 or 4, or if `selected` has an
+        unexpected value.
     """
     fmt = signal.FORMAT.get(sample_width)
     if fmt is None:
@@ -176,15 +232,14 @@ def make_channel_selector(sample_width, channels, selected=None):
 
 class DataSource(ABC):
     """
-    Base class for objects passed to
-    :func:`auditok.core.StreamTokenizer.tokenize`.
+    Base class for objects passed to :func:`StreamTokenizer.tokenize`.
     Subclasses should implement a :func:`DataSource.read` method.
     """
 
     @abstractmethod
     def read(self):
         """
-        Read a piece of data read from this source.
+        Read a block (i.e., window) of data read from this source.
         If no more data is available, return None.
         """
 
@@ -194,7 +249,7 @@ class DataValidator(ABC):
     Base class for a validator object used by :class:`.core.StreamTokenizer`
     to check if read data is valid.
     Subclasses should implement :func:`is_valid` method.
-   """
+    """
 
     @abstractmethod
     def is_valid(self, data):
@@ -204,6 +259,40 @@ class DataValidator(ABC):
 
 
 class AudioEnergyValidator(DataValidator):
+    """
+    A validator based on audio signal energy. For an input window of `N` audio
+    samples (see :func:`AudioEnergyValidator.is_valid`), the energy is computed
+    as:
+
+    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2)) # noqa: W605
+
+    where `a_i` is the i-th audio sample.
+
+    Parameters
+    ----------
+    energy_threshold : float
+        minimum energy that audio window should have to be valid.
+    sample_width : int
+        size in bytes of one audio sample.
+    channels : int
+        number of channels of audio data.
+    use_channel : {None, "any", "mix", "avg", "average"} or int
+        channel to use for energy computation. The following values are
+        accepted:
+
+        - None (alias "any") : compute energy for each of the channels and return
+          the maximum value.
+        - "mix" (alias "avg" or "average") : compute the average channel then
+          compute its energy.
+        - int (>= 0 , < `channels`) : compute the energy of the specified channel
+          and ignore the other ones.
+
+    Returns
+    -------
+    energy : float
+        energy of the audio window.
+    """
+
     def __init__(
         self, energy_threshold, sample_width, channels, use_channel=None
     ):
@@ -218,6 +307,18 @@ class AudioEnergyValidator(DataValidator):
         self._energy_threshold = energy_threshold
 
     def is_valid(self, data):
+        """
+
+        Parameters
+        ----------
+        data : bytes-like
+            array of raw audio data
+
+        Returns
+        -------
+        bool
+            True if the energy of audio data is >= threshold, False otherwise.
+        """
         log_energy = self._energy_fn(self._selector(data), self._sample_width)
         return log_energy >= self._energy_threshold
 
@@ -229,10 +330,10 @@ class StringDataSource(DataSource):
     step forward. If the end of the buffer is reached, :func:`read` returns
     None.
 
-    :Parameters:
-
-        `data` :
-            a str object.
+    Parameters
+    ----------
+    data : str
+        a string object used as data.
 
     """
 
@@ -246,9 +347,10 @@ class StringDataSource(DataSource):
         """
         Read one character from buffer.
 
-        :Returns:
-
-            Current character or None if end of buffer is reached
+        Returns
+        -------
+        char : str
+            current character or None if end of buffer is reached.
         """
 
         if self._current >= len(self._data):
@@ -260,10 +362,10 @@ class StringDataSource(DataSource):
         """
         Set a new data buffer.
 
-        :Parameters:
-
-            `data` : a str object
-                New data buffer.
+        Parameters
+        ----------
+        data : str
+            new data buffer.
         """
 
         if not isinstance(data, str):
@@ -274,21 +376,25 @@ class StringDataSource(DataSource):
 
 class ADSFactory:
     """
+    .. deprecated:: 2.0.0
+          `ADSFactory` will be removed in auditok 2.0.1, use instances of
+          :class:`AudioReader` instead.
+
     Factory class that makes it easy to create an
-    :class:`ADSFactory.AudioDataSource` object that implements
+    :class:`AudioDataSource` object that implements
     :class:`DataSource` and can therefore be passed to
     :func:`auditok.core.StreamTokenizer.tokenize`.
 
     Whether you read audio data from a file, the microphone or a memory buffer,
     this factory instantiates and returns the right
-    :class:`ADSFactory.AudioDataSource` object.
+    :class:`AudioDataSource` object.
 
-    There are many other features you want your
-    :class:`ADSFactory.AudioDataSource` object to have, such as: memorize all
-    read audio data so that you can rewind and reuse it (especially useful when
-    reading data from the microphone), read a fixed amount of data (also useful
-    when reading from the microphone), read overlapping audio frames
-    (often needed when dosing a spectral analysis of data).
+    There are many other features you want a :class:`AudioDataSource` object to
+    have, such as: memorize all read audio data so that you can rewind and reuse
+    it (especially useful when reading data from the microphone), read a fixed
+    amount of data (also useful when reading from the microphone), read
+    overlapping audio frames (often needed when dosing a spectral analysis of
+    data).
 
     :func:`ADSFactory.ads` automatically creates and return object with the
     desired behavior according to the supplied keyword arguments.
@@ -440,57 +546,40 @@ class ADSFactory:
     @staticmethod
     def ads(**kwargs):
         """
-        Create an return an :class:`ADSFactory.AudioDataSource`. The type and
+        Create an return an :class:`AudioDataSource`. The type and
         behavior of the object is the result
-        of the supplied parameters.
+        of the supplied parameters. Called without any parameters, the class
+        will read audio data from the available built-in microphone with the
+        default parameters.
 
-        :Parameters:
-
-        *No parameters* :
-           read audio data from the available built-in microphone with the
-           default parameters. The returned :class:`ADSFactory.AudioDataSource`
-           encapsulate an :class:`io.PyAudioSource` object and hence it accepts
-           the next four parameters are passed to use instead of their default
-           values.
-
-        `sampling_rate`, `sr` : *(int)*
-            number of samples per second. Default = 16000.
-
-        `sample_width`, `sw` : *(int)*
-            number of bytes per sample (must be in (1, 2, 4)). Default = 2
-
-        `channels`, `ch` : *(int)*
-            number of audio channels. Default = 1 (only this value is currently
-            accepted)
-
-        `frames_per_buffer`, `fpb` : *(int)*
-            number of samples of PyAudio buffer. Default = 1024.
-
-        `audio_source`, `asrc` : an `AudioSource` object
-            read data from this audio source
-
-        `filename`, `fn` : *(string)*
-            build an `io.AudioSource` object using this file (currently only
-            wave format is supported)
-
-        `data_buffer`, `db` : *(string)*
+        Parameters
+        ----------
+        sampling_rate, sr : int, default: 16000
+            number of audio samples per second of input audio stream.
+        sample_width, sw : int, default: 2
+            number of bytes per sample, must be one of 1, 2 or 4
+        channels, ch : int, default: 1
+            number of audio channels, only a value of 1 is currently accepted.
+        frames_per_buffer, fpb : int, default: 1024
+            number of samples of PyAudio buffer.
+        audio_source, asrc : `AudioSource`
+            `AudioSource` to read data from
+        filename, fn : str
+            create an `AudioSource` object using this file
+        data_buffer, db : str
             build an `io.BufferAudioSource` using data in `data_buffer`.
             If this keyword is used,
             `sampling_rate`, `sample_width` and `channels` are passed to
             `io.BufferAudioSource` constructor and used instead of default
             values.
-
-        `max_time`, `mt` : *(float)*
+        max_time, mt : float
             maximum time (in seconds) to read. Default behavior: read until
             there is no more data
             available.
-
-        `record`, `rec` : *(bool)*
+        record, rec : bool, default = False
             save all read data in cache. Provide a navigable object which has a
             `rewind` method.
-            Default = False.
-
-        `block_dur`, `bd` : *(float)*
+        block_dur, bd : float
             processing block duration in seconds. This represents the quantity
             of audio data to return each time the :func:`read` method is
             invoked. If `block_dur` is 0.025 (i.e. 25 ms) and the sampling rate
@@ -499,8 +588,7 @@ class ADSFactory:
             be looked for (and used if available) before `block_size`. If
             neither parameter is given, `block_dur` will be set to 0.01 second
             (i.e. 10 ms)
-
-        `hop_dur`, `hd` : *(float)*
+        hop_dur, hd : float
             quantity of data to skip from current processing window. if
             `hop_dur` is supplied then there will be an overlap of `block_dur`
             - `hop_dur` between two adjacent blocks. This parameter will be
@@ -508,173 +596,25 @@ class ADSFactory:
             If neither parameter is given, `hop_dur` will be set to `block_dur`
             which means that there will be no overlap between two consecutively
             read blocks.
-
-        `block_size`, `bs` : *(int)*
+        block_size, bs : int
             number of samples to read each time the `read` method is called.
             Default: a block size that represents a window of 10ms, so for a
             sampling rate of 16000, the default `block_size` is 160 samples,
             for a rate of 44100, `block_size` = 441 samples, etc.
-
-        `hop_size`, `hs` : *(int)*
+        hop_size, hs : int
             determines the number of overlapping samples between two adjacent
             read windows. For a `hop_size` of value *N*, the overlap is
             `block_size` - *N*. Default : `hop_size` = `block_size`, means that
             there is no overlap.
 
-        :Returns:
-
-        An AudioDataSource object that has the desired features.
-
-        :Exampels:
-
-        1. **Create an AudioDataSource that reads data from the microphone
-        (requires Pyaudio) with default audio parameters:**
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            ads = ADSFactory.ads()
-            ads.get_sampling_rate()
-            16000
-            ads.get_sample_width()
-            2
-            ads.get_channels()
-            1
-
-        2. **Create an AudioDataSource that reads data from the microphone with
-        a sampling rate of 48KHz:**
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            ads = ADSFactory.ads(sr=48000)
-            ads.get_sampling_rate()
-            48000
-
-        3. **Create an AudioDataSource that reads data from a wave file:**
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            from auditok import dataset
-            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
-            ads = ADSFactory.ads(fn=file)
-            ads.get_sampling_rate()
-            44100
-            ads.get_sample_width()
-            2
-            ads.get_channels()
-            1
-
-        4. **Define size of read blocks as 20 ms**
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            from auditok import dataset
-            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
-            #we know samling rate for previous file is 44100 samples/second
-            #so 10 ms are equivalent to 441 samples and 20 ms to 882
-            block_size = 882
-            ads = ADSFactory.ads(bs=882, fn=file)
-            ads.open()
-            # read one block
-            data = ads.read()
-            ads.close()
-            len(data)
-            1764
-            assert len(data) ==  ads.get_sample_width() * block_size
-
-        5. **Define block size as a duration (use block_dur or bd):**
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            from auditok import dataset
-            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
-            dur = 0.25 # second
-            ads = ADSFactory.ads(bd=dur, fn=file)
-
-            # we know samling rate for previous file is 44100 samples/second
-            # for a block duration of 250 ms, block size should be
-            # 0.25 * 44100 = 11025
-            ads.get_block_size()
-            11025
-            assert ads.get_block_size() ==  int(0.25 * 44100)
-            ads.open()
-            # read one block
-            data = ads.read()
-            ads.close()
-            len(data)
-            22050
-            assert len(data) ==  ads.get_sample_width() * ads.get_block_size()
-
-        6. **Read overlapping blocks (when one of hope_size, hs, hop_dur or hd
-            is > 0):**
-
-        For a better readability we'd use :class:`auditok.io.BufferAudioSource`
-        with a string buffer:
-
-        .. code:: python
-
-            from auditok import ADSFactory
-            '''
-            we supply a data beffer instead of a file (keyword 'bata_buffer' or
-            'db')
-            sr : sampling rate = 16 samples/sec
-            sw : sample width = 1 byte
-            ch : channels = 1
-            '''
-            buffer = "abcdefghijklmnop" # 16 bytes = 1 second of data
-            bd = 0.250 # block duration = 250 ms = 4 bytes
-            hd = 0.125 # hop duration = 125 ms = 2 bytes
-            ads = ADSFactory.ads(db="abcdefghijklmnop",
-                                 bd=bd,
-                                 hd=hd,
-                                 sr=16,
-                                 sw=1,
-                                 ch=1)
-            ads.open()
-            ads.read()
-            'abcd'
-            ads.read()
-            'cdef'
-            ads.read()
-            'efgh'
-            ads.read()
-            'ghij'
-            data = ads.read()
-            assert data == 'ijkl'
-
-        7. **Limit amount of read data (use max_time or mt):**
-
-        .. code:: python
-
-            '''
-            We know audio file is larger than 2.25 seconds
-            We want to read up to 2.25 seconds of audio data
-            '''
-            from auditok import dataset
-            from auditok import ADSFactory
-            file = dataset.was_der_mensch_saet_mono_44100_lead_trail_silence
-            ads = ADSFactory.ads(mt=2.25, fn=file)
-            ads.open()
-            data = []
-            while True:
-                d = ads.read()
-                if d is None:
-                    break
-                data.append(d)
-
-            ads.close()
-            data = b''.join(data)
-            assert len(data) == int(ads.get_sampling_rate() *
-                                 2.25 * ads.get_sample_width() *
-                                 ads.get_channels())
+        Returns
+        -------
+        audio_data_source : AudioDataSource
+            an `AudioDataSource` object build with input parameters.
         """
         warnings.warn(
             "'ADSFactory' is deprecated and will be removed in a future "
-            "release. Please use AudioReader(...) instead.",
+            "release. Please use AudioReader class instead.",
             DeprecationWarning,
         )
 
@@ -982,20 +922,22 @@ class AudioReader(DataSource):
     call expect when remaining data does not make up a full window.
 
     Objects of this class can be set up to return audio windows with a given
-    overlap and to record the whole stream for later access. They can also have
+    overlap and to record the whole stream for later access (useful when
+    reading data from the microphone). They can also have
     a limit for the maximum amount of data to read.
 
     Parameters
     ----------
     input : str, bytes, AudioSource, AudioReader, AudioRegion or None
-        input audio data. If str, it should be a path to an existing audio file.
-        "-" is interpreted as standard input. If bytes, input is considered as
-        raw audio data. If None, read audio from microphone.
-        Every object that is not an ´AudioReader´ will be transformed into an
-        `AudioReader` before processing. If it is an `str` that refers to a raw
-        audio file, `bytes` or None, audio parameters should be provided using
-        kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or their
-        alias).
+        input audio data. If the type of the passed argument is `str`, it should
+        be a path to an existing audio file. "-" is interpreted as standardinput.
+        If the type is `bytes`, input is considered as a buffer of raw audio
+        data. If None, read audio from microphone. Every object that is not an
+        :class:`AudioReader` will be transformed, when possible, into an
+        :class:`AudioSource` before processing. If it is an `str` that refers to
+        a raw audio file, `bytes` or None, audio parameters should be provided
+        using kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or
+        their alias).
     block_dur: float, default: 0.01
         length in seconds of audio windows to return at each `read` call.
     hop_dur: float, default: None
@@ -1017,11 +959,11 @@ class AudioReader(DataSource):
     When `input` is None, of type bytes or a raw audio files some of the
     follwing kwargs are mandatory.
 
-    Kwargs
-    ------
+    Other Parameters
+    ----------------
     audio_format, fmt : str
         type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only be
-        used if ´input´ is a string path to an audio file. If not given, audio
+        used if `input` is a string path to an audio file. If not given, audio
         type will be guessed from file name extension or from file header.
     sampling_rate, sr : int
         sampling rate of audio data. Required if `input` is a raw audio file, is
@@ -1032,17 +974,21 @@ class AudioReader(DataSource):
     channels, ch : int
         number of channels of audio data. Required for raw data, see
         `sampling_rate`.
-    use_channel, uc : {None, "mix"} or int
+    use_channel, uc : {None, "any", "mix", "avg", "average"} or int
         which channel to use for split if `input` has multiple audio channels.
         Regardless of which channel is used for splitting, returned audio events
-        contain data from *all* channels, just as `input`.
-        The following values are accepted:
-            - None (alias "any"): accept audio activity from any channel, even
-            if other channels are silent. This is the default behavior.
-            - "mix" ("avg" or "average"): mix down all channels (i.e. compute
-            average channel) and split the resulting channel.
-            - int (0 <=, > `channels`): use one channel, specified by integer
-            id, for split.
+        contain data from *all* the channels of `input`. The following values
+        are accepted:
+
+        - None (alias "any"): accept audio activity from any channel, even if
+          other channels are silent. This is the default behavior.
+
+        - "mix" (alias "avg" or "average"): mix down all channels (i.e., compute
+          average channel) and split the resulting channel.
+
+        - int (>= 0 , < `channels`): use one channel, specified by its integer
+          id, for split.
+
     large_file : bool, default: False
         If True, AND if `input` is a path to a *wav* of a *raw* audio file
         (and only these two formats) then audio data is lazily loaded to memory
@@ -1138,11 +1084,21 @@ class AudioReader(DataSource):
 
 
 # Keep AudioDataSource for compatibility
-# Remove in a future version when ADSFactory is dropped
+# Remove in a future version when ADSFactory is removed
 AudioDataSource = AudioReader
 
 
 class Recorder(AudioReader):
+    """Class to read fixed-size chunks of audio data from a source and keeps
+    data in a cache. Using this class is equivalent to initializing
+    :class:`AudioReader` with `record=True`. For more information about the
+    other parameters see :class:`AudioReader`.
+
+    Once the desired amount of data is read, you can call the :func:`rewind`
+    method then get the recorded data via the :attr:`data` attribute. You can also
+    re-read cached data one window a time by calling :func:`read`.
+    """
+
     def __init__(
         self, input, block_dur=0.01, hop_dur=None, max_read=None, **kwargs
     ):

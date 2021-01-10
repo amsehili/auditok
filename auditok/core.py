@@ -1,18 +1,16 @@
 """
-
-Summary
-=======
-
 .. autosummary::
-        split
-        AudioRegion
-        StreamTokenizer
+    :toctree: generated/
+
+    split
+    AudioRegion
+    StreamTokenizer
 """
 import os
 import math
-from auditok.util import AudioReader, DataValidator, AudioEnergyValidator
-from auditok.io import check_audio_data, to_file, player_for, get_audio_source
-from auditok.exceptions import TooSamllBlockDuration
+from .util import AudioReader, DataValidator, AudioEnergyValidator
+from .io import check_audio_data, to_file, player_for, get_audio_source
+from .exceptions import TooSamllBlockDuration
 
 try:
     from . import signal_numpy as signal
@@ -24,7 +22,7 @@ __all__ = ["split", "AudioRegion", "StreamTokenizer"]
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
 DEFAULT_ENERGY_THRESHOLD = 50
-_EPSILON = 1e-6
+_EPSILON = 1e-10
 
 
 def split(
@@ -37,7 +35,7 @@ def split(
     **kwargs
 ):
     """
-    Split audio data and return a generator of `AudioRegion`s
+    Split audio data and return a generator of AudioRegions
 
     Parameters
     ----------
@@ -45,12 +43,12 @@ def split(
         input audio data. If str, it should be a path to an existing audio file.
         "-" is interpreted as standard input. If bytes, input is considered as
         raw audio data. If None, read audio from microphone.
-        Every object that is not an ´AudioReader´ will be transformed into an
+        Every object that is not an `AudioReader` will be transformed into an
         `AudioReader` before processing. If it is an `str` that refers to a raw
         audio file, `bytes` or None, audio parameters should be provided using
         kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or their
         alias).
-        If ´input´ is str then audio format will be guessed from file extension.
+        If `input` is str then audio format will be guessed from file extension.
         `audio_format` (alias `fmt`) kwarg can also be given to specify audio
         format explicitly. If none of these options is available, rely on
         backend (currently only pydub is supported) to load data.
@@ -72,22 +70,21 @@ def split(
         part of the event if `drop_trailing_silence` is False (default).
     drop_trailing_silence : bool, default: False
         Whether to remove trailing silence from detected events. To avoid abrupt
-        cuts in speech, trailing silence should be kept, therefor
-        `drop_trailing_silence` should be False.s
-        detection, it
+        cuts in speech, trailing silence should be kept, therefore this
+        parameter should be False.
     strict_min_dur : bool, default: False
         strict minimum duration. Do not accept an audio event if it is shorter
-        than ´min_dur´ even if it is contiguous to the latest valid event. This
-        happens if the the latest detected event had reached ´max_dur´.
+        than `min_dur` even if it is contiguous to the latest valid event. This
+        happens if the the latest detected event had reached `max_dur`.
 
-    Kwargs
-    ------
+    Other Parameters
+    ----------------
     analysis_window, aw : float, default: 0.05 (50 ms)
         duration of analysis window in seconds. A value between 0.01 (10 ms) and
         0.1 (100 ms) should be good for most use-cases.
     audio_format, fmt : str
         type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only be
-        used if ´input´ is a string path to an audio file. If not given, audio
+        used if `input` is a string path to an audio file. If not given, audio
         type will be guessed from file name extension or from file header.
     sampling_rate, sr : int
         sampling rate of audio data. Required if `input` is a raw audio file, is
@@ -103,22 +100,26 @@ def split(
         Regardless of which channel is used for splitting, returned audio events
         contain data from *all* channels, just as `input`.
         The following values are accepted:
-            - None (alias "any"): accept audio activity from any channel, even
-            if other channels are silent. This is the default behavior.
-            - "mix" ("avg" or "average"): mix down all channels (i.e. compute
-            average channel) and split the resulting channel.
-            - int (0 <=, > `channels`): use one channel, specified by integer
-            id, for split.
+
+        - None (alias "any"): accept audio activity from any channel, even if
+          other channels are silent. This is the default behavior.
+
+        - "mix" ("avg" or "average"): mix down all channels (i.e. compute
+          average channel) and split the resulting channel.
+
+        - int (0 <=, > `channels`): use one channel, specified by integer id,
+          for split.
+
     large_file : bool, default: False
         If True, AND if `input` is a path to a *wav* of a *raw* audio file
         (and only these two formats) then audio data is lazily loaded to memory
         (i.e., one analysis window a time). Otherwise the whole file is loaded
         to memory before split. Set to True if the size of the file is larger
         than available memory.
-    max_read, mr : float, default: None (read until end of stream)
+    max_read, mr : float, default: None, read until end of stream
         maximum data to read from source in seconds.
     validator, val : callable, DataValidator
-        custom data validator. If ´None´ (default), an `AudioEnergyValidor` is
+        custom data validator. If `None` (default), an `AudioEnergyValidor` is
         used with the given energy threshold. Can be a callable or an instance
         of `DataValidator` that implements `is_valid`. In either case, it'll be
         called with with a window of audio data as the first parameter.
@@ -127,8 +128,15 @@ def split(
         enough windows of with a signal energy equal to or above this threshold
         are considered valid audio events. Here we are referring to this amount
         as the energy of the signal but to be more accurate, it is the log
-        energy of computed as: 10 . log10 dot(x, x) / |x|
-        If `validator` is given, this argument is ignored.
+        energy of computed as: `20 * log10(sqrt(dot(x, x) / len(x)))` (see
+        :class:`AudioEnergyValidator` and
+        :func:`calculate_energy_single_channel`). If `validator` is given, this
+        argument is ignored.
+
+    Yields
+    ------
+    AudioRegion
+        a generator of detected :class:`AudioRegion` s.
     """
     if min_dur <= 0:
         raise ValueError("'min_dur' ({}) must be > 0".format(min_dur))
@@ -264,7 +272,7 @@ def _duration_to_nb_windows(
 
     Returns
     -------
-    nb_windows: int
+    nb_windows : int
         minimum number of `analysis_window`'s to cover `durartion`. That means
         that `analysis_window * nb_windows >= duration`.
     """
@@ -487,32 +495,37 @@ class _AudioRegionMetadata(dict):
 
 
 class AudioRegion(object):
+    """
+    AudioRegion encapsulates raw audio data and provides an interface to
+    perform simple operations on it. Use `AudioRegion.load` to build an
+    `AudioRegion` from different types of objects.
+
+    Parameters
+    ----------
+    data : bytes
+        raw audio data as a bytes object
+    sampling_rate : int
+        sampling rate of audio data
+    sample_width : int
+        number of bytes of one audio sample
+    channels : int
+        number of channels of audio data
+    meta : dict, default: None
+        any collection of <key:value> elements used to build metadata for
+        this `AudioRegion`. Meta data can be accessed via `region.meta.key`
+        if `key` is a valid python attribute name, or via `region.meta[key]`
+        if not. Note that the :func:`split` function (or the
+        :meth:`AudioRegion.split` method) returns `AudioRegions` with a ``start``
+        and a ``stop`` meta values that indicate the location in seconds of the
+        region in original audio data.
+
+    See also
+    --------
+    AudioRegion.load
+
+    """
+
     def __init__(self, data, sampling_rate, sample_width, channels, meta=None):
-        """
-        AudioRegion encapsulates raw audio data and provides an interface to
-        perform simple operations on it. Use `AudioRegion.load` to build an
-        `AudioRegion` from different types of objects.
-
-        Parameters
-        ----------
-        data : bytes
-            raw audio data as a bytes object
-        sampling_rate : int
-            sampling rate of audio data
-        sample_width : int
-            number of bytes of one audio sample
-        channels : int
-            number of channels of audio data
-        meta : dict, default: None
-            any collection of <key:value> elements used to build metadata for this
-            `AudioRegion. Meta data can be accessed via `region.meta.key` if `key`
-            is a valid python attribute name, or via `region.meta[key]` if not.
-
-        See also
-        --------
-        AudioRegion.load
-
-        """
         check_audio_data(data, sample_width, channels)
         self._data = data
         self._sampling_rate = sampling_rate
@@ -554,7 +567,7 @@ class AudioRegion(object):
             Input can also an AudioSource object.
         skip : float, default: 0
             amount, in seconds, of audio data to skip from source. If read from
-            microphone, ``skip`` must be 0, otherwise a ValueError is raised.
+            microphone, `skip` must be 0, otherwise a `ValueError` is raised.
         max_read : float, default: None
             amount, in seconds, of audio data to read from source. If read from
             microphone, `max_read` should not be None, otherwise a ValueError is
@@ -566,13 +579,13 @@ class AudioRegion(object):
             audio type will be guessed from file name extension or from file
             header.
         sampling_rate, sr : int
-            sampling rate of audio data. Reauired if `input` is a raw audio file,
+            sampling rate of audio data. Required if `input` is a raw audio file,
             a bytes object or None (i.e., read from microphone).
         sample_width, sw : int
             number of bytes used to encode one audio sample, typically 1, 2 or 4.
             Required for raw data, see `sampling_rate`.
         channels, ch : int
-            nuumber of channels of audio data. Required for raw data, see
+            number of channels of audio data. Required for raw data, see
             `sampling_rate`.
         large_file : bool, default: False
             If True, AND if `input` is a path to a *wav* of a *raw* audio file
@@ -585,7 +598,8 @@ class AudioRegion(object):
 
         Raises
         ------
-        ValueError if `input` is None and `skip` != 0 or `max_read` is None.
+        ValueError
+            raised if `input` is None and `skip` != 0 or `max_read` is None.
         """
         if input is None:
             if skip > 0:
@@ -663,7 +677,7 @@ class AudioRegion(object):
             to get a new audio player.
         progress_bar_kwargs : kwargs
             keyword arguments to pass to `tqdm` progress_bar builder (e.g.,
-            use `leave=False` to clean up screen when play finishes).
+            use `leave=False` to clean up the screen when play finishes).
         """
         if player is None:
             player = player_for(self)
@@ -680,11 +694,11 @@ class AudioRegion(object):
         Parameters
         ----------
         file : str
-            path to output audio file. May contain ´{duration}´ placeholder
+            path to output audio file. May contain `{duration}` placeholder
             as well as any place holder that this region's metadata might
             contain (e.g., regions returned by `split` contain metadata with
             `start` and `end` attributes that can be used to build output file
-            name as ´{meta.start}´ and ´{meta.end}´. See examples using
+            name as `{meta.start}` and `{meta.end}`. See examples using
             placeholders with formatting.
 
         audio_format : str, default: None
@@ -692,32 +706,31 @@ class AudioRegion(object):
             from file name's extension. If file name has no extension, audio
             data is saved as a raw (headerless) audio file.
         exists_ok : bool, default: True
-            If True, overwrite ´file´ if a file with the same name exists.
-            If False, raise an ´IOError´ if `file` exists.
+            If True, overwrite `file` if a file with the same name exists.
+            If False, raise an `IOError` if `file` exists.
         audio_parameters: dict
             any keyword arguments to be passed to audio saving backend.
-            FIXME: this is not yet implemented!
 
         Returns
         -------
         file: str
             name of output file with replaced placehoders.
         Raises
-            IOError if ´file´ exists and ´exists_ok´ is False.
+            IOError if `file` exists and `exists_ok` is False.
 
-        Example
-        -------
-        .. code:: python
-            region = AudioRegion(b'\0' * 2 * 24000,
-                                    sampling_rate=16000,
-                                    sample_width=2,
-                                    channels=1)
-            region.meta.start = 2.25
-            region.meta.end = 2.25 + region.duration
-            region.save('audio_{meta.start}-{meta.end}.wav')
-            audio_2.25-3.75.wav
-            region.save('region_{meta.start:.3f}_{duration:.3f}.wav')
-            audio_2.250_1.500.wav
+
+        Examples
+        --------
+        >>> region = AudioRegion(b'\\0' * 2 * 24000,
+        >>>                      sampling_rate=16000,
+        >>>                      sample_width=2,
+        >>>                      channels=1)
+        >>> region.meta.start = 2.25
+        >>> region.meta.end = 2.25 + region.duration
+        >>> region.save('audio_{meta.start}-{meta.end}.wav')
+        >>> audio_2.25-3.75.wav
+        >>> region.save('region_{meta.start:.3f}_{duration:.3f}.wav')
+        audio_2.250_1.500.wav
         """
         if isinstance(file, str):
             file = file.format(duration=self.duration, meta=self.meta)
@@ -743,8 +756,9 @@ class AudioRegion(object):
         strict_min_dur=False,
         **kwargs
     ):
-        """Split audio region. See `auditok.split()` for split parameters
-        description.
+        """Split audio region. See :func:`auditok.split()` for a comprehensive
+        description of split parameters.
+        See Also :func:`AudioRegio.split_and_plot`.
         """
         if kwargs.get("max_read", kwargs.get("mr")) is not None:
             warn_msg = "'max_read' (or 'mr') should not be used with "
@@ -770,6 +784,8 @@ class AudioRegion(object):
         dpi=120,
         theme="auditok",
     ):
+        """Plot audio region.
+        """
         try:
             from auditok.plotting import plot
 
@@ -800,8 +816,9 @@ class AudioRegion(object):
         theme="auditok",
         **kwargs
     ):
-        """Split region and plot signal and detection. Alias: `splitp`.
-        See :auditok.split() for split parameters description.
+        """Split region and plot signal and detections. Alias: :meth:`splitp`.
+        See :func:`auditok.split()` for a comprehensive description of split
+        parameters.
         """
         try:
             from auditok.plotting import plot
@@ -995,133 +1012,113 @@ class StreamTokenizer:
         Maximum number of frames of a valid token. This includes all
         tolerated non valid frames within the token.
 
-    `max_continuous_silence` : *(int)*
+    max_continuous_silence : int
         Maximum number of consecutive non-valid frames within a token.
         Note that, within a valid token, there may be many tolerated
         *silent* regions that contain each a number of non valid frames up
         to `max_continuous_silence`
 
-    `init_min` : *(int, default=0)*
+    init_min : int
         Minimum number of consecutive valid frames that must be
         **initially** gathered before any sequence of non valid frames can
         be tolerated. This option is not always needed, it can be used to
         drop non-valid tokens as early as possible. **Default = 0** means
         that the option is by default ineffective.
 
-    `init_max_silence` : *(int, default=0)*
+    init_max_silence : int
         Maximum number of tolerated consecutive non-valid frames if the
         number already gathered valid frames has not yet reached
         'init_min'.This argument is normally used if `init_min` is used.
         **Default = 0**, by default this argument is not taken into
         consideration.
 
-    `mode` : *(int, default=0)*
-        `mode` can be:
+    mode : int
+        mode can be one of the following:
 
-    1. `StreamTokenizer.NORMAL`:
-    Do not drop trailing silence, and accept a token shorter than
-    `min_length` if it is the continuation of the latest delivered token.
+            -1 `StreamTokenizer.NORMAL` : do not drop trailing silence, and
+            accept a token shorter than `min_length` if it is the continuation
+            of the latest delivered token.
 
-    2. `StreamTokenizer.STRICT_MIN_LENGTH`:
-    if token *i* is delivered because `max_length`
-    is reached, and token *i+1* is immediately adjacent to
-    token *i* (i.e. token *i* ends at frame *k* and token *i+1* starts
-    at frame *k+1*) then accept token *i+1* only of it has a size of at
-    least `min_length`. The default behavior is to accept token *i+1*
-    event if it is shorter than `min_length` (given that the above
-    conditions are fulfilled of course).
+            -2 `StreamTokenizer.STRICT_MIN_LENGTH`: if token `i` is delivered
+            because `max_length` is reached, and token `i+1` is immediately
+            adjacent to token `i` (i.e. token `i` ends at frame `k` and token
+            `i+1` starts at frame `k+1`) then accept token `i+1` only of it has
+            a size of at least `min_length`. The default behavior is to accept
+            token `i+1` event if it is shorter than `min_length` (provided that
+            the above conditions are fulfilled of course).
 
-    :Examples:
+            -3 `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing
+            non-valid frames from a token to be delivered if and only if it
+            is not **truncated**. This can be a bit tricky. A token is actually
+            delivered if:
+
+                - `max_continuous_silence` is reached.
+
+                - Its length reaches `max_length`. This is referred to as a
+                  **truncated** token.
+
+            In the current implementation, a `StreamTokenizer`'s decision is only
+            based on already seen data and on incoming data. Thus, if a token is
+            truncated at a non-valid but tolerated frame (`max_length` is reached
+            but `max_continuous_silence` not yet) any tailing silence will be kept
+            because it can potentially be part of valid token (if `max_length` was
+            bigger). But if `max_continuous_silence` is reached before
+            `max_length`, the delivered token will not be considered as truncated
+            but a result of *normal* end of detection (i.e. no more valid data).
+            In that case the trailing silence can be removed if you use the
+            `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
+
+            -4 `(StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE)`:
+            use both options. That means: first remove tailing silence, then
+            check if the token still has a length of at least `min_length`.
+
+
+
+
+    Examples
+    --------
 
     In the following code, without `STRICT_MIN_LENGTH`, the 'BB' token is
     accepted although it is shorter than `min_length` (3), because it
     immediately follows the latest delivered token:
 
-    .. code:: python
+    >>> from auditok.core import StreamTokenizer
+    >>> from StringDataSource, DataValidator
 
-        from auditok import (StreamTokenizer,
-                                StringDataSource,
-                                DataValidator)
-
-        class UpperCaseChecker(DataValidator):
-            def is_valid(self, frame):
+    >>> class UpperCaseChecker(DataValidator):
+    >>>     def is_valid(self, frame):
                 return frame.isupper()
-
-
-        dsource = StringDataSource("aaaAAAABBbbb")
-        tokenizer = StreamTokenizer(validator=UpperCaseChecker(),
+    >>> dsource = StringDataSource("aaaAAAABBbbb")
+    >>> tokenizer = StreamTokenizer(validator=UpperCaseChecker(),
                                     min_length=3,
                                     max_length=4,
                                     max_continuous_silence=0)
-
-        tokenizer.tokenize(dsource)
-
-    :output:
-
-        .. code:: python
-
-        [(['A', 'A', 'A', 'A'], 3, 6), (['B', 'B'], 7, 8)]
+    >>> tokenizer.tokenize(dsource)
+    [(['A', 'A', 'A', 'A'], 3, 6), (['B', 'B'], 7, 8)]
 
 
     The following tokenizer will however reject the 'BB' token:
 
-    .. code:: python
-
-        dsource = StringDataSource("aaaAAAABBbbb")
-        tokenizer = StreamTokenizer(validator=UpperCaseChecker(),
+    >>> dsource = StringDataSource("aaaAAAABBbbb")
+    >>> tokenizer = StreamTokenizer(validator=UpperCaseChecker(),
                                     min_length=3, max_length=4,
                                     max_continuous_silence=0,
                                     mode=StreamTokenizer.STRICT_MIN_LENGTH)
-        tokenizer.tokenize(dsource)
-
-    :output:
-
-    .. code:: python
-
-        [(['A', 'A', 'A', 'A'], 3, 6)]
+    >>> tokenizer.tokenize(dsource)
+    [(['A', 'A', 'A', 'A'], 3, 6)]
 
 
-    3. `StreamTokenizer.DROP_TRAILING_SILENCE`: drop all tailing non-valid
-    frames from a token to be delivered if and only if it is not
-    **truncated**. This can be a bit tricky. A token is actually delivered
-    if: - a. `max_continuous_silence` is reached
 
-    :or:
-
-    - b. Its length reaches `max_length`. This is called a **truncated**
-    token
-
-    In the current implementation, a `StreamTokenizer`'s decision is only
-    based on already seen data and on incoming data. Thus, if a token is
-    truncated at a non-valid but tolerated frame (`max_length` is reached
-    but `max_continuous_silence` not yet) any tailing silence will be kept
-    because it can potentially be part of valid token (if `max_length` was
-    bigger). But if `max_continuous_silence` is reached before
-    `max_length`, the delivered token will not be considered as truncated
-    but a result of *normal* end of detection (i.e. no more valid data).
-    In that case the trailing silence can be removed if you use the
-    `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
-
-    :Example:
-
-    .. code:: python
-
-            tokenizer = StreamTokenizer(
-                            validator=UpperCaseChecker(),
-                            min_length=3,
-                            max_length=6,
-                            max_continuous_silence=3,
-                            mode=StreamTokenizer.DROP_TRAILING_SILENCE
-                            )
-
-            dsource = StringDataSource("aaaAAAaaaBBbbbb")
-            tokenizer.tokenize(dsource)
-
-    :output:
-
-    .. code:: python
-
-        [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B'], 9, 10)]
+    >>> tokenizer = StreamTokenizer(
+    >>>                validator=UpperCaseChecker(),
+    >>>                min_length=3,
+    >>>                max_length=6,
+    >>>                max_continuous_silence=3,
+    >>>                mode=StreamTokenizer.DROP_TRAILING_SILENCE
+    >>>                )
+    >>> dsource = StringDataSource("aaaAAAaaaBBbbbb")
+    >>> tokenizer.tokenize(dsource)
+    [(['A', 'A', 'A', 'a', 'a', 'a'], 3, 8), (['B', 'B'], 9, 10)]
 
     The first token is delivered with its tailing silence because it is
     truncated while the second one has its tailing frames removed.
@@ -1135,11 +1132,6 @@ class StreamTokenizer:
             (['B', 'B', 'b', 'b', 'b'], 9, 13)
         ]
 
-
-    4. `(StreamTokenizer.STRICT_MIN_LENGTH |
-            StreamTokenizer.DROP_TRAILING_SILENCE)`:
-    use both options. That means: first remove tailing silence, then ckeck
-    if the token still has at least a length of `min_length`.
     """
 
     SILENCE = 0
