@@ -3,7 +3,7 @@ class DuplicateArgument(Exception):
 
 
 class TooSamllBlockDuration(ValueError):
-    """Raised when block_dur results in a block_size smaller than one sample"""
+    """Raised when block_dur results in a block_size smaller than one sample."""
 
     def __init__(self, message, block_dur, sampling_rate):
         self.block_dur = block_dur
@@ -12,12 +12,12 @@ class TooSamllBlockDuration(ValueError):
 
 
 class TimeFormatError(Exception):
-    """Raised when duration formatting directicve is wrong"""
+    """Raised when a duration formatting directive is unknown."""
 
 
 class EndOfProcessing(Exception):
     """Raised within command line script's main function to jump to
-    postprocessing code"""
+    postprocessing code."""
 
 
 class AudioIOError(Exception):
@@ -28,7 +28,7 @@ class AudioIOError(Exception):
 class AudioParameterError(AudioIOError):
     """Raised when one audio parameter is missing when loading raw data or
     saving data to a format other than raw. Also raised when an audio
-    parameter has a wrong value"""
+    parameter has a wrong value."""
 
 
 class AudioEncodingError(Exception):
