@@ -7,7 +7,7 @@ import unittest
 from unittest import TestCase, mock
 from unittest.mock import patch
 from genty import genty, genty_dataset
-from auditok import split, AudioRegion, AudioParameterError
+from auditok import load, split, AudioRegion, AudioParameterError
 from auditok.core import (
     _duration_to_nb_windows,
     _make_audio_region,
@@ -34,6 +34,39 @@ def _make_random_length_regions(
 
 @genty
 class TestFunctions(TestCase):
+    @genty_dataset(
+        no_skip_read_all=(0, -1),
+        no_skip_read_all_stereo=(0, -1, 2),
+        skip_2_read_all=(2, -1),
+        skip_2_read_all_None=(2, None),
+        skip_2_read_3=(2, 3),
+        skip_2_read_3_5_stereo=(2, 3.5, 2),
+        skip_2_4_read_3_5_stereo=(2.4, 3.5, 2),
+    )
+    def test_load(self, skip, max_read, channels=1):
+        sampling_rate = 10
+        sample_width = 2
+        filename = "tests/data/test_split_10HZ_{}.raw"
+        filename = filename.format("mono" if channels == 1 else "stereo")
+        region = load(
+            filename,
+            skip=skip,
+            max_read=max_read,
+            sr=sampling_rate,
+            sw=sample_width,
+            ch=channels,
+        )
+        with open(filename, "rb") as fp:
+            fp.read(round(skip * sampling_rate * sample_width * channels))
+            if max_read is None or max_read < 0:
+                to_read = -1
+            else:
+                to_read = round(
+                    max_read * sampling_rate * sample_width * channels
+                )
+            expected = fp.read(to_read)
+        self.assertEqual(bytes(region), expected)
+
     @genty_dataset(
         zero_duration=(0, 1, None, 0),
         multiple=(0.3, 0.1, round, 3),
