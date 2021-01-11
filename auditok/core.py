@@ -2,6 +2,7 @@
 .. autosummary::
     :toctree: generated/
 
+    load
     split
     AudioRegion
     StreamTokenizer
@@ -17,12 +18,19 @@ try:
 except ImportError:
     from . import signal
 
-__all__ = ["split", "AudioRegion", "StreamTokenizer"]
+__all__ = ["load", "split", "AudioRegion", "StreamTokenizer"]
 
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
 DEFAULT_ENERGY_THRESHOLD = 50
 _EPSILON = 1e-10
+
+
+def load(input, skip=0, max_read=None, **kwargs):
+    """Load audio data from a source and return it as an :class:`AudioRegion`.
+    For more information about the parameters see :meth:`AudioRegion.load`
+    """
+    return AudioRegion.load(input, skip, max_read, **kwargs)
 
 
 def split(
@@ -562,17 +570,20 @@ class AudioRegion(object):
         Parameters
         ----------
         input : None, str, bytes, AudioSource
-            source to load data from. If None, load data from microphone. If
-            bytes, create region from raw data. If str, load data from file.
-            Input can also an AudioSource object.
+            source to read audio data from. If `str`, it should be a path to a
+            valid audio file. If `bytes`, it is used as raw audio data. If it is
+            "-", raw data will be read from stdin. If None, read audio data from
+            the microphone using PyAudio. If of type `bytes` or is a path to a
+            raw audio file then `sampling_rate`, `sample_width` and `channels`
+            parameters (or their alias) are required. If it's an
+            :class:`AudioSource` object it's used directly to read data.
         skip : float, default: 0
             amount, in seconds, of audio data to skip from source. If read from
-            microphone, `skip` must be 0, otherwise a `ValueError` is raised.
+            a microphone, `skip` must be 0, otherwise a `ValueError` is raised.
         max_read : float, default: None
             amount, in seconds, of audio data to read from source. If read from
             microphone, `max_read` should not be None, otherwise a ValueError is
             raised.
-
         audio_format, fmt : str
             type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only
             be used if `input` is a string path to an audio file. If not given,
