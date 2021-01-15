@@ -12,7 +12,7 @@ Module for basic audio signal processing and array operations.
     calculate_energy_single_channel
     calculate_energy_multichannel
 """
-from array import array
+from array import array as array_
 import audioop
 import math
 
@@ -21,14 +21,30 @@ _EPSILON = 1e-10
 
 
 def to_array(data, sample_width, channels):
+    """Extract individual channels of audio data and return a list of arrays of
+    numeric samples. This will always return a list of `array.array` objects
+    (one per channel) even if audio data is mono.
+
+    Parameters
+    ----------
+    data : bytes
+        raw audio data.
+    sample_width : int
+        size in bytes of one audio sample (one channel considered).
+
+    Returns
+    -------
+    samples_arrays : list
+        list of arrays of audio samples.
+    """
     fmt = FORMAT[sample_width]
     if channels == 1:
-        return array(fmt, data)
+        return [array_(fmt, data)]
     return separate_channels(data, fmt, channels)
 
 
 def extract_single_channel(data, fmt, channels, selected):
-    samples = array(fmt, data)
+    samples = array_(fmt, data)
     return samples[selected::channels]
 
 
@@ -55,11 +71,11 @@ def compute_average_channel(data, fmt, channels):
     mono_audio : bytes
         mixed down audio data.
     """
-    all_channels = array(fmt, data)
+    all_channels = array_(fmt, data)
     mono_channels = [
-        array(fmt, all_channels[ch::channels]) for ch in range(channels)
+        array_(fmt, all_channels[ch::channels]) for ch in range(channels)
     ]
-    avg_arr = array(
+    avg_arr = array_(
         fmt,
         (round(sum(samples) / channels) for samples in zip(*mono_channels)),
     )
@@ -77,7 +93,7 @@ def compute_average_channel_stereo(data, sample_width):
     data : bytes
         2-channel audio data to mix down.
     sample_width : int
-        size of audio samples (for 1 channel) in bytes.
+        size in bytes of one audio sample (one channel considered).
 
     Returns
     -------
@@ -85,7 +101,7 @@ def compute_average_channel_stereo(data, sample_width):
         mixed down audio data.
     """
     fmt = FORMAT[sample_width]
-    arr = array(fmt, audioop.tomono(data, sample_width, 0.5, 0.5))
+    arr = array_(fmt, audioop.tomono(data, sample_width, 0.5, 0.5))
     return arr
 
 
@@ -109,9 +125,9 @@ def separate_channels(data, fmt, channels):
     channels_arr : list
         list of audio channels, each as a standard `array.array`.
     """
-    all_channels = array(fmt, data)
+    all_channels = array_(fmt, data)
     mono_channels = [
-        array(fmt, all_channels[ch::channels]) for ch in range(channels)
+        array_(fmt, all_channels[ch::channels]) for ch in range(channels)
     ]
     return mono_channels
 
@@ -150,7 +166,7 @@ def calculate_energy_multichannel(x, sample_width, aggregation_fn=max):
     data : bytes
         single-channel audio data.
     sample_width : int
-        size in bytes of one audio sample.
+        size in bytes of one audio sample (one channel considered).
     aggregation_fn : callable, default: max
         aggregation function to apply to the resulting per-channel energies.
 

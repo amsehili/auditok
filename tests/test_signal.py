@@ -14,22 +14,18 @@ class TestSignal(TestCase):
         self.numpy_fmt = {"b": np.int8, "h": np.int16, "i": np.int32}
 
     @genty_dataset(
-        int8_mono=(1, [48, 49, 50, 51, 52, 53, 54, 55, 57, 65, 66, 67]),
-        int16_mono=(2, [12592, 13106, 13620, 14134, 16697, 17218]),
-        int32_mono=(4, [858927408, 926299444, 1128415545]),
+        int8_mono=(1, [[48, 49, 50, 51, 52, 53, 54, 55, 57, 65, 66, 67]]),
+        int16_mono=(2, [[12592, 13106, 13620, 14134, 16697, 17218]]),
+        int32_mono=(4, [[858927408, 926299444, 1128415545]]),
         int8_stereo=(1, [[48, 50, 52, 54, 57, 66], [49, 51, 53, 55, 65, 67]]),
         int16_stereo=(2, [[12592, 13620, 16697], [13106, 14134, 17218]]),
         int32_3channel=(4, [[858927408], [926299444], [1128415545]]),
     )
     def test_to_array(self, sample_width, expected):
-        if isinstance(expected[0], list):
-            channels = len(expected)
-            expected = [
-                array_(signal_.FORMAT[sample_width], xi) for xi in expected
-            ]
-        else:
-            channels = 1
-            expected = array_(signal_.FORMAT[sample_width], expected)
+        channels = len(expected)
+        expected = [
+            array_(signal_.FORMAT[sample_width], xi) for xi in expected
+        ]
         result = signal_.to_array(self.data, sample_width, channels)
         result_numpy = signal_numpy.to_array(self.data, sample_width, channels)
         self.assertEqual(result, expected)
