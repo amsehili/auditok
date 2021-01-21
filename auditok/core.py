@@ -28,7 +28,57 @@ _EPSILON = 1e-10
 
 def load(input, skip=0, max_read=None, **kwargs):
     """Load audio data from a source and return it as an :class:`AudioRegion`.
-    For more information about the parameters see :meth:`AudioRegion.load`
+
+    Parameters
+    ----------
+    input : None, str, bytes, AudioSource
+        source to read audio data from. If `str`, it should be a path to a
+        valid audio file. If `bytes`, it is used as raw audio data. If it is
+        "-", raw data will be read from stdin. If None, read audio data from
+        the microphone using PyAudio. If of type `bytes` or is a path to a
+        raw audio file then `sampling_rate`, `sample_width` and `channels`
+        parameters (or their alias) are required. If it's an
+        :class:`AudioSource` object it's used directly to read data.
+    skip : float, default: 0
+        amount, in seconds, of audio data to skip from source. If read from
+        a microphone, `skip` must be 0, otherwise a `ValueError` is raised.
+    max_read : float, default: None
+        amount, in seconds, of audio data to read from source. If read from
+        microphone, `max_read` should not be None, otherwise a `ValueError` is
+        raised.
+    audio_format, fmt : str
+        type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only
+        be used if `input` is a string path to an audio file. If not given,
+        audio type will be guessed from file name extension or from file
+        header.
+    sampling_rate, sr : int
+        sampling rate of audio data. Required if `input` is a raw audio file,
+        a `bytes` object or None (i.e., read from microphone).
+    sample_width, sw : int
+        number of bytes used to encode one audio sample, typically 1, 2 or 4.
+        Required for raw data, see `sampling_rate`.
+    channels, ch : int
+        number of channels of audio data. Required for raw data, see
+        `sampling_rate`.
+    large_file : bool, default: False
+        If True, AND if `input` is a path to a *wav* of a *raw* audio file
+        (and **only** these two formats) then audio file is not fully loaded to
+        memory in order to create the region (but the portion of data needed to
+        create the region is of course loaded to memory). Set to True if
+        `max_read` is significantly smaller then the size of a large audio file
+        that shouldn't be entirely loaded to memory.
+
+    Returns
+    -------
+    region: AudioRegion
+
+    Raises
+    ------
+    ValueError
+        raised if `input` is None (i.e., read data from microphone) and `skip`
+        != 0 or `input` is None `max_read` is None (meaning that when reading
+        from the microphone, no data should be skipped, and maximum amount of
+        data to read should be explicitly provided).
     """
     return AudioRegion.load(input, skip, max_read, **kwargs)
 
@@ -560,48 +610,15 @@ class AudioRegion(object):
 
     @meta.setter
     def meta(self, new_meta):
+        """Meta data of audio region.
+        """
         self._meta = _AudioRegionMetadata(new_meta)
 
     @classmethod
     def load(cls, input, skip=0, max_read=None, **kwargs):
         """
-        Create an `AudioRegion` by loading data from `input`.
-
-        Parameters
-        ----------
-        input : None, str, bytes, AudioSource
-            source to read audio data from. If `str`, it should be a path to a
-            valid audio file. If `bytes`, it is used as raw audio data. If it is
-            "-", raw data will be read from stdin. If None, read audio data from
-            the microphone using PyAudio. If of type `bytes` or is a path to a
-            raw audio file then `sampling_rate`, `sample_width` and `channels`
-            parameters (or their alias) are required. If it's an
-            :class:`AudioSource` object it's used directly to read data.
-        skip : float, default: 0
-            amount, in seconds, of audio data to skip from source. If read from
-            a microphone, `skip` must be 0, otherwise a `ValueError` is raised.
-        max_read : float, default: None
-            amount, in seconds, of audio data to read from source. If read from
-            microphone, `max_read` should not be None, otherwise a ValueError is
-            raised.
-        audio_format, fmt : str
-            type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only
-            be used if `input` is a string path to an audio file. If not given,
-            audio type will be guessed from file name extension or from file
-            header.
-        sampling_rate, sr : int
-            sampling rate of audio data. Required if `input` is a raw audio file,
-            a bytes object or None (i.e., read from microphone).
-        sample_width, sw : int
-            number of bytes used to encode one audio sample, typically 1, 2 or 4.
-            Required for raw data, see `sampling_rate`.
-        channels, ch : int
-            number of channels of audio data. Required for raw data, see
-            `sampling_rate`.
-        large_file : bool, default: False
-            If True, AND if `input` is a path to a *wav* of a *raw* audio file
-            (and only these two formats) then audio file is not fully loaded to
-            memory. Set to True to only load `max_read` data from file.
+        Create an `AudioRegion` by loading data from `input`. See :func:`load`
+        for parameters descripion.
 
         Returns
         -------
@@ -634,10 +651,15 @@ class AudioRegion(object):
 
     @property
     def seconds(self):
+        """
+        A view to slice audio region by seconds (using ``region.seconds[start:end]``).
+        """
         return self._seconds_view
 
     @property
     def millis(self):
+        """A view to slice audio region by milliseconds (using ``region.millis[start:end]``).
+        """
         return self._millis_view
 
     @property
@@ -651,26 +673,38 @@ class AudioRegion(object):
 
     @property
     def sampling_rate(self):
+        """Samling rate of audio data.
+        """
         return self._sampling_rate
 
     @property
     def sr(self):
+        """Samling rate of audio data, alias for `sampling_rate`.
+        """
         return self._sampling_rate
 
     @property
     def sample_width(self):
+        """Number of bytes per sample, one channel considered.
+        """
         return self._sample_width
 
     @property
     def sw(self):
+        """Number of bytes per sample, alias for `sampling_rate`.
+        """
         return self._sample_width
 
     @property
     def channels(self):
+        """Number of channels of audio data.
+        """
         return self._channels
 
     @property
     def ch(self):
+        """Number of channels of audio data, alias for `channels`.
+        """
         return self._channels
 
     def play(self, progress_bar=False, player=None, **progress_bar_kwargs):
@@ -769,7 +803,7 @@ class AudioRegion(object):
     ):
         """Split audio region. See :func:`auditok.split()` for a comprehensive
         description of split parameters.
-        See Also :func:`AudioRegio.split_and_plot`.
+        See Also :meth:`AudioRegio.split_and_plot`.
         """
         if kwargs.get("max_read", kwargs.get("mr")) is not None:
             warn_msg = "'max_read' (or 'mr') should not be used with "
@@ -795,7 +829,24 @@ class AudioRegion(object):
         dpi=120,
         theme="auditok",
     ):
-        """Plot audio region.
+        """Plot audio region, one sub-plot for each channel.
+
+        Parameters
+        ----------
+        scale_signal : bool, default: True
+            if true, scale signal by subtracting its mean and dividing by its
+            standard deviation before plotting.
+        show : bool
+            whether to show plotted signal right after the call.
+        figsize : tuple, default: None
+            width and height of the figure to pass to `matplotlib`.
+        save_as : str, default None.
+            if provided, also save plot to file.
+        dpi : int, default: 120
+            plot dpi to pass to `matplotlib`.
+        theme : str or dict, default: "auditok"
+            plot theme to use. Currently only "auditok" theme is implemented. To
+            provide you own them see :attr:`auditok.plotting.AUDITOK_PLOT_THEME`.
         """
         try:
             from auditok.plotting import plot
@@ -829,7 +880,7 @@ class AudioRegion(object):
     ):
         """Split region and plot signal and detections. Alias: :meth:`splitp`.
         See :func:`auditok.split()` for a comprehensive description of split
-        parameters.
+        parameters. Also see :meth:`plot` for plot parameters.
         """
         try:
             from auditok.plotting import plot
@@ -867,6 +918,8 @@ class AudioRegion(object):
 
     @property
     def samples(self):
+        """Audio region as arrays of samples, one array per channel.
+        """
         if self._samples is None:
             self._samples = signal.to_array(
                 self._data, self.sample_width, self.channels
