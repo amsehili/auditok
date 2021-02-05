@@ -69,13 +69,13 @@ Basic example
 
     for i, r in enumerate(audio_regions):
 
-        # Regions returned by `split` have 'start' and 'end' field metadata
+        # Regions returned by `split` have 'start' and 'end' metadata fields
         print("Region {i}: {r.meta.start:.3f}s -- {r.meta.end:.3f}s".format(i=i, r=r))
 
         # play detection
         # r.play(progress_bar=True)
 
-        # detection's metadata can be used with `save`
+        # region's metadata can also be used with the `save` method
         # (no need to explicitly specify region's object and `format` arguments)
         filename = r.save("region_{meta.start:.3f}-{meta.end:.3f}.wav")
         print("region saved as: {}".format(filename))
@@ -121,7 +121,7 @@ noise (e.g., podcasts with few people talking, language lessons, audio recorded
 in a rather quiet environment, etc.) the performance can drop as the level of
 noise increases. Furthermore, the algorithm makes now distinction between speech
 and other kinds of sounds, so you shouldn't use it for Voice Activity Detection
-if your audio data might contain non-speech events.
+if your audio data also contain non-speech events.
 
 License
 -------
