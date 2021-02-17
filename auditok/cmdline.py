@@ -266,16 +266,17 @@ def main(argv=None):
 
         group = parser.add_argument_group(
             "Do something with audio events",
-            "Use these options to print, play or plot detections.",
+            "Use these options to print, play back or plot detections.",
         )
         group.add_argument(
             "-C",
             "--command",
             dest="command",
             type=str,
-            help="Command to call when an audio detection occurs. Use $ to "
-            "represent the file name to use with the command (e.g. -C "
-            "'du -h $')",
+            help="Command to call when an audio detection occurs. Use '{file}' "
+            "as a placeholder for the temporary wav file that will contain "
+            "event's data (e.g., \"-C 'du -h {file}'\" to print out file size "
+            " or \"-C 'play -q {file}'\" to play audio with sox)",
             metavar="STRING",
         )
         group.add_argument(
@@ -347,7 +348,8 @@ def main(argv=None):
             type=str,
             default="%Y/%m/%d %H:%M:%S",
             help="Format used to print {timestamp}. Should be a format "
-            "accepted by datetime Default %%Y/%%m/%%d %%H:%%M:%%S",
+            "accepted by 'datetime' standard module. Default: "
+            "'%%Y/%%m/%%d %%H:%%M:%%S'",
         )
         parser.add_argument(
             "-q",
