@@ -390,7 +390,7 @@ class CommandLineWorker(Worker):
     def _process_message(self, message):
         _id, audio_region = message
         with NamedTemporaryFile(delete=False) as file:
-            filename = audio_region.save(file.name, "raw")
+            filename = audio_region.save(file.name, audio_format="wav")
             command = self._command.format(file=filename)
             os.system(command)
             if self._logger is not None:

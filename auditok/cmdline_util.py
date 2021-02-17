@@ -64,16 +64,17 @@ def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
     if not stderr and file is None:
         return None
     logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
     if stderr:
         handler = logging.StreamHandler(sys.stderr)
-        handler.setLevel(logging.DEBUG)
+        handler.setLevel(logging.INFO)
         logger.addHandler(handler)
 
     if file is not None:
         handler = logging.FileHandler(file, "w")
         fmt = logging.Formatter("[%(asctime)s] | %(message)s")
         handler.setFormatter(fmt)
-        handler.setLevel(logging.DEBUG)
+        handler.setLevel(logging.INFO)
         logger.addHandler(handler)
     return logger
 
