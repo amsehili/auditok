@@ -24,6 +24,14 @@ can be used as a command line program or by calling its API.
     examples
 
 .. toctree::
+    :caption: Command-line guide
+    :maxdepth: 3
+
+    command_line_usage
+
+
+
+.. toctree::
     :caption: API Reference
     :maxdepth: 3
 
