@@ -5,13 +5,13 @@
 
 `auditok` is a program that can be used for Audio/Acoustic
 activity detection. It can read audio data from audio files as well
-as from built-in device(s) or standard input.
+as from the microphone or standard input.
 
 @author:     Mohamed El Amine SEHILI
 @copyright:  2015-2021 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 03 Jan 2021
+@deffield    updated: 17 Feb 2021
 """
 
 import sys
@@ -30,7 +30,7 @@ from . import workers
 
 __all__ = []
 __date__ = "2015-11-23"
-__updated__ = "2021-01-03"
+__updated__ = "2021-02-17"
 
 
 def main(argv=None):
