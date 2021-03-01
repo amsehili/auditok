@@ -32,11 +32,13 @@ packages are needed:
 
 Install the latest stable version with pip:
 
+
 .. code:: bash
 
     sudo pip install auditok
 
-Install with the latest development version from github::
+
+Install with the latest development version from github:
 
 .. code:: bash
 
