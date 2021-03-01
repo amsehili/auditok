@@ -11,7 +11,7 @@ as from the microphone or standard input.
 @copyright:  2015-2021 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 18 Feb 2021
+@deffield    updated: 01 Mar 2021
 """
 
 import sys
@@ -30,7 +30,7 @@ from . import workers
 
 __all__ = []
 __date__ = "2015-11-23"
-__updated__ = "2021-02-17"
+__updated__ = "2021-03-01"
 
 
 def main(argv=None):
