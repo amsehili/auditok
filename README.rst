@@ -1,12 +1,13 @@
 .. image:: doc/figures/auditok-logo.png
     :align: center
+    :alt: Build status
 
 .. image:: https://travis-ci.org/amsehili/auditok.svg?branch=master
     :target: https://travis-ci.org/amsehili/auditok
 
 .. image:: https://readthedocs.org/projects/auditok/badge/?version=latest
     :target: http://auditok.readthedocs.org/en/latest/?badge=latest
-    :alt: Documentation Status
+    :alt: Documentation status
 
 ``auditok`` is an **Audio Activity Detection** tool that can process online data
 (read from an audio device or from standard input) as well as audio files.
@@ -38,7 +39,7 @@ Install the latest stable version with pip:
     sudo pip install auditok
 
 
-Install with the latest development version from github:
+Install the latest development version from github:
 
 .. code:: bash
 
