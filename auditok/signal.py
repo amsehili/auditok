@@ -135,7 +135,7 @@ def separate_channels(data, fmt, channels):
 def calculate_energy_single_channel(data, sample_width):
     """Calculate the energy of mono audio data. Energy is computed as:
 
-    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2)) # noqa: W605
+    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2)) % # noqa: W605
 
     where `a_i` is the i-th audio sample and `N` is the number of audio samples
     in data.

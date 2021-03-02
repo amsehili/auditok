@@ -264,7 +264,7 @@ class AudioEnergyValidator(DataValidator):
     samples (see :func:`AudioEnergyValidator.is_valid`), the energy is computed
     as:
 
-    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2)) # noqa: W605
+    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2))  % # noqa: W605
 
     where `a_i` is the i-th audio sample.
 
