@@ -7,9 +7,11 @@ Version 0.2.0
 - Implement split function as a high-level API for tokenization
 - Implement AudioRegion class for simple audio objects manipulation
 - Use a much faster energy computation method (based on standard audioop module)
+- Make ADSFactory deprecated
 - Choose which channel(s) to use for tokenization
 - Save multi-channel audio data
 - Refactor code in all modules
+- Use genty for tests
 - Improve documentation
 - Use ArgumentParser instead of OptionParser in command-line script
 - Clean up command-line script and move functions and workers to dedicated modules
