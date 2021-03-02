@@ -1,5 +1,5 @@
-Loading audio data
-------------------
+Load audio data
+---------------
 
 Audio data is loaded with the :func:`load` function which can read from audio
 files, the microphone or use raw audio data.
@@ -7,15 +7,15 @@ files, the microphone or use raw audio data.
 From a file
 ===========
 
-If the first argument of :func:`load` is a string, it should be a path to an audio
-file.
+If the first argument of :func:`load` is a string, it should be a path to an
+audio file.
 
 .. code:: python
 
     import auditok
     region = auditok.load("audio.ogg")
 
-If input file contains a raw (headerless) audio data, passing `audio_format="raw"`
+If input file contains raw (headerless) audio data, passing `audio_format="raw"`
 and other audio parameters (`sampling_rate`, `sample_width` and `channels`) is
 mandatory. In the following example we pass audio parameters with their short
 names:
@@ -42,6 +42,8 @@ If the type of the first argument `bytes`, it's interpreted as raw audio data:
     data = b"\0" * sr * sw * ch
     region = auditok.load(data, sr=sr, sw=sw, ch=ch)
     print(region)
+    # alternatively you can use
+    #region = auditok.AudioRegion(data, sr, sw, ch)
 
 output:
 
@@ -74,15 +76,30 @@ output:
 Skip part of audio data
 =======================
 
-If the `skip` parameter is > 0, :func:`load` will skip that leading amount of audio
-data:
+If the `skip` parameter is > 0, :func:`load` will skip that amount  in seconds
+of leading audio data:
 
 .. code:: python
 
     import auditok
     region = auditok.load("audio.ogg", skip=2) # skip the first 2 seconds
 
-This argument must be 0 when reading from the microphone.
+This argument must be 0 when reading data from the microphone.
+
+
+Limit the amount of read audio
+==============================
+
+If the `max_read` parameter is > 0, :func:`load` will read at most that amount
+in seconds of audio data:
+
+.. code:: python
+
+    import auditok
+    region = auditok.load("audio.ogg", max_read=5)
+    assert region.duration <= 5
+
+This argument is mandatory when reading data from the microphone.
 
 
 Basic split example
@@ -188,8 +205,8 @@ you want to read a specific amount of audio data, pass the desired number of
 seconds with the `max_read` argument.
 
 
-Accessing recorded data after split
------------------------------------
+Access recorded data after split
+--------------------------------
 
 Using a :class:`Recorder` object you can get hold of acquired audio data:
 
@@ -362,7 +379,7 @@ and the second is the the sample.
     assert len(samples) == region.channels
 
 
-If `numpy` is not installed you can use:
+If `numpy` is installed you can use:
 
 .. code:: python
 

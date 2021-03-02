@@ -509,9 +509,7 @@ class ADSFactory:
             "asrc", None
         )
         kwargs["fn"] = kwargs.pop("filename", None) or kwargs.pop("fn", None)
-        kwargs["db"] = kwargs.pop("data_buffer", None) or kwargs.pop(
-            "db", None
-        )
+        kwargs["db"] = kwargs.pop("data_buffer", None) or kwargs.pop("db", None)
 
         record = kwargs.pop("record", False)
         if not record:

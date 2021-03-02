@@ -10,7 +10,7 @@
 
 ``auditok`` is an **Audio Activity Detection** tool that can process online data
 (read from an audio device or from standard input) as well as audio files.
-It can be used as a command line program or by calling its API.
+It can be used as a command-line program or by calling its API.
 
 The latest version of the documentation can be found on
 `readthedocs. <https://readthedocs.org/projects/auditok/badge/?version=latest>`_

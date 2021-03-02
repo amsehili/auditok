@@ -240,9 +240,7 @@ def split(
         validator = AudioEnergyValidator(
             energy_threshold, source.sw, source.ch, use_channel=use_channel
         )
-    mode = (
-        StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
-    )
+    mode = StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
     min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
@@ -532,8 +530,7 @@ class _MillisView(_SecondsView):
 
 
 class _AudioRegionMetadata(dict):
-    """A class to store `AudioRegion`'s metadata.
-    """
+    """A class to store `AudioRegion`'s metadata."""
 
     def __getattr__(self, name):
         if name in self:
@@ -610,8 +607,7 @@ class AudioRegion(object):
 
     @meta.setter
     def meta(self, new_meta):
-        """Meta data of audio region.
-        """
+        """Meta data of audio region."""
         self._meta = _AudioRegionMetadata(new_meta)
 
     @classmethod
@@ -658,8 +654,7 @@ class AudioRegion(object):
 
     @property
     def millis(self):
-        """A view to slice audio region by milliseconds (using ``region.millis[start:end]``).
-        """
+        """A view to slice audio region by milliseconds (using ``region.millis[start:end]``)."""
         return self._millis_view
 
     @property
@@ -673,38 +668,32 @@ class AudioRegion(object):
 
     @property
     def sampling_rate(self):
-        """Samling rate of audio data.
-        """
+        """Samling rate of audio data."""
         return self._sampling_rate
 
     @property
     def sr(self):
-        """Samling rate of audio data, alias for `sampling_rate`.
-        """
+        """Samling rate of audio data, alias for `sampling_rate`."""
         return self._sampling_rate
 
     @property
     def sample_width(self):
-        """Number of bytes per sample, one channel considered.
-        """
+        """Number of bytes per sample, one channel considered."""
         return self._sample_width
 
     @property
     def sw(self):
-        """Number of bytes per sample, alias for `sampling_rate`.
-        """
+        """Number of bytes per sample, alias for `sampling_rate`."""
         return self._sample_width
 
     @property
     def channels(self):
-        """Number of channels of audio data.
-        """
+        """Number of channels of audio data."""
         return self._channels
 
     @property
     def ch(self):
-        """Number of channels of audio data, alias for `channels`.
-        """
+        """Number of channels of audio data, alias for `channels`."""
         return self._channels
 
     def play(self, progress_bar=False, player=None, **progress_bar_kwargs):
@@ -730,9 +719,7 @@ class AudioRegion(object):
             self._data, progress_bar=progress_bar, **progress_bar_kwargs
         )
 
-    def save(
-        self, file, audio_format=None, exists_ok=True, **audio_parameters
-    ):
+    def save(self, file, audio_format=None, exists_ok=True, **audio_parameters):
         """
         Save audio region to file.
 
@@ -918,8 +905,7 @@ class AudioRegion(object):
 
     @property
     def samples(self):
-        """Audio region as arrays of samples, one array per channel.
-        """
+        """Audio region as arrays of samples, one array per channel."""
         if self._samples is None:
             self._samples = signal.to_array(
                 self._data, self.sample_width, self.channels
@@ -1005,9 +991,7 @@ class AudioRegion(object):
 
     def __truediv__(self, n):
         if not isinstance(n, int) or n <= 0:
-            raise TypeError(
-                "AudioRegion can only be divided by a positive int"
-            )
+            raise TypeError("AudioRegion can only be divided by a positive int")
         samples_per_sub_region, rest = divmod(len(self), n)
         onset = 0
         sub_regions = []
@@ -1232,9 +1216,7 @@ class StreamTokenizer:
             )
 
         if min_length <= 0 or min_length > max_length:
-            err_msg = (
-                "'min_length' must be > 0 and <= 'max_length' (value={0})"
-            )
+            err_msg = "'min_length' must be > 0 and <= 'max_length' (value={0})"
             raise ValueError(err_msg.format(min_length))
 
         if max_continuous_silence >= max_length:

@@ -137,7 +137,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_theme_options = {
     "logo_only": True,
-    "style_nav_header_background": "black",
+    "style_nav_header_background": "#000000",
 }
 
 # Theme options are theme-specific and customize the look and feel of a theme
