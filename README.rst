@@ -14,7 +14,7 @@
 It can be used as a command-line program or by calling its API.
 
 The latest version of the documentation can be found on
-`readthedocs. <https://readthedocs.org/projects/auditok/badge/?version=latest>`_
+`readthedocs. <https://auditok.readthedocs.io/en/latest/>`_
 
 
 Installation
