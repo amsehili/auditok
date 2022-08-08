@@ -668,12 +668,12 @@ class AudioRegion(object):
 
     @property
     def sampling_rate(self):
-        """Samling rate of audio data."""
+        """Sampling rate of audio data."""
         return self._sampling_rate
 
     @property
     def sr(self):
-        """Samling rate of audio data, alias for `sampling_rate`."""
+        """Sampling rate of audio data, alias for `sampling_rate`."""
         return self._sampling_rate
 
     @property
@@ -1131,7 +1131,7 @@ class StreamTokenizer:
     immediately follows the latest delivered token:
 
     >>> from auditok.core import StreamTokenizer
-    >>> from StringDataSource, DataValidator
+    >>> from auditok.util import StringDataSource, DataValidator
 
     >>> class UpperCaseChecker(DataValidator):
     >>>     def is_valid(self, frame):
