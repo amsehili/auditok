@@ -122,7 +122,7 @@ Currently, the core detection algorithm is based on the energy of audio signal.
 While this is fast and works very well for audio streams with low background
 noise (e.g., podcasts with few people talking, language lessons, audio recorded
 in a rather quiet environment, etc.) the performance can drop as the level of
-noise increases. Furthermore, the algorithm makes now distinction between speech
+noise increases. Furthermore, the algorithm makes no distinction between speech
 and other kinds of sounds, so you shouldn't use it for Voice Activity Detection
 if your audio data also contain non-speech events.
 
