@@ -1,13 +1,20 @@
 repos:
+-   repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
 -   repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
     - id: black
-      language_version: python
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.1.0
     hooks:
     -   id: flake8
+        additional_dependencies:
+            - flake8-bugbear
+            - flake8-comprehensions
+            - flake8-simplify
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
