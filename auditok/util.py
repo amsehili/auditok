@@ -8,21 +8,19 @@
     make_duration_formatter
     make_channel_selector
 """
-from abc import ABC, abstractmethod
+
 import warnings
+from abc import ABC, abstractmethod
 from functools import partial
+
+from .exceptions import TimeFormatError, TooSmallBlockDuration
 from .io import (
     AudioIOError,
     AudioSource,
-    from_file,
     BufferAudioSource,
     PyAudioSource,
+    from_file,
     get_audio_source,
-)
-from .exceptions import (
-    DuplicateArgument,
-    TooSamllBlockDuration,
-    TimeFormatError,
 )
 
 try:
@@ -37,8 +35,6 @@ __all__ = [
     "DataSource",
     "DataValidator",
     "StringDataSource",
-    "ADSFactory",
-    "AudioDataSource",
     "AudioReader",
     "Recorder",
     "AudioEnergyValidator",
@@ -108,12 +104,12 @@ def make_duration_formatter(fmt):
     """
     if fmt == "%S":
 
-        def fromatter(seconds):
+        def formatter(seconds):
             return "{:.3f}".format(seconds)
 
     elif fmt == "%I":
 
-        def fromatter(seconds):
+        def formatter(seconds):
             return "{0}".format(int(seconds * 1000))
 
     else:
@@ -129,14 +125,14 @@ def make_duration_formatter(fmt):
         except ValueError:
             pass
 
-        def fromatter(seconds):
+        def formatter(seconds):
             millis = int(seconds * 1000)
             hrs, millis = divmod(millis, 3600000)
             mins, millis = divmod(millis, 60000)
             secs, millis = divmod(millis, 1000)
             return fmt.format(hrs=hrs, mins=mins, secs=secs, millis=millis)
 
-    return fromatter
+    return formatter
 
 
 def make_channel_selector(sample_width, channels, selected=None):
@@ -374,317 +370,6 @@ class StringDataSource(DataSource):
         self._current = 0
 
 
-class ADSFactory:
-    """
-    .. deprecated:: 2.0.0
-          `ADSFactory` will be removed in auditok 2.0.1, use instances of
-          :class:`AudioReader` instead.
-
-    Factory class that makes it easy to create an
-    :class:`AudioDataSource` object that implements
-    :class:`DataSource` and can therefore be passed to
-    :func:`auditok.core.StreamTokenizer.tokenize`.
-
-    Whether you read audio data from a file, the microphone or a memory buffer,
-    this factory instantiates and returns the right
-    :class:`AudioDataSource` object.
-
-    There are many other features you want a :class:`AudioDataSource` object to
-    have, such as: memorize all read audio data so that you can rewind and reuse
-    it (especially useful when reading data from the microphone), read a fixed
-    amount of data (also useful when reading from the microphone), read
-    overlapping audio frames (often needed when dosing a spectral analysis of
-    data).
-
-    :func:`ADSFactory.ads` automatically creates and return object with the
-    desired behavior according to the supplied keyword arguments.
-    """
-
-    @staticmethod  # noqa: C901
-    def _check_normalize_args(kwargs):
-
-        for k in kwargs:
-            if k not in [
-                "block_dur",
-                "hop_dur",
-                "block_size",
-                "hop_size",
-                "max_time",
-                "record",
-                "audio_source",
-                "filename",
-                "data_buffer",
-                "frames_per_buffer",
-                "sampling_rate",
-                "sample_width",
-                "channels",
-                "sr",
-                "sw",
-                "ch",
-                "asrc",
-                "fn",
-                "fpb",
-                "db",
-                "mt",
-                "rec",
-                "bd",
-                "hd",
-                "bs",
-                "hs",
-            ]:
-                raise ValueError("Invalid argument: {0}".format(k))
-
-        if "block_dur" in kwargs and "bd" in kwargs:
-            raise DuplicateArgument(
-                "Either 'block_dur' or 'bd' must be specified, not both"
-            )
-
-        if "hop_dur" in kwargs and "hd" in kwargs:
-            raise DuplicateArgument(
-                "Either 'hop_dur' or 'hd' must be specified, not both"
-            )
-
-        if "block_size" in kwargs and "bs" in kwargs:
-            raise DuplicateArgument(
-                "Either 'block_size' or 'bs' must be specified, not both"
-            )
-
-        if "hop_size" in kwargs and "hs" in kwargs:
-            raise DuplicateArgument(
-                "Either 'hop_size' or 'hs' must be specified, not both"
-            )
-
-        if "max_time" in kwargs and "mt" in kwargs:
-            raise DuplicateArgument(
-                "Either 'max_time' or 'mt' must be specified, not both"
-            )
-
-        if "audio_source" in kwargs and "asrc" in kwargs:
-            raise DuplicateArgument(
-                "Either 'audio_source' or 'asrc' must be specified, not both"
-            )
-
-        if "filename" in kwargs and "fn" in kwargs:
-            raise DuplicateArgument(
-                "Either 'filename' or 'fn' must be specified, not both"
-            )
-
-        if "data_buffer" in kwargs and "db" in kwargs:
-            raise DuplicateArgument(
-                "Either 'filename' or 'db' must be specified, not both"
-            )
-
-        if "frames_per_buffer" in kwargs and "fbb" in kwargs:
-            raise DuplicateArgument(
-                "Either 'frames_per_buffer' or 'fpb' must be specified, not "
-                "both"
-            )
-
-        if "sampling_rate" in kwargs and "sr" in kwargs:
-            raise DuplicateArgument(
-                "Either 'sampling_rate' or 'sr' must be specified, not both"
-            )
-
-        if "sample_width" in kwargs and "sw" in kwargs:
-            raise DuplicateArgument(
-                "Either 'sample_width' or 'sw' must be specified, not both"
-            )
-
-        if "channels" in kwargs and "ch" in kwargs:
-            raise DuplicateArgument(
-                "Either 'channels' or 'ch' must be specified, not both"
-            )
-
-        if "record" in kwargs and "rec" in kwargs:
-            raise DuplicateArgument(
-                "Either 'record' or 'rec' must be specified, not both"
-            )
-
-        kwargs["bd"] = kwargs.pop("block_dur", None) or kwargs.pop("bd", None)
-        kwargs["hd"] = kwargs.pop("hop_dur", None) or kwargs.pop("hd", None)
-        kwargs["bs"] = kwargs.pop("block_size", None) or kwargs.pop("bs", None)
-        kwargs["hs"] = kwargs.pop("hop_size", None) or kwargs.pop("hs", None)
-        kwargs["mt"] = kwargs.pop("max_time", None) or kwargs.pop("mt", None)
-        kwargs["asrc"] = kwargs.pop("audio_source", None) or kwargs.pop(
-            "asrc", None
-        )
-        kwargs["fn"] = kwargs.pop("filename", None) or kwargs.pop("fn", None)
-        kwargs["db"] = kwargs.pop("data_buffer", None) or kwargs.pop("db", None)
-
-        record = kwargs.pop("record", False)
-        if not record:
-            record = kwargs.pop("rec", False)
-            if not isinstance(record, bool):
-                raise TypeError("'record' must be a boolean")
-
-        kwargs["rec"] = record
-
-        # keep long names for arguments meant for BufferAudioSource
-        # and PyAudioSource
-        if "frames_per_buffer" in kwargs or "fpb" in kwargs:
-            kwargs["frames_per_buffer"] = kwargs.pop(
-                "frames_per_buffer", None
-            ) or kwargs.pop("fpb", None)
-
-        if "sampling_rate" in kwargs or "sr" in kwargs:
-            kwargs["sampling_rate"] = kwargs.pop(
-                "sampling_rate", None
-            ) or kwargs.pop("sr", None)
-
-        if "sample_width" in kwargs or "sw" in kwargs:
-            kwargs["sample_width"] = kwargs.pop(
-                "sample_width", None
-            ) or kwargs.pop("sw", None)
-
-        if "channels" in kwargs or "ch" in kwargs:
-            kwargs["channels"] = kwargs.pop("channels", None) or kwargs.pop(
-                "ch", None
-            )
-
-    @staticmethod
-    def ads(**kwargs):
-        """
-        Create an return an :class:`AudioDataSource`. The type and
-        behavior of the object is the result
-        of the supplied parameters. Called without any parameters, the class
-        will read audio data from the available built-in microphone with the
-        default parameters.
-
-        Parameters
-        ----------
-        sampling_rate, sr : int, default: 16000
-            number of audio samples per second of input audio stream.
-        sample_width, sw : int, default: 2
-            number of bytes per sample, must be one of 1, 2 or 4
-        channels, ch : int, default: 1
-            number of audio channels, only a value of 1 is currently accepted.
-        frames_per_buffer, fpb : int, default: 1024
-            number of samples of PyAudio buffer.
-        audio_source, asrc : `AudioSource`
-            `AudioSource` to read data from
-        filename, fn : str
-            create an `AudioSource` object using this file
-        data_buffer, db : str
-            build an `io.BufferAudioSource` using data in `data_buffer`.
-            If this keyword is used,
-            `sampling_rate`, `sample_width` and `channels` are passed to
-            `io.BufferAudioSource` constructor and used instead of default
-            values.
-        max_time, mt : float
-            maximum time (in seconds) to read. Default behavior: read until
-            there is no more data
-            available.
-        record, rec : bool, default = False
-            save all read data in cache. Provide a navigable object which has a
-            `rewind` method.
-        block_dur, bd : float
-            processing block duration in seconds. This represents the quantity
-            of audio data to return each time the :func:`read` method is
-            invoked. If `block_dur` is 0.025 (i.e. 25 ms) and the sampling rate
-            is 8000 and the sample width is 2 bytes, :func:`read` returns a
-            buffer of 0.025 * 8000 * 2 = 400 bytes at most. This parameter will
-            be looked for (and used if available) before `block_size`. If
-            neither parameter is given, `block_dur` will be set to 0.01 second
-            (i.e. 10 ms)
-        hop_dur, hd : float
-            quantity of data to skip from current processing window. if
-            `hop_dur` is supplied then there will be an overlap of `block_dur`
-            - `hop_dur` between two adjacent blocks. This parameter will be
-            looked for (and used if available) before `hop_size`.
-            If neither parameter is given, `hop_dur` will be set to `block_dur`
-            which means that there will be no overlap between two consecutively
-            read blocks.
-        block_size, bs : int
-            number of samples to read each time the `read` method is called.
-            Default: a block size that represents a window of 10ms, so for a
-            sampling rate of 16000, the default `block_size` is 160 samples,
-            for a rate of 44100, `block_size` = 441 samples, etc.
-        hop_size, hs : int
-            determines the number of overlapping samples between two adjacent
-            read windows. For a `hop_size` of value *N*, the overlap is
-            `block_size` - *N*. Default : `hop_size` = `block_size`, means that
-            there is no overlap.
-
-        Returns
-        -------
-        audio_data_source : AudioDataSource
-            an `AudioDataSource` object build with input parameters.
-        """
-        warnings.warn(
-            "'ADSFactory' is deprecated and will be removed in a future "
-            "release. Please use AudioReader class instead.",
-            DeprecationWarning,
-        )
-
-        # check and normalize keyword arguments
-        ADSFactory._check_normalize_args(kwargs)
-
-        block_dur = kwargs.pop("bd")
-        hop_dur = kwargs.pop("hd")
-        block_size = kwargs.pop("bs")
-        hop_size = kwargs.pop("hs")
-        max_time = kwargs.pop("mt")
-        audio_source = kwargs.pop("asrc")
-        filename = kwargs.pop("fn")
-        data_buffer = kwargs.pop("db")
-        record = kwargs.pop("rec")
-
-        # Case 1: an audio source is supplied
-        if audio_source is not None:
-            if (filename, data_buffer) != (None, None):
-                raise Warning(
-                    "You should provide one of 'audio_source', 'filename' or \
-                    'data_buffer' keyword parameters. 'audio_source' will be \
-                    used"
-                )
-
-        # Case 2: a file name is supplied
-        elif filename is not None:
-            if data_buffer is not None:
-                raise Warning(
-                    "You should provide one of 'filename' or 'data_buffer'\
-                 keyword parameters. 'filename' will be used"
-                )
-            audio_source = from_file(filename)
-
-        # Case 3: a data_buffer is supplied
-        elif data_buffer is not None:
-            audio_source = BufferAudioSource(data=data_buffer, **kwargs)
-
-        # Case 4: try to access native audio input
-        else:
-            audio_source = PyAudioSource(**kwargs)
-
-        if block_dur is not None:
-            if block_size is not None:
-                raise DuplicateArgument(
-                    "Either 'block_dur' or 'block_size' can be specified, not \
-                    both"
-                )
-        elif block_size is not None:
-            block_dur = block_size / audio_source.sr
-        else:
-            block_dur = 0.01  # 10 ms
-
-        # Read overlapping blocks of data
-        if hop_dur is not None:
-            if hop_size is not None:
-                raise DuplicateArgument(
-                    "Either 'hop_dur' or 'hop_size' can be specified, not both"
-                )
-        elif hop_size is not None:
-            hop_dur = hop_size / audio_source.sr
-
-        ads = AudioDataSource(
-            audio_source,
-            block_dur=block_dur,
-            hop_dur=hop_dur,
-            record=record,
-            max_read=max_time,
-        )
-        return ads
-
-
 class _AudioReadingProxy:
     def __init__(self, audio_source):
 
@@ -817,7 +502,7 @@ class _FixedSizeAudioReader(_AudioReadingProxy):
     """
 
     def __init__(self, audio_source, block_dur):
-        super(_FixedSizeAudioReader, self).__init__(audio_source)
+        super().__init__(audio_source)
 
         if block_dur <= 0:
             raise ValueError(
@@ -829,7 +514,7 @@ class _FixedSizeAudioReader(_AudioReadingProxy):
             err_msg = "Too small block_dur ({0:f}) for sampling rate ({1}). "
             err_msg += "block_dur should cover at least one sample "
             err_msg += "(i.e. 1/{1})"
-            raise TooSamllBlockDuration(
+            raise TooSmallBlockDuration(
                 err_msg.format(block_dur, self.sr), block_dur, self.sr
             )
 
@@ -857,7 +542,7 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
     def __init__(self, audio_source, block_dur, hop_dur):
 
         if hop_dur >= block_dur:
-            raise ValueError('"hop_dur" should be < "block_dur"')
+            raise ValueError('"hop_dur" should be <= "block_dur"')
 
         super(_OverlapAudioReader, self).__init__(audio_source, block_dur)
 
@@ -928,20 +613,20 @@ class AudioReader(DataSource):
     ----------
     input : str, bytes, AudioSource, AudioReader, AudioRegion or None
         input audio data. If the type of the passed argument is `str`, it should
-        be a path to an existing audio file. "-" is interpreted as standardinput.
+        be a path to an existing audio file. "-" is interpreted as standard input.
         If the type is `bytes`, input is considered as a buffer of raw audio
         data. If None, read audio from microphone. Every object that is not an
         :class:`AudioReader` will be transformed, when possible, into an
         :class:`AudioSource` before processing. If it is an `str` that refers to
         a raw audio file, `bytes` or None, audio parameters should be provided
-        using kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or
-        their alias).
+        using kwargs (i.e., `sampling_rate`, `sample_width` and `channels` or
+        their alias: `sr`, `sw` and `ch`).
     block_dur: float, default: 0.01
-        length in seconds of audio windows to return at each `read` call.
+        length in seconds of audio data to return for each `read` call.
     hop_dur: float, default: None
         length in seconds of data amount to skip from previous window. If
         defined, it is used to compute the temporal overlap between previous and
-        current window (nameply `overlap = block_dur - hop_dur`). Default, None,
+        current window (namely `overlap = block_dur - hop_dur`). Default, None,
         means that consecutive windows do not overlap.
     record: bool, default: False
         whether to record read audio data for later access. If True, audio data
@@ -955,7 +640,7 @@ class AudioReader(DataSource):
         from microphone a Ctrl-C is sent.
 
     When `input` is None, of type bytes or a raw audio files some of the
-    follwing kwargs are mandatory.
+    following kwargs are mandatory.
 
     Other Parameters
     ----------------
@@ -1002,7 +687,7 @@ class AudioReader(DataSource):
         hop_dur=None,
         record=False,
         max_read=None,
-        **kwargs
+        **kwargs,
     ):
         if not isinstance(input, AudioSource):
             input = get_audio_source(input, **kwargs)
@@ -1012,10 +697,12 @@ class AudioReader(DataSource):
         if max_read is not None:
             input = _Limiter(input, max_read)
             self._max_read = max_read
-        if hop_dur is not None:
-            input = _OverlapAudioReader(input, block_dur, hop_dur)
-        else:
+        # TODO: warning if block_dur and hop_dur yield the same size in terms of nb samples
+        if hop_dur is None or hop_dur == block_dur:
             input = _FixedSizeAudioReader(input, block_dur)
+        else:
+            input = _OverlapAudioReader(input, block_dur, hop_dur)
+
         self._audio_source = input
 
     def __repr__(self):
@@ -1075,15 +762,10 @@ class AudioReader(DataSource):
             )
         try:
             return getattr(self._audio_source, name)
-        except AttributeError:
+        except AttributeError as exc:
             raise AttributeError(
-                "'AudioReader' has no attribute '{}'".format(name)
-            )
-
-
-# Keep AudioDataSource for compatibility
-# Remove in a future version when ADSFactory is removed
-AudioDataSource = AudioReader
+                f"'AudioReader' has no attribute {name!r}"
+            ) from exc
 
 
 class Recorder(AudioReader):
@@ -1106,5 +788,5 @@ class Recorder(AudioReader):
             hop_dur=hop_dur,
             record=True,
             max_read=max_read,
-            **kwargs
+            **kwargs,
         )
