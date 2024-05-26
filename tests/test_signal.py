@@ -1,6 +1,8 @@
-import pytest
 from array import array as array_
+
 import numpy as np
+import pytest
+
 from auditok import signal as signal_
 from auditok import signal_numpy
 

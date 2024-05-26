@@ -1,15 +1,17 @@
-import pytest
-from unittest.mock import patch
 import math
 from array import array as array_
-from auditok.util import (
-    AudioEnergyValidator,
-    make_duration_formatter,
-    make_channel_selector,
-)
+from unittest.mock import patch
+
+import pytest
+
 from auditok import signal as signal_
 from auditok import signal_numpy
 from auditok.exceptions import TimeFormatError
+from auditok.util import (
+    AudioEnergyValidator,
+    make_channel_selector,
+    make_duration_formatter,
+)
 
 
 def _sample_generator(*data_buffers):
@@ -384,7 +386,3 @@ class TestAudioEnergyValidator:
             assert validator.is_valid(data)
         else:
             assert not validator.is_valid(data)
-
-
-if __name__ == "__main__":
-    pytest.main()

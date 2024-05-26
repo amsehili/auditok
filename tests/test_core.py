@@ -1,19 +1,21 @@
-import os
 import math
+import os
+from array import array as array_
 from random import random
 from tempfile import TemporaryDirectory
-from array import array as array_
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
-from auditok import load, split, AudioRegion, AudioParameterError
+
+from auditok import AudioParameterError, AudioRegion, load, split
 from auditok.core import (
     _duration_to_nb_windows,
     _make_audio_region,
     _read_chunks_online,
     _read_offline,
 )
-from auditok.util import AudioDataSource
 from auditok.io import get_audio_source
+from auditok.util import AudioReader
 
 
 def _make_random_length_regions(
@@ -776,7 +778,7 @@ def test_split_custom_validator():
             {"sr": 10, "sw": 2, "ch": 2},
         ),
         (
-            AudioDataSource(
+            AudioReader(
                 "tests/data/test_split_10HZ_stereo.raw",
                 sr=10,
                 sw=2,
@@ -965,9 +967,9 @@ def test_split_negative_temporal_params(wrong_param):
 def test_split_too_small_analysis_window():
     with pytest.raises(ValueError) as val_err:
         split(b"", sr=10, sw=1, ch=1, analysis_window=0.09)
-    err_msg = "Too small 'analysis_windows' (0.09) for sampling rate (10)."
-    err_msg += " Analysis windows should at least be 1/10 to cover one "
-    err_msg += "single data sample"
+    err_msg = "Too small 'analysis_window' (0.09) for sampling rate (10)."
+    err_msg += " Analysis window should at least be 1/10 to cover one "
+    err_msg += "data sample"
     assert err_msg == str(val_err.value)
 
 

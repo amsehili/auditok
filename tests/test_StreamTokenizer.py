@@ -1,5 +1,8 @@
+import os
+
 import pytest
-from auditok import StreamTokenizer, StringDataSource, DataValidator
+
+from auditok import DataValidator, StreamTokenizer, StringDataSource
 
 
 class AValidator(DataValidator):
@@ -30,7 +33,7 @@ def test_init_min_0_init_max_silence_0(validator):
 
     assert (
         len(tokens) == 2
-    ), f"wrong number of tokens, expected: 2, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))
     tok1, tok2 = tokens[0], tokens[1]
 
     data = "".join(tok1[0])
@@ -38,22 +41,28 @@ def test_init_min_0_init_max_silence_0(validator):
     end = tok1[2]
     assert (
         data == "AaaaAaAaaAaAaaaa"
-    ), f"wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: {data}"
+    ), "wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: {}".format(
+        data
+    )
     assert (
         start == 1
-    ), f"wrong start frame for token 1, expected: 1, found: {start}"
-    assert end == 16, f"wrong end frame for token 1, expected: 16, found: {end}"
+    ), "wrong start frame for token 1, expected: 1, found: {}".format(start)
+    assert (
+        end == 16
+    ), "wrong end frame for token 1, expected: 16, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAAAAA"
-    ), f"wrong data for token 2, expected: 'AAAAAAAA', found: {data}"
+    ), "wrong data for token 2, expected: 'AAAAAAAA', found: {}".format(data)
     assert (
         start == 20
-    ), f"wrong start frame for token 2, expected: 20, found: {start}"
-    assert end == 27, f"wrong end frame for token 2, expected: 27, found: {end}"
+    ), "wrong start frame for token 2, expected: 20, found: {}".format(start)
+    assert (
+        end == 27
+    ), "wrong end frame for token 2, expected: 27, found: {}".format(end)
 
 
 def test_init_min_3_init_max_silence_0(validator):
@@ -75,7 +84,7 @@ def test_init_min_3_init_max_silence_0(validator):
 
     assert (
         len(tokens) == 2
-    ), f"wrong number of tokens, expected: 2, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))
     tok1, tok2 = tokens[0], tokens[1]
 
     data = "".join(tok1[0])
@@ -83,22 +92,28 @@ def test_init_min_3_init_max_silence_0(validator):
     end = tok1[2]
     assert (
         data == "AAAAAAAAAaaaa"
-    ), f"wrong data for token 1, expected: 'AAAAAAAAAaaaa', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAAAAAAaaaa', found: {}".format(
+        data
+    )
     assert (
         start == 18
-    ), f"wrong start frame for token 1, expected: 18, found: {start}"
-    assert end == 30, f"wrong end frame for token 1, expected: 30, found: {end}"
+    ), "wrong start frame for token 1, expected: 18, found: {}".format(start)
+    assert (
+        end == 30
+    ), "wrong end frame for token 1, expected: 30, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 2, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 33
-    ), f"wrong start frame for token 2, expected: 33, found: {start}"
-    assert end == 37, f"wrong end frame for token 2, expected: 37, found: {end}"
+    ), "wrong start frame for token 2, expected: 33, found: {}".format(start)
+    assert (
+        end == 37
+    ), "wrong end frame for token 2, expected: 37, found: {}".format(end)
 
 
 def test_init_min_3_init_max_silence_2(validator):
@@ -119,7 +134,7 @@ def test_init_min_3_init_max_silence_2(validator):
 
     assert (
         len(tokens) == 3
-    ), f"wrong number of tokens, expected: 3, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 3, found: {}".format(len(tokens))
     tok1, tok2, tok3 = tokens[0], tokens[1], tokens[2]
 
     data = "".join(tok1[0])
@@ -127,33 +142,41 @@ def test_init_min_3_init_max_silence_2(validator):
     end = tok1[2]
     assert (
         data == "AaAaaAaAaaaa"
-    ), f"wrong data for token 1, expected: 'AaAaaAaA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AaAaaAaA', found: {}".format(data)
     assert (
         start == 5
-    ), f"wrong start frame for token 1, expected: 5, found: {start}"
-    assert end == 16, f"wrong end frame for token 1, expected: 16, found: {end}"
+    ), "wrong start frame for token 1, expected: 5, found: {}".format(start)
+    assert (
+        end == 16
+    ), "wrong end frame for token 1, expected: 16, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAAAAAAaaaa"
-    ), f"wrong data for token 2, expected: 'AAAAAAAAAaaaa', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAAAAAAAaaaa', found: {}".format(
+        data
+    )
     assert (
         start == 19
-    ), f"wrong start frame for token 2, expected: 19, found: {start}"
-    assert end == 31, f"wrong end frame for token 2, expected: 31, found: {end}"
+    ), "wrong start frame for token 2, expected: 19, found: {}".format(start)
+    assert (
+        end == 31
+    ), "wrong end frame for token 2, expected: 31, found: {}".format(end)
 
     data = "".join(tok3[0])
     start = tok3[1]
     end = tok3[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 3, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 3, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 35
-    ), f"wrong start frame for token 3, expected: 35, found: {start}"
-    assert end == 39, f"wrong end frame for token 3, expected: 39, found: {end}"
+    ), "wrong start frame for token 3, expected: 35, found: {}".format(start)
+    assert (
+        end == 39
+    ), "wrong end frame for token 3, expected: 39, found: {}".format(end)
 
 
 @pytest.fixture
@@ -178,7 +201,7 @@ def test_min_length_6_init_max_length_20(tokenizer_min_max_length):
 
     assert (
         len(tokens) == 2
-    ), f"wrong number of tokens, expected: 2, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))
     tok1, tok2 = tokens[0], tokens[1]
 
     data = "".join(tok1[0])
@@ -186,22 +209,28 @@ def test_min_length_6_init_max_length_20(tokenizer_min_max_length):
     end = tok1[2]
     assert (
         data == "AaaaAaAaaAaAaa"
-    ), f"wrong data for token 1, expected: 'AaaaAaAaaAaAaa', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AaaaAaAaaAaAaa', found: {}".format(
+        data
+    )
     assert (
         start == 1
-    ), f"wrong start frame for token 1, expected: 1, found: {start}"
-    assert end == 14, f"wrong end frame for token 1, expected: 14, found: {end}"
+    ), "wrong start frame for token 1, expected: 1, found: {}".format(start)
+    assert (
+        end == 14
+    ), "wrong end frame for token 1, expected: 14, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAAAAAAaa"
-    ), f"wrong data for token 2, expected: 'AAAAAAAAAaa', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAAAAAAAaa', found: {}".format(data)
     assert (
         start == 18
-    ), f"wrong start frame for token 2, expected: 18, found: {start}"
-    assert end == 28, f"wrong end frame for token 2, expected: 28, found: {end}"
+    ), "wrong start frame for token 2, expected: 18, found: {}".format(start)
+    assert (
+        end == 28
+    ), "wrong end frame for token 2, expected: 28, found: {}".format(end)
 
 
 @pytest.fixture
@@ -224,7 +253,7 @@ def test_min_length_1_init_max_length_1(tokenizer_min_max_length_1_1):
 
     assert (
         len(tokens) == 21
-    ), f"wrong number of tokens, expected: 21, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 21, found: {}".format(len(tokens))
 
 
 @pytest.fixture
@@ -251,7 +280,7 @@ def test_min_length_10_init_max_length_20(tokenizer_min_max_length_10_20):
 
     assert (
         len(tokens) == 2
-    ), f"wrong number of tokens, expected: 2, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))
     tok1, tok2 = tokens[0], tokens[1]
 
     data = "".join(tok1[0])
@@ -259,22 +288,30 @@ def test_min_length_10_init_max_length_20(tokenizer_min_max_length_10_20):
     end = tok1[2]
     assert (
         data == "AaaaAaAaaAaAaaaa"
-    ), f"wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AaaaAaAaaAaAaaaa', found: {}".format(
+        data
+    )
     assert (
         start == 1
-    ), f"wrong start frame for token 1, expected: 1, found: {start}"
-    assert end == 16, f"wrong end frame for token 1, expected: 16, found: {end}"
+    ), "wrong start frame for token 1, expected: 1, found: {}".format(start)
+    assert (
+        end == 16
+    ), "wrong end frame for token 1, expected: 16, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAAaaAAaaAAA"
-    ), f"wrong data for token 2, expected: 'AAAAAaaAAaaAAA', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAAAaaAAaaAAA', found: {}".format(
+        data
+    )
     assert (
         start == 30
-    ), f"wrong start frame for token 2, expected: 30, found: {start}"
-    assert end == 43, f"wrong end frame for token 2, expected: 43, found: {end}"
+    ), "wrong start frame for token 2, expected: 30, found: {}".format(start)
+    assert (
+        end == 43
+    ), "wrong end frame for token 2, expected: 43, found: {}".format(end)
 
 
 @pytest.fixture
@@ -301,7 +338,7 @@ def test_min_length_4_init_max_length_5(tokenizer_min_max_length_4_5):
 
     assert (
         len(tokens) == 4
-    ), f"wrong number of tokens, expected: 4, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 4, found: {}".format(len(tokens))
     tok1, tok2, tok3, tok4 = tokens[0], tokens[1], tokens[2], tokens[3]
 
     data = "".join(tok1[0])
@@ -309,44 +346,52 @@ def test_min_length_4_init_max_length_5(tokenizer_min_max_length_4_5):
     end = tok1[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 18
-    ), f"wrong start frame for token 1, expected: 18, found: {start}"
-    assert end == 22, f"wrong end frame for token 1, expected: 22, found: {end}"
+    ), "wrong start frame for token 1, expected: 18, found: {}".format(start)
+    assert (
+        end == 22
+    ), "wrong end frame for token 1, expected: 22, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAaa"
-    ), f"wrong data for token 2, expected: 'AAAaa', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAaa', found: {}".format(data)
     assert (
         start == 23
-    ), f"wrong start frame for token 2, expected: 23, found: {start}"
-    assert end == 27, f"wrong end frame for token 2, expected: 27, found: {end}"
+    ), "wrong start frame for token 2, expected: 23, found: {}".format(start)
+    assert (
+        end == 27
+    ), "wrong end frame for token 2, expected: 27, found: {}".format(end)
 
     data = "".join(tok3[0])
     start = tok3[1]
     end = tok3[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 3, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 3, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 32
-    ), f"wrong start frame for token 3, expected: 32, found: {start}"
-    assert end == 36, f"wrong end frame for token 3, expected: 36, found: {end}"
+    ), "wrong start frame for token 3, expected: 32, found: {}".format(start)
+    assert (
+        end == 36
+    ), "wrong end frame for token 3, expected: 36, found: {}".format(end)
 
     data = "".join(tok4[0])
     start = tok4[1]
     end = tok4[2]
     assert (
         data == "AAaaA"
-    ), f"wrong data for token 4, expected: 'AAaaA', found: '{data}'"
+    ), "wrong data for token 4, expected: 'AAaaA', found: {}".format(data)
     assert (
         start == 42
-    ), f"wrong start frame for token 4, expected: 42, found: {start}"
-    assert end == 46, f"wrong end frame for token 4, expected: 46, found: {end}"
+    ), "wrong start frame for token 4, expected: 42, found: {}".format(start)
+    assert (
+        end == 46
+    ), "wrong end frame for token 4, expected: 46, found: {}".format(end)
 
 
 @pytest.fixture
@@ -373,7 +418,7 @@ def test_min_5_max_10_max_continuous_silence_0(
 
     assert (
         len(tokens) == 3
-    ), f"wrong number of tokens, expected: 3, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 3, found: {}".format(len(tokens))
     tok1, tok2, tok3 = tokens[0], tokens[1], tokens[2]
 
     data = "".join(tok1[0])
@@ -381,33 +426,39 @@ def test_min_5_max_10_max_continuous_silence_0(
     end = tok1[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 3
-    ), f"wrong start frame for token 1, expected: 3, found: {start}"
-    assert end == 7, f"wrong end frame for token 1, expected: 7, found: {end}"
+    ), "wrong start frame for token 1, expected: 3, found: {}".format(start)
+    assert (
+        end == 7
+    ), "wrong end frame for token 1, expected: 7, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAAAAA"
-    ), f"wrong data for token 2, expected: 'AAAAAA', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAAAAA', found: {}".format(data)
     assert (
         start == 9
-    ), f"wrong start frame for token 2, expected: 9, found: {start}"
-    assert end == 14, f"wrong end frame for token 2, expected: 14, found: {end}"
+    ), "wrong start frame for token 2, expected: 9, found: {}".format(start)
+    assert (
+        end == 14
+    ), "wrong end frame for token 2, expected: 14, found: {}".format(end)
 
     data = "".join(tok3[0])
     start = tok3[1]
     end = tok3[2]
     assert (
         data == "AAAAAAAAA"
-    ), f"wrong data for token 3, expected: 'AAAAAAAAA', found: '{data}'"
+    ), "wrong data for token 3, expected: 'AAAAAAAAA', found: {}".format(data)
     assert (
         start == 17
-    ), f"wrong start frame for token 3, expected: 17, found: {start}"
-    assert end == 25, f"wrong end frame for token 3, expected: 25, found: {end}"
+    ), "wrong start frame for token 3, expected: 17, found: {}".format(start)
+    assert (
+        end == 25
+    ), "wrong end frame for token 3, expected: 25, found: {}".format(end)
 
 
 @pytest.fixture
@@ -435,7 +486,7 @@ def test_min_5_max_10_max_continuous_silence_1(
 
     assert (
         len(tokens) == 3
-    ), f"wrong number of tokens, expected: 3, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 3, found: {}".format(len(tokens))
     tok1, tok2, tok3 = tokens[0], tokens[1], tokens[2]
 
     data = "".join(tok1[0])
@@ -443,33 +494,39 @@ def test_min_5_max_10_max_continuous_silence_1(
     end = tok1[2]
     assert (
         data == "AAAAAaAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAAaAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAAaAAAA', found: {}".format(data)
     assert (
         start == 3
-    ), f"wrong start frame for token 1, expected: 3, found: {start}"
-    assert end == 12, f"wrong end frame for token 1, expected: 12, found: {end}"
+    ), "wrong start frame for token 1, expected: 3, found: {}".format(start)
+    assert (
+        end == 12
+    ), "wrong end frame for token 1, expected: 12, found: {}".format(end)
 
     data = "".join(tok2[0])
     start = tok2[1]
     end = tok2[2]
     assert (
         data == "AAa"
-    ), f"wrong data for token 2, expected: 'AAa', found: '{data}'"
+    ), "wrong data for token 2, expected: 'AAa', found: {}".format(data)
     assert (
         start == 13
-    ), f"wrong start frame for token 2, expected: 13, found: {start}"
-    assert end == 15, f"wrong end frame for token 2, expected: 15, found: {end}"
+    ), "wrong start frame for token 2, expected: 13, found: {}".format(start)
+    assert (
+        end == 15
+    ), "wrong end frame for token 2, expected: 15, found: {}".format(end)
 
     data = "".join(tok3[0])
     start = tok3[1]
     end = tok3[2]
     assert (
         data == "AAAAAAAAAa"
-    ), f"wrong data for token 3, expected: 'AAAAAAAAAa', found: '{data}'"
+    ), "wrong data for token 3, expected: 'AAAAAAAAAa', found: {}".format(data)
     assert (
         start == 17
-    ), f"wrong start frame for token 3, expected: 17, found: {start}"
-    assert end == 26, f"wrong end frame for token 3, expected: 26, found: {end}"
+    ), "wrong start frame for token 3, expected: 17, found: {}".format(start)
+    assert (
+        end == 26
+    ), "wrong end frame for token 3, expected: 26, found: {}".format(end)
 
 
 @pytest.fixture
@@ -494,7 +551,7 @@ def test_STRICT_MIN_LENGTH(tokenizer_strict_min_length):
 
     assert (
         len(tokens) == 1
-    ), f"wrong number of tokens, expected: 1, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 1, found: {}".format(len(tokens))
     tok1 = tokens[0]
 
     data = "".join(tok1[0])
@@ -502,11 +559,13 @@ def test_STRICT_MIN_LENGTH(tokenizer_strict_min_length):
     end = tok1[2]
     assert (
         data == "AAAAAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAAAAA', found: {}".format(data)
     assert (
         start == 2
-    ), f"wrong start frame for token 1, expected: 2, found: {start}"
-    assert end == 9, f"wrong end frame for token 1, expected: 9, found: {end}"
+    ), "wrong start frame for token 1, expected: 2, found: {}".format(start)
+    assert (
+        end == 9
+    ), "wrong end frame for token 1, expected: 9, found: {}".format(end)
 
 
 @pytest.fixture
@@ -531,7 +590,7 @@ def test_DROP_TAILING_SILENCE(tokenizer_drop_trailing_silence):
 
     assert (
         len(tokens) == 1
-    ), f"wrong number of tokens, expected: 1, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 1, found: {}".format(len(tokens))
     tok1 = tokens[0]
 
     data = "".join(tok1[0])
@@ -539,11 +598,13 @@ def test_DROP_TAILING_SILENCE(tokenizer_drop_trailing_silence):
     end = tok1[2]
     assert (
         data == "AAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAA', found: {}".format(data)
     assert (
         start == 2
-    ), f"wrong start frame for token 1, expected: 2, found: {start}"
-    assert end == 6, f"wrong end frame for token 1, expected: 6, found: {end}"
+    ), "wrong start frame for token 1, expected: 2, found: {}".format(start)
+    assert (
+        end == 6
+    ), "wrong end frame for token 1, expected: 6, found: {}".format(end)
 
 
 @pytest.fixture
@@ -573,7 +634,7 @@ def test_STRICT_MIN_LENGTH_and_DROP_TAILING_SILENCE(
 
     assert (
         len(tokens) == 1
-    ), f"wrong number of tokens, expected: 1, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 1, found: {}".format(len(tokens))
     tok1 = tokens[0]
 
     data = "".join(tok1[0])
@@ -581,11 +642,13 @@ def test_STRICT_MIN_LENGTH_and_DROP_TAILING_SILENCE(
     end = tok1[2]
     assert (
         data == "AAAAAAAA"
-    ), f"wrong data for token 1, expected: 'AAAAAAAA', found: '{data}'"
+    ), "wrong data for token 1, expected: 'AAAAAAAA', found: {}".format(data)
     assert (
         start == 2
-    ), f"wrong start frame for token 1, expected: 2, found: {start}"
-    assert end == 9, f"wrong end frame for token 1, expected: 9, found: {end}"
+    ), "wrong start frame for token 1, expected: 2, found: {}".format(start)
+    assert (
+        end == 9
+    ), "wrong end frame for token 1, expected: 9, found: {}".format(end)
 
 
 @pytest.fixture
@@ -615,4 +678,4 @@ def test_callback(tokenizer_callback):
 
     assert (
         len(tokens) == 2
-    ), f"wrong number of tokens, expected: 2, found: {len(tokens)}"
+    ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))

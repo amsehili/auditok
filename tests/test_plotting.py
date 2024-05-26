@@ -1,11 +1,13 @@
 import os
 import sys
-import pytest
 from tempfile import TemporaryDirectory
+
 import matplotlib
+import pytest
 
 matplotlib.use("AGG")
 import matplotlib.pyplot as plt  # noqa E402
+
 from auditok.core import AudioRegion  # noqa E402
 
 if sys.version_info.minor <= 5:
@@ -23,8 +25,8 @@ matplotlib.rcParams["figure.figsize"] = (10, 4)
 @pytest.mark.parametrize("channels", [1, 2], ids=["mono", "stereo"])
 def test_region_plot(channels):
     type_ = "mono" if channels == 1 else "stereo"
-    audio_filename = f"tests/data/test_split_10HZ_{type_}.raw"
-    image_filename = f"tests/images/{PREFIX}plot_{type_}_region.png"
+    audio_filename = "tests/data/test_split_10HZ_{}.raw".format(type_)
+    image_filename = "tests/images/{}plot_{}_region.png".format(PREFIX, type_)
     expected_image = plt.imread(image_filename)
     with TemporaryDirectory() as tmpdir:
         output_image_filename = os.path.join(tmpdir, "image.png")
@@ -50,7 +52,7 @@ def test_region_plot(channels):
 )
 def test_region_split_and_plot(channels, use_channel):
     type_ = "mono" if channels == 1 else "stereo"
-    audio_filename = f"tests/data/test_split_10HZ_{type_}.raw"
+    audio_filename = "tests/data/test_split_10HZ_{}.raw".format(type_)
     if type_ == "mono":
         fmt = "tests/images/{}split_and_plot_mono_region.png"
     else:
@@ -73,7 +75,3 @@ def test_region_split_and_plot(channels, use_channel):
         if SAVE_NEW_IMAGES:
             shutil.copy(output_image_filename, image_filename)
     assert (output_image == expected_image).all()
-
-
-if __name__ == "__main__":
-    pytest.main()
