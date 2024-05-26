@@ -1,33 +1,35 @@
+import filecmp
+import math
 import os
 import sys
-import math
 from array import array
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-import filecmp
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
-from test_util import _sample_generator, _generate_pure_tone, PURE_TONE_DICT
-from auditok.signal import FORMAT
+from test_util import PURE_TONE_DICT, _generate_pure_tone, _sample_generator
+
 from auditok.io import (
     AudioIOError,
     AudioParameterError,
     BufferAudioSource,
     RawAudioSource,
-    WaveAudioSource,
     StdinAudioSource,
-    check_audio_data,
-    _guess_audio_format,
+    WaveAudioSource,
     _get_audio_parameters,
+    _guess_audio_format,
     _load_raw,
     _load_wave,
     _load_with_pydub,
-    get_audio_source,
-    from_file,
     _save_raw,
     _save_wave,
     _save_with_pydub,
+    check_audio_data,
+    from_file,
+    get_audio_source,
     to_file,
 )
+from auditok.signal import FORMAT
 
 AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
 
@@ -633,3 +635,55 @@ def test_get_audio_source(input, expected_type, extra_args):
         kwargs.update(extra_args)
     audio_source = get_audio_source(input, **kwargs)
     assert isinstance(audio_source, expected_type)
+    assert audio_source.sampling_rate == 16000, (
+        "Unexpected sampling rate: audio_source.sampling_rate = "
+        + f"{audio_source.sampling_rate} instead of 16000"
+    )
+    assert audio_source.sr == 16000, (
+        "Unexpected sampling rate: audio_source.sr = "
+        + f"{audio_source.sr} instead of 16000"
+    )
+    assert audio_source.sample_width == 2, (
+        "Unexpected sample width: audio_source.sample_width = "
+        + f"{audio_source.sample_width} instead of 2"
+    )
+    assert audio_source.sw == 2, (
+        "Unexpected sample width: audio_source.sw = "
+        + f"{audio_source.sw} instead of 2"
+    )
+    assert audio_source.channels == 1, (
+        "Unexpected number of channels: audio_source.channels = "
+        + f"{audio_source.channels} instead of 1"
+    )
+    assert audio_source.ch == 1, (
+        "Unexpected number of channels: audio_source.ch = "
+        + f"{audio_source.ch} instead of 1"
+    )
+
+
+def test_get_audio_source_alias_prams():
+    audio_source = get_audio_source(b"0" * 1600, sr=16000, sw=2, ch=1)
+    assert audio_source.sampling_rate == 16000, (
+        "Unexpected sampling rate: audio_source.sampling_rate = "
+        + f"{audio_source.sampling_rate} instead of 16000"
+    )
+    assert audio_source.sr == 16000, (
+        "Unexpected sampling rate: audio_source.sr = "
+        + f"{audio_source.sr} instead of 16000"
+    )
+    assert audio_source.sample_width == 2, (
+        "Unexpected sample width: audio_source.sample_width = "
+        + f"{audio_source.sample_width} instead of 2"
+    )
+    assert audio_source.sw == 2, (
+        "Unexpected sample width: audio_source.sw = "
+        + f"{audio_source.sw} instead of 2"
+    )
+    assert audio_source.channels == 1, (
+        "Unexpected number of channels: audio_source.channels = "
+        + f"{audio_source.channels} instead of 1"
+    )
+    assert audio_source.ch == 1, (
+        "Unexpected number of channels: audio_source.ch = "
+        + f"{audio_source.ch} instead of 1"
+    )

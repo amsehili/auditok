@@ -1,23 +1,25 @@
 import os
-from unittest.mock import patch, call, Mock
 from tempfile import TemporaryDirectory
+from unittest.mock import Mock, call, patch
+
 import pytest
-from auditok import AudioRegion, AudioDataSource
-from auditok.exceptions import AudioEncodingWarning
+
+from auditok import AudioReader, AudioRegion
 from auditok.cmdline_util import make_logger
+from auditok.exceptions import AudioEncodingWarning
 from auditok.workers import (
-    TokenizerWorker,
-    StreamSaverWorker,
-    RegionSaverWorker,
-    PlayerWorker,
     CommandLineWorker,
+    PlayerWorker,
     PrintWorker,
+    RegionSaverWorker,
+    StreamSaverWorker,
+    TokenizerWorker,
 )
 
 
 @pytest.fixture
 def audio_data_source():
-    reader = AudioDataSource(
+    reader = AudioReader(
         input="tests/data/test_split_10HZ_mono.raw",
         block_dur=0.1,
         sr=10,

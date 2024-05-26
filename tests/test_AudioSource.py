@@ -3,7 +3,10 @@
 """
 
 from array import array
+
 import pytest
+from test_util import PURE_TONE_DICT, _sample_generator
+
 from auditok.io import (
     AudioParameterError,
     BufferAudioSource,
@@ -11,7 +14,6 @@ from auditok.io import (
     WaveAudioSource,
 )
 from auditok.signal import FORMAT
-from test_util import PURE_TONE_DICT, _sample_generator
 
 
 def audio_source_read_all_gen(audio_source, size=None):

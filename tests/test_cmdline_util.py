@@ -1,22 +1,23 @@
 import os
-import pytest
-from tempfile import TemporaryDirectory
 from collections import namedtuple
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
+
+import pytest
 
 from auditok.cmdline_util import (
     _AUDITOK_LOGGER,
+    KeywordArguments,
+    initialize_workers,
     make_kwargs,
     make_logger,
-    initialize_workers,
-    KeywordArguments,
 )
 from auditok.workers import (
-    StreamSaverWorker,
-    RegionSaverWorker,
-    PlayerWorker,
     CommandLineWorker,
+    PlayerWorker,
     PrintWorker,
+    RegionSaverWorker,
+    StreamSaverWorker,
 )
 
 _ArgsNamespace = namedtuple(
