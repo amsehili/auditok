@@ -1,9 +1,10 @@
-import sys
 import logging
+import sys
 from collections import namedtuple
+
 from . import workers
-from .util import AudioDataSource
 from .io import player_for
+from .util import AudioReader
 
 _AUDITOK_LOGGER = "AUDITOK_LOGGER"
 KeywordArguments = namedtuple(
@@ -81,7 +82,7 @@ def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
 
 def initialize_workers(logger=None, **kwargs):
     observers = []
-    reader = AudioDataSource(source=kwargs["input"], **kwargs)
+    reader = AudioReader(source=kwargs["input"], **kwargs)
     if kwargs["save_stream"] is not None:
         reader = workers.StreamSaverWorker(
             reader,

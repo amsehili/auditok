@@ -15,12 +15,12 @@ Module for low-level audio input-output operations.
     to_file
     player_for
 """
+
 import os
 import sys
 import wave
-import warnings
 from abc import ABC, abstractmethod
-from functools import partial
+
 from .exceptions import AudioIOError, AudioParameterError
 
 try:
@@ -104,20 +104,17 @@ def _get_audio_parameters(param_dict):
     audio_parameters : tuple
         a tuple for audio parameters as (sampling_rate, sample_width, channels).
     """
-    err_message = (
-        "'{ln}' (or '{sn}') must be a positive integer, found: '{val}'"
-    )
     parameters = []
-    for (long_name, short_name) in (
+    for long_name, short_name in (
         ("sampling_rate", "sr"),
         ("sample_width", "sw"),
         ("channels", "ch"),
     ):
         param = param_dict.get(long_name, param_dict.get(short_name))
         if param is None or not isinstance(param, int) or param <= 0:
-            raise AudioParameterError(
-                err_message.format(ln=long_name, sn=short_name, val=param)
-            )
+            err_message = f"{long_name!r} (or {short_name!r}) must be a "
+            err_message += f"positive integer, passed value: {param}."
+            raise AudioParameterError(err_message)
         parameters.append(param)
     sampling_rate, sample_width, channels = parameters
     return sampling_rate, sample_width, channels
@@ -141,7 +138,10 @@ class AudioSource(ABC):
     """
 
     def __init__(
-        self, sampling_rate, sample_width, channels,
+        self,
+        sampling_rate,
+        sample_width,
+        channels,
     ):
 
         if sample_width not in (1, 2, 4):
@@ -283,9 +283,13 @@ class BufferAudioSource(Rewindable):
     """
 
     def __init__(
-        self, data, sampling_rate=16000, sample_width=2, channels=1,
+        self,
+        data,
+        sampling_rate=16000,
+        sample_width=2,
+        channels=1,
     ):
-        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        super().__init__(sampling_rate, sample_width, channels)
         check_audio_data(data, sample_width, channels)
         self._data = data
         self._sample_size_all_channels = sample_width * channels
@@ -558,7 +562,10 @@ class StdinAudioSource(FileAudioSource):
     """
 
     def __init__(
-        self, sampling_rate=16000, sample_width=2, channels=1,
+        self,
+        sampling_rate=16000,
+        sample_width=2,
+        channels=1,
     ):
         FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
         self._is_open = False
@@ -610,7 +617,10 @@ class PyAudioPlayer:
     """
 
     def __init__(
-        self, sampling_rate=16000, sample_width=2, channels=1,
+        self,
+        sampling_rate=16000,
+        sample_width=2,
+        channels=1,
     ):
         if sample_width not in (1, 2, 4):
             raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
@@ -640,7 +650,7 @@ class PyAudioPlayer:
                 chunk_gen,
                 total=nb_chunks,
                 duration=duration,
-                **progress_bar_kwargs
+                **progress_bar_kwargs,
             )
         if self.stream.is_stopped():
             self.stream.start_stream()
@@ -737,7 +747,7 @@ def get_audio_source(input=None, **kwargs):
         return PyAudioSource(
             *_get_audio_parameters(kwargs),
             frames_per_buffer=frames_per_buffer,
-            input_device_index=input_device_index
+            input_device_index=input_device_index,
         )
 
 
@@ -1004,12 +1014,7 @@ def to_file(data, file, audio_format=None, **kwargs):
     if audio_format in (None, "raw"):
         _save_raw(data, file)
         return
-    try:
-        sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
-    except AudioParameterError as exc:
-        err_message = "All audio parameters are required to save formats "
-        "other than raw. Error detail: {}".format(exc)
-        raise AudioParameterError(err_message)
+    sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
     if audio_format in ("wav", "wave"):
         _save_wave(data, file, sampling_rate, sample_width, channels)
     elif _WITH_PYDUB:
@@ -1017,5 +1022,6 @@ def to_file(data, file, audio_format=None, **kwargs):
             data, file, audio_format, sampling_rate, sample_width, channels
         )
     else:
-        err_message = "cannot write file format {} (file name: {})"
-        raise AudioIOError(err_message.format(audio_format, file))
+        raise AudioIOError(
+            f"cannot write file format {audio_format} (file name: {file})"
+        )

@@ -14,19 +14,19 @@ as from the microphone or standard input.
 @deffield    updated: 01 Mar 2021
 """
 
-import sys
 import os
-from argparse import ArgumentParser
-import time
+import sys
 import threading
+import time
+from argparse import ArgumentParser
 
-from auditok import __version__, AudioRegion
-from .util import AudioDataSource
-from .exceptions import EndOfProcessing, AudioEncodingWarning
-from .io import player_for
-from .cmdline_util import make_logger, make_kwargs, initialize_workers
+from auditok import AudioRegion, __version__
+
 from . import workers
-
+from .cmdline_util import initialize_workers, make_kwargs, make_logger
+from .exceptions import AudioEncodingWarning, EndOfProcessing
+from .io import player_for
+from .util import AudioDataSource
 
 __all__ = []
 __date__ = "2015-11-23"

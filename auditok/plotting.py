@@ -40,7 +40,7 @@ def _plot_detections(subplot, detections, theme):
     ls = theme.get("linestyle", theme.get("ls"))
     lw = theme.get("linewidth", theme.get("lw"))
     alpha = theme.get("alpha")
-    for (start, end) in detections:
+    for start, end in detections:
         subplot.axvspan(start, end, fc=fc, ec=ec, ls=ls, lw=lw, alpha=alpha)
 
 
