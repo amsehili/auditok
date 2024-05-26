@@ -12,9 +12,10 @@ Module for basic audio signal processing and array operations.
     calculate_energy_single_channel
     calculate_energy_multichannel
 """
-from array import array as array_
+
 import audioop
 import math
+from array import array as array_
 
 FORMAT = {1: "b", 2: "h", 4: "i"}
 _EPSILON = 1e-10

@@ -1,8 +1,9 @@
 import numpy as np
+
 from .signal import (
-    compute_average_channel_stereo,
-    calculate_energy_single_channel,
     calculate_energy_multichannel,
+    calculate_energy_single_channel,
+    compute_average_channel_stereo,
 )
 
 FORMAT = {1: np.int8, 2: np.int16, 4: np.int32}

@@ -1,22 +1,22 @@
 import os
-import sys
-from tempfile import NamedTemporaryFile
-from abc import ABCMeta, abstractmethod
-from threading import Thread
-from datetime import datetime, timedelta
-from collections import namedtuple
-import wave
 import subprocess
-from queue import Queue, Empty
-from .io import _guess_audio_format
-from .util import AudioDataSource, make_duration_formatter
+import sys
+import wave
+from abc import ABCMeta, abstractmethod
+from collections import namedtuple
+from datetime import datetime, timedelta
+from queue import Empty, Queue
+from tempfile import NamedTemporaryFile
+from threading import Thread
+
 from .core import split
 from .exceptions import (
-    EndOfProcessing,
     AudioEncodingError,
     AudioEncodingWarning,
+    EndOfProcessing,
 )
-
+from .io import _guess_audio_format
+from .util import AudioReader, make_duration_formatter
 
 _STOP_PROCESSING = "STOP_PROCESSING"
 _Detection = namedtuple("_Detection", "id start end duration")
@@ -86,7 +86,7 @@ class Worker(Thread, metaclass=ABCMeta):
             return None
 
 
-class TokenizerWorker(Worker, AudioDataSource):
+class TokenizerWorker(Worker, AudioReader):
     def __init__(self, reader, observers=None, logger=None, **kwargs):
         self._observers = observers if observers is not None else []
         self._reader = reader
@@ -245,7 +245,7 @@ class StreamSaverWorker(Worker):
         self.stop()
 
     def rewind(self):
-        # ensure compatibility with AudioDataSource with record=True
+        # ensure compatibility with AudioReader with record=True
         pass
 
     @property

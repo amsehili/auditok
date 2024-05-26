@@ -7,11 +7,14 @@
     AudioRegion
     StreamTokenizer
 """
-import os
+
 import math
-from .util import AudioReader, DataValidator, AudioEnergyValidator
-from .io import check_audio_data, to_file, player_for, get_audio_source
-from .exceptions import TooSamllBlockDuration
+import os
+
+from .exceptions import TooSmallBlockDuration
+from .io import check_audio_data, get_audio_source, player_for, to_file
+from .plotting import plot
+from .util import AudioEnergyValidator, AudioReader, DataValidator
 
 try:
     from . import signal_numpy as signal
@@ -90,7 +93,7 @@ def split(
     max_silence=0.3,
     drop_trailing_silence=False,
     strict_min_dur=False,
-    **kwargs
+    **kwargs,
 ):
     """
     Split audio data and return a generator of AudioRegions
@@ -104,17 +107,17 @@ def split(
         Every object that is not an `AudioReader` will be transformed into an
         `AudioReader` before processing. If it is an `str` that refers to a raw
         audio file, `bytes` or None, audio parameters should be provided using
-        kwargs (i.e., `samplig_rate`, `sample_width` and `channels` or their
+        kwargs (i.e., `sampling_rate`, `sample_width` and `channels` or their
         alias).
         If `input` is str then audio format will be guessed from file extension.
         `audio_format` (alias `fmt`) kwarg can also be given to specify audio
         format explicitly. If none of these options is available, rely on
         backend (currently only pydub is supported) to load data.
     min_dur : float, default: 0.2
-        minimun duration in seconds of a detected audio event. By using large
+        minimum duration in seconds of a detected audio event. By using large
         values for `min_dur`, very short audio events (e.g., very short 1-word
-        utterances like 'yes' or 'no') can be mis detected. Using very short
-        values might result in a high number of short, unuseful audio events.
+        utterances like 'yes' or 'no') can be mis detected. Using a very small
+        value may result in a high number of too short audio events.
     max_dur : float, default: 5
         maximum duration in seconds of a detected audio event. If an audio event
         lasts more than `max_dur` it will be truncated. If the continuation of a
@@ -177,7 +180,7 @@ def split(
     max_read, mr : float, default: None, read until end of stream
         maximum data to read from source in seconds.
     validator, val : callable, DataValidator
-        custom data validator. If `None` (default), an `AudioEnergyValidor` is
+        custom data validator. If `None` (default), an `AudioEnergyValidtor` is
         used with the given energy threshold. Can be a callable or an instance
         of `DataValidator` that implements `is_valid`. In either case, it'll be
         called with with a window of audio data as the first parameter.
@@ -197,11 +200,11 @@ def split(
         a generator of detected :class:`AudioRegion` s.
     """
     if min_dur <= 0:
-        raise ValueError("'min_dur' ({}) must be > 0".format(min_dur))
+        raise ValueError(f"'min_dur' ({min_dur}) must be > 0")
     if max_dur <= 0:
-        raise ValueError("'max_dur' ({}) must be > 0".format(max_dur))
+        raise ValueError(f"'max_dur' ({max_dur}) must be > 0")
     if max_silence < 0:
-        raise ValueError("'max_silence' ({}) must be >= 0".format(max_silence))
+        raise ValueError(f"'max_silence' ({max_silence}) must be >= 0")
 
     if isinstance(input, AudioReader):
         source = input
@@ -212,7 +215,7 @@ def split(
         )
         if analysis_window <= 0:
             raise ValueError(
-                "'analysis_window' ({}) must be > 0".format(analysis_window)
+                f"'analysis_window' ({analysis_window}) must be > 0"
             )
 
         params = kwargs.copy()
@@ -225,11 +228,12 @@ def split(
             input = bytes(input)
         try:
             source = AudioReader(input, block_dur=analysis_window, **params)
-        except TooSamllBlockDuration as exc:
-            err_msg = "Too small 'analysis_windows' ({0}) for sampling rate "
-            err_msg += "({1}). Analysis windows should at least be 1/{1} to "
-            err_msg += "cover one single data sample"
-            raise ValueError(err_msg.format(exc.block_dur, exc.sampling_rate))
+        except TooSmallBlockDuration as exc:
+            err_msg = f"Too small 'analysis_window' ({exc.block_dur}) for "
+            err_msg += f"sampling rate ({exc.sampling_rate}). Analysis window "
+            err_msg += f"should at least be 1/{exc.sampling_rate} to cover "
+            err_msg += "one data sample"
+            raise ValueError(err_msg) from exc
 
     validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None:
@@ -358,8 +362,8 @@ def _make_audio_region(
     frame_duration: float
         duration of analysis window in seconds
     start_frame : int
-        index of the fisrt analysis window
-    samling_rate : int
+        index of the first analysis window
+    sampling_rate : int
         sampling rate of audio data
     sample_width : int
         number of bytes of one audio sample
@@ -369,7 +373,7 @@ def _make_audio_region(
     Returns
     -------
     audio_region : AudioRegion
-        AudioRegion whose start time is calculeted as:
+        AudioRegion whose start time is calculated as:
         `1000 * start_frame * frame_duration`
     """
     start = start_frame * frame_duration
@@ -648,13 +652,15 @@ class AudioRegion(object):
     @property
     def seconds(self):
         """
-        A view to slice audio region by seconds (using ``region.seconds[start:end]``).
+        A view to slice audio region by seconds using
+        ``region.seconds[start:end]``.
         """
         return self._seconds_view
 
     @property
     def millis(self):
-        """A view to slice audio region by milliseconds (using ``region.millis[start:end]``)."""
+        """A view to slice audio region by milliseconds using
+        ``region.millis[start:end]``."""
         return self._millis_view
 
     @property
@@ -786,7 +792,7 @@ class AudioRegion(object):
         max_silence=0.3,
         drop_trailing_silence=False,
         strict_min_dur=False,
-        **kwargs
+        **kwargs,
     ):
         """Split audio region. See :func:`auditok.split()` for a comprehensive
         description of split parameters.
@@ -804,7 +810,7 @@ class AudioRegion(object):
             max_silence=max_silence,
             drop_trailing_silence=drop_trailing_silence,
             strict_min_dur=strict_min_dur,
-            **kwargs
+            **kwargs,
         )
 
     def plot(
@@ -816,7 +822,7 @@ class AudioRegion(object):
         dpi=120,
         theme="auditok",
     ):
-        """Plot audio region, one sub-plot for each channel.
+        """Plot audio region using one sub-plot per each channel.
 
         Parameters
         ----------
@@ -835,20 +841,15 @@ class AudioRegion(object):
             plot theme to use. Currently only "auditok" theme is implemented. To
             provide you own them see :attr:`auditok.plotting.AUDITOK_PLOT_THEME`.
         """
-        try:
-            from auditok.plotting import plot
-
-            plot(
-                self,
-                scale_signal=scale_signal,
-                show=show,
-                figsize=figsize,
-                save_as=save_as,
-                dpi=dpi,
-                theme=theme,
-            )
-        except ImportError:
-            raise RuntimeWarning("Plotting requires matplotlib")
+        plot(
+            self,
+            scale_signal=scale_signal,
+            show=show,
+            figsize=figsize,
+            save_as=save_as,
+            dpi=dpi,
+            theme=theme,
+        )
 
     def split_and_plot(
         self,
@@ -863,42 +864,37 @@ class AudioRegion(object):
         save_as=None,
         dpi=120,
         theme="auditok",
-        **kwargs
+        **kwargs,
     ):
         """Split region and plot signal and detections. Alias: :meth:`splitp`.
         See :func:`auditok.split()` for a comprehensive description of split
         parameters. Also see :meth:`plot` for plot parameters.
         """
-        try:
-            from auditok.plotting import plot
-
-            regions = self.split(
-                min_dur=min_dur,
-                max_dur=max_dur,
-                max_silence=max_silence,
-                drop_trailing_silence=drop_trailing_silence,
-                strict_min_dur=strict_min_dur,
-                **kwargs
-            )
-            regions = list(regions)
-            detections = ((reg.meta.start, reg.meta.end) for reg in regions)
-            eth = kwargs.get(
-                "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
-            )
-            plot(
-                self,
-                scale_signal=scale_signal,
-                detections=detections,
-                energy_threshold=eth,
-                show=show,
-                figsize=figsize,
-                save_as=save_as,
-                dpi=dpi,
-                theme=theme,
-            )
-            return regions
-        except ImportError:
-            raise RuntimeWarning("Plotting requires matplotlib")
+        regions = self.split(
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=drop_trailing_silence,
+            strict_min_dur=strict_min_dur,
+            **kwargs,
+        )
+        regions = list(regions)
+        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
+        eth = kwargs.get(
+            "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
+        )
+        plot(
+            self,
+            scale_signal=scale_signal,
+            detections=detections,
+            energy_threshold=eth,
+            show=show,
+            figsize=figsize,
+            save_as=save_as,
+            dpi=dpi,
+            theme=theme,
+        )
+        return regions
 
     def __array__(self):
         return self.samples
@@ -1116,11 +1112,9 @@ class StreamTokenizer:
             In that case the trailing silence can be removed if you use the
             `StreamTokenizer.DROP_TRAILING_SILENCE` mode.
 
-            -4 `(StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE)`:
+            -4 `(StreamTokenizer.STRICT_MIN_LENGTH | StreamTokenizer.DROP_TRAILING_SILENCE)`:  # noqa: B950
             use both options. That means: first remove tailing silence, then
             check if the token still has a length of at least `min_length`.
-
-
 
 
     Examples

@@ -12,11 +12,11 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
+import ast
 import os
 import re
-import ast
 import shlex
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -63,9 +63,9 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"auditok"
-copyright = u"2015-2021, Amine Sehili"
-author = u"Amine Sehili"
+project = "auditok"
+copyright = "2015-2021, Amine Sehili"
+author = "Amine Sehili"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -253,8 +253,8 @@ latex_documents = [
     (
         master_doc,
         "auditok.tex",
-        u"auditok Documentation",
-        u"Amine Sehili",
+        "auditok Documentation",
+        "Amine Sehili",
         "manual",
     ),
 ]
@@ -284,7 +284,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "auditok", u"auditok Documentation", [author], 1)]
+man_pages = [(master_doc, "auditok", "auditok Documentation", [author], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -299,7 +299,7 @@ texinfo_documents = [
     (
         master_doc,
         "auditok",
-        u"auditok Documentation",
+        "auditok Documentation",
         author,
         "auditok",
         "Audio Activity Detection tool.",
