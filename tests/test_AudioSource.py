@@ -4,16 +4,77 @@
 
 from array import array
 
+import numpy as np
 import pytest
-from test_util import PURE_TONE_DICT, _sample_generator
 
 from auditok.io import (
+    AudioIOError,
     AudioParameterError,
     BufferAudioSource,
     RawAudioSource,
     WaveAudioSource,
 )
-from auditok.signal import FORMAT
+from auditok.signal import SAMPLE_WIDTH_TO_DTYPE
+
+
+def _sample_generator(*data_buffers):
+    """
+    Takes a list of many mono audio data buffers and makes a sample generator
+    of interleaved audio samples, one sample from each channel. The resulting
+    generator can be used to build a multichannel audio buffer.
+    >>> gen = _sample_generator("abcd", "ABCD")
+    >>> list(gen)
+    ["a", "A", "b", "B", "c", "C", "d", "D"]
+    """
+    frame_gen = zip(*data_buffers, strict=True)
+    return (sample for frame in frame_gen for sample in frame)
+
+
+def _generate_pure_tone(
+    frequency, duration_sec=1, sampling_rate=16000, sample_width=2, volume=1e4
+):
+    """
+    Generates a pure tone with the given frequency.
+    """
+    assert frequency <= sampling_rate / 2
+    max_value = (2 ** (sample_width * 8) // 2) - 1
+    if volume > max_value:
+        volume = max_value
+    dtype = SAMPLE_WIDTH_TO_DTYPE[sample_width]
+    total_samples = int(sampling_rate * duration_sec)
+    step = frequency / sampling_rate
+    two_pi_step = 2 * np.pi * step
+    data = np.array(
+        [int(np.sin(two_pi_step * i) * volume) for i in range(total_samples)]
+    ).astype(dtype)
+    return data
+
+
+@pytest.fixture
+def pure_tone_data(freq):
+
+    PURE_TONE_DICT = {
+        freq: _generate_pure_tone(freq, 1, 16000, 2)
+        for freq in (400, 800, 1600)
+    }
+    PURE_TONE_DICT.update(
+        {
+            freq: _generate_pure_tone(freq, 0.1, 16000, 2)
+            for freq in (600, 1150, 2400, 7220)
+        }
+    )
+    return PURE_TONE_DICT[freq]
+
+
+PURE_TONE_DICT = {
+    freq: _generate_pure_tone(freq, 1, 16000, 2) for freq in (400, 800, 1600)
+}
+PURE_TONE_DICT.update(
+    {
+        freq: _generate_pure_tone(freq, 0.1, 16000, 2)
+        for freq in (600, 1150, 2400, 7220)
+    }
+)
 
 
 def audio_source_read_all_gen(audio_source, size=None):
@@ -65,8 +126,8 @@ def test_RawAudioSource(file_suffix, frequencies):
     data_read_all = b"".join(audio_source_read_all_gen(audio_source))
     audio_source.close()
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    fmt = FORMAT[audio_source.sample_width]
-    expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    dtype = SAMPLE_WIDTH_TO_DTYPE[audio_source.sample_width]
+    expected = np.fromiter(_sample_generator(*mono_channels), dtype).tobytes()
 
     assert data_read_all == expected
 
@@ -100,8 +161,8 @@ def test_WaveAudioSource(file_suffix, frequencies):
     data = b"".join(audio_source_read_all_gen(audio_source))
     audio_source.close()
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    fmt = FORMAT[audio_source.sample_width]
-    expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    dtype = SAMPLE_WIDTH_TO_DTYPE[audio_source.sample_width]
+    expected = np.fromiter(_sample_generator(*mono_channels), dtype).tobytes()
 
     assert data == expected
 
@@ -348,7 +409,7 @@ class TestBufferAudioSource_SR10_SW1_CH1:
 
     def test_sr10_sw1_ch1_read_closed(self):
         self.audio_source.close()
-        with pytest.raises(Exception):
+        with pytest.raises(AudioIOError):
             self.audio_source.read(1)
 
 
@@ -658,10 +719,9 @@ class TestBufferAudioSourceCreationException:
             _ = BufferAudioSource(
                 data=b"ABCDEFGHI", sampling_rate=8, sample_width=2, channels=1
             )
-        assert (
-            str(audio_param_err.value)
-            == "The length of audio data must be an integer multiple of `sample_width * channels`"
-        )
+        msg = "The length of audio data must be an integer multiple of "
+        msg += "`sample_width * channels`"
+        assert str(audio_param_err.value) == msg
 
 
 class TestAudioSourceProperties:
@@ -689,7 +749,11 @@ class TestAudioSourceProperties:
 
         with pytest.raises(AttributeError):
             a_source.sampling_rate = 16000
+
+        with pytest.raises(AttributeError):
             a_source.sample_width = 1
+
+        with pytest.raises(AttributeError):
             a_source.channels = 2
 
 
@@ -718,5 +782,9 @@ class TestAudioSourceShortProperties:
 
         with pytest.raises(AttributeError):
             a_source.sr = 16000
+
+        with pytest.raises(AttributeError):
             a_source.sw = 1
+
+        with pytest.raises(AttributeError):
             a_source.ch = 2
