@@ -13,6 +13,9 @@ import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 
+import numpy as np
+
+from . import signal
 from .exceptions import TimeFormatError, TooSmallBlockDuration
 from .io import (
     AudioIOError,
@@ -22,12 +25,6 @@ from .io import (
     from_file,
     get_audio_source,
 )
-
-try:
-    from . import signal_numpy as signal
-except ImportError:
-    from . import signal
-
 
 __all__ = [
     "make_duration_formatter",
@@ -142,13 +139,13 @@ def make_channel_selector(sample_width, channels, selected=None):
 
     Importantly, if `selected` is None or equals "any", `selector(audio_data)`
     will separate and return a list of available channels:
-    `[data_channe_1, data_channe_2, ...].`
+    `[data_channel_1, data_channel_2, ...].`
 
     Note also that returned `selector` expects `bytes` format for input data but
-    does notnecessarily return a `bytes` object. In fact, in order to extract
+    does not necessarily return a `bytes` object. In fact, in order to extract
     the desired channel (or compute the average channel if `selected` = "avg"),
     it first converts input data into a `array.array` (or `numpy.ndarray`)
-    object. After channel of interst is selected/computed, it is returned as
+    object. After the channel of interest is selected/computed, it is returned as
     such, without any reconversion to `bytes`. This behavior is wanted for
     efficiency purposes because returned objects can be directly used as buffers
     of bytes. In any case, returned objects can be converted back to `bytes`
@@ -176,7 +173,7 @@ def make_channel_selector(sample_width, channels, selected=None):
     -------
     selector : callable
         a callable that can be used as `selector(audio_data)` and returns data
-        that contains channel of interst.
+        that contains channel of interest.
 
     Raises
     ------
@@ -184,12 +181,11 @@ def make_channel_selector(sample_width, channels, selected=None):
         if `sample_width` is not one of 1, 2 or 4, or if `selected` has an
         unexpected value.
     """
-    fmt = signal.FORMAT.get(sample_width)
-    if fmt is None:
-        err_msg = "'sample_width' must be 1, 2 or 4, given: {}"
-        raise ValueError(err_msg.format(sample_width))
-    if channels == 1:
-        return lambda x: x
+    to_array_ = partial(
+        signal.to_array, sample_width=sample_width, channels=channels
+    )
+    if channels == 1 or selected in (None, "any"):
+        return to_array_
 
     if isinstance(selected, int):
         if selected < 0:
@@ -198,27 +194,10 @@ def make_channel_selector(sample_width, channels, selected=None):
             err_msg = "Selected channel must be >= -channels and < channels"
             err_msg += ", given: {}"
             raise ValueError(err_msg.format(selected))
-        return partial(
-            signal.extract_single_channel,
-            fmt=fmt,
-            channels=channels,
-            selected=selected,
-        )
+        return lambda x: to_array_(x)[selected]
 
     if selected in ("mix", "avg", "average"):
-        if channels == 2:
-            # when data is stereo, using audioop when possible is much faster
-            return partial(
-                signal.compute_average_channel_stereo,
-                sample_width=sample_width,
-            )
-
-        return partial(
-            signal.compute_average_channel, fmt=fmt, channels=channels
-        )
-
-    if selected in (None, "any"):
-        return partial(signal.separate_channels, fmt=fmt, channels=channels)
+        return lambda x: to_array_(x).mean(axis=0)
 
     raise ValueError(
         "Selected channel must be an integer, None (alias 'any') or 'average' "
@@ -292,15 +271,12 @@ class AudioEnergyValidator(DataValidator):
     def __init__(
         self, energy_threshold, sample_width, channels, use_channel=None
     ):
+        self._energy_threshold = energy_threshold
         self._sample_width = sample_width
         self._selector = make_channel_selector(
             sample_width, channels, use_channel
         )
-        if channels == 1 or use_channel not in (None, "any"):
-            self._energy_fn = signal.calculate_energy_single_channel
-        else:
-            self._energy_fn = signal.calculate_energy_multichannel
-        self._energy_threshold = energy_threshold
+        self._energy_agg_fn = np.max if use_channel in (None, "any") else None
 
     def is_valid(self, data):
         """
@@ -315,7 +291,9 @@ class AudioEnergyValidator(DataValidator):
         bool
             True if the energy of audio data is >= threshold, False otherwise.
         """
-        log_energy = self._energy_fn(self._selector(data), self._sample_width)
+        log_energy = signal.calculate_energy(
+            self._selector(data), self._energy_agg_fn
+        )
         return log_energy >= self._energy_threshold
 
 
@@ -697,7 +675,6 @@ class AudioReader(DataSource):
         if max_read is not None:
             input = _Limiter(input, max_read)
             self._max_read = max_read
-        # TODO: warning if block_dur and hop_dur yield the same size in terms of nb samples
         if hop_dur is None or hop_dur == block_dur:
             input = _FixedSizeAudioReader(input, block_dur)
         else:

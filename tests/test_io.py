@@ -6,8 +6,13 @@ from array import array
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
-from test_util import PURE_TONE_DICT, _generate_pure_tone, _sample_generator
+from test_AudioSource import (
+    PURE_TONE_DICT,
+    _generate_pure_tone,
+    _sample_generator,
+)
 
 from auditok.io import (
     AudioIOError,
@@ -29,8 +34,9 @@ from auditok.io import (
     get_audio_source,
     to_file,
 )
-from auditok.signal import FORMAT
+from auditok.signal import SAMPLE_WIDTH_TO_DTYPE
 
+AUDIO_PARAMS = {"sampling_rate": 16000, "sample_width": 2, "channels": 1}
 AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
 
 
@@ -87,7 +93,7 @@ def test_guess_audio_format(fmt, filename, expected):
 
 def test_get_audio_parameters_short_params():
     expected = (8000, 2, 1)
-    params = dict(zip(("sr", "sw", "ch"), expected))
+    params = dict(zip(("sr", "sw", "ch"), expected, strict=True))
     result = _get_audio_parameters(params)
     assert result == expected
 
@@ -96,8 +102,9 @@ def test_get_audio_parameters_long_params():
     expected = (8000, 2, 1)
     params = dict(
         zip(
-            ("sampling_rate", "sample_width", "channels", "use_channel"),
+            ("sampling_rate", "sample_width", "channels"),
             expected,
+            strict=True,
         )
     )
     result = _get_audio_parameters(params)
@@ -106,10 +113,48 @@ def test_get_audio_parameters_long_params():
 
 def test_get_audio_parameters_long_params_shadow_short_ones():
     expected = (8000, 2, 1)
-    params = dict(zip(("sampling_rate", "sample_width", "channels"), expected))
-    params.update(dict(zip(("sr", "sw", "ch"), "xxx")))
+    params = dict(
+        zip(
+            ("sampling_rate", "sample_width", "channels"), expected, strict=True
+        )
+    )
+    params.update(dict(zip(("sr", "sw", "ch"), "xxx", strict=True)))
     result = _get_audio_parameters(params)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "missing_param",
+    [
+        "sampling_rate",  # missing_sampling_rate
+        "sample_width",  # missing_sample_width
+        "channels",  # missing_channels
+    ],
+    ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
+)
+def test_get_audio_parameters_missing_parameter(missing_param):
+
+    params = AUDIO_PARAMS.copy()
+    del params[missing_param]
+    with pytest.raises(AudioParameterError):
+        _get_audio_parameters(params)
+
+
+@pytest.mark.parametrize(
+    "missing_param",
+    [
+        "sr",  # missing_sampling_rate
+        "sw",  # missing_sample_width
+        "ch",  # missing_channels
+    ],
+    ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
+)
+def test_get_audio_parameters_missing_parameter_short(missing_param):
+
+    params = AUDIO_PARAMS_SHORT.copy()
+    del params[missing_param]
+    with pytest.raises(AudioParameterError):
+        _get_audio_parameters(params)
 
 
 @pytest.mark.parametrize(
@@ -132,7 +177,9 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
     ],
 )
 def test_get_audio_parameters_invalid(values):
-    params = dict(zip(("sampling_rate", "sample_width", "channels"), values))
+    params = dict(
+        zip(("sampling_rate", "sample_width", "channels"), values, strict=True)
+    )
     with pytest.raises(AudioParameterError):
         _get_audio_parameters(params)
 
@@ -227,9 +274,9 @@ def test_from_file_large_file_compressed():
     ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
 )
 def test_from_file_missing_audio_param(missing_param):
+    params = AUDIO_PARAMS_SHORT.copy()
+    del params[missing_param]
     with pytest.raises(AudioParameterError):
-        params = AUDIO_PARAMS_SHORT.copy()
-        del params[missing_param]
         from_file("audio", audio_format="raw", **params)
 
 
@@ -315,26 +362,22 @@ def test_load_raw(file_id, frequencies, large_file):
     assert audio_source.sample_width == 2
     assert audio_source.channels == len(frequencies)
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    fmt = FORMAT[audio_source.sample_width]
-    expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    dtype = SAMPLE_WIDTH_TO_DTYPE[audio_source.sample_width]
+    expected = np.fromiter(
+        _sample_generator(*mono_channels), dtype=dtype
+    ).tobytes()
     assert data == expected
 
 
-@pytest.mark.parametrize(
-    "missing_param",
-    [
-        "sr",  # missing_sampling_rate
-        "sw",  # missing_sample_width
-        "ch",  # missing_channels
-    ],
-    ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
-)
-def test_load_raw_missing_audio_param(missing_param):
+def test_load_raw_missing_audio_param():
     with pytest.raises(AudioParameterError):
-        params = AUDIO_PARAMS_SHORT.copy()
-        del params[missing_param]
-        srate, swidth, channels, _ = _get_audio_parameters(params)
-        _load_raw("audio", srate, swidth, channels)
+        _load_raw("audio", sampling_rate=None, sample_width=1, channels=1)
+
+    with pytest.raises(AudioParameterError):
+        _load_raw("audio", sampling_rate=16000, sample_width=None, channels=1)
+
+    with pytest.raises(AudioParameterError):
+        _load_raw("audio", sampling_rate=16000, sample_width=1, channels=None)
 
 
 @pytest.mark.parametrize(
@@ -368,8 +411,10 @@ def test_load_wave(file_id, frequencies, large_file):
     assert audio_source.sample_width == 2
     assert audio_source.channels == len(frequencies)
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    fmt = FORMAT[audio_source.sample_width]
-    expected = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    dtype = SAMPLE_WIDTH_TO_DTYPE[audio_source.sample_width]
+    expected = np.fromiter(
+        _sample_generator(*mono_channels), dtype=dtype
+    ).tobytes()
     assert data == expected
 
 
@@ -431,9 +476,9 @@ def test_load_with_pydub(
 def test_save_raw(filename, frequencies):
     filename = "tests/data/test_16KHZ_{}".format(filename)
     sample_width = 2
-    fmt = FORMAT[sample_width]
+    dtype = SAMPLE_WIDTH_TO_DTYPE[sample_width]
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    data = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    data = np.fromiter(_sample_generator(*mono_channels), dtype=dtype).tobytes()
     tmpfile = NamedTemporaryFile()
     _save_raw(data, tmpfile.name)
     assert filecmp.cmp(tmpfile.name, filename, shallow=False)
@@ -452,9 +497,9 @@ def test_save_wave(filename, frequencies):
     sampling_rate = 16000
     sample_width = 2
     channels = len(frequencies)
-    fmt = FORMAT[sample_width]
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
-    data = array(fmt, _sample_generator(*mono_channels)).tobytes()
+    dtype = SAMPLE_WIDTH_TO_DTYPE[sample_width]
+    data = np.fromiter(_sample_generator(*mono_channels), dtype=dtype).tobytes()
     tmpfile = NamedTemporaryFile()
     _save_wave(data, tmpfile.name, sampling_rate, sample_width, channels)
     assert filecmp.cmp(tmpfile.name, filename, shallow=False)
@@ -471,10 +516,19 @@ def test_save_wave(filename, frequencies):
 )
 def test_save_wave_missing_audio_param(missing_param):
     with pytest.raises(AudioParameterError):
-        params = AUDIO_PARAMS_SHORT.copy()
-        del params[missing_param]
-        srate, swidth, channels, _ = _get_audio_parameters(params)
-        _save_wave(b"\0\0", "audio", srate, swidth, channels)
+        _save_wave(
+            b"\0\0", "audio", sampling_rate=None, sample_width=1, channels=1
+        )
+
+    with pytest.raises(AudioParameterError):
+        _save_wave(
+            b"\0\0", "audio", sampling_rate=16000, sample_width=None, channels=1
+        )
+
+    with pytest.raises(AudioParameterError):
+        _save_wave(
+            b"\0\0", "audio", sampling_rate=16000, sample_width=1, channels=None
+        )
 
 
 def test_save_with_pydub():
