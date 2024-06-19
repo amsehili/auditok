@@ -691,9 +691,9 @@ class AudioReader(DataSource):
         if self.max_read is not None:
             max_read = "{:.3f}".format(self.max_read)
         return (
-            "{cls}(block_dur={block_dur}, "
+            "<{cls}(block_dur={block_dur}, "
             "hop_dur={hop_dur}, record={rewindable}, "
-            "max_read={max_read})"
+            "max_read={max_read})>"
         ).format(
             cls=self.__class__.__name__,
             block_dur=block_dur,
