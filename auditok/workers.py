@@ -32,9 +32,9 @@ def _run_subprocess(command):
         ) as proc:
             stdout, stderr = proc.communicate()
             return proc.returncode, stdout, stderr
-    except Exception:
+    except Exception as exc:
         err_msg = "Couldn't export audio using command: '{}'".format(command)
-        raise AudioEncodingError(err_msg)
+        raise AudioEncodingError(err_msg) from exc
 
 
 class Worker(Thread, metaclass=ABCMeta):
@@ -163,7 +163,7 @@ class StreamSaverWorker(Worker):
         sample_size_bytes = self._reader.sw * self._reader.ch
         self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
         self._output_filename = filename
-        self._export_format = _guess_audio_format(export_format, filename)
+        self._export_format = _guess_audio_format(filename, export_format)
         if self._export_format is None:
             self._export_format = "wav"
         self._init_output_stream()
@@ -267,7 +267,7 @@ class StreamSaverWorker(Worker):
         except AudioEncodingError:
             try:
                 self._export_with_sox()
-            except AudioEncodingError:
+            except AudioEncodingError as exc:
                 warn_msg = "Couldn't save audio data in the desired format "
                 warn_msg += "'{}'. Either none of 'ffmpeg', 'avconv' or 'sox' "
                 warn_msg += "is installed or this format is not recognized.\n"
@@ -276,7 +276,7 @@ class StreamSaverWorker(Worker):
                     warn_msg.format(
                         self._export_format, self._tmp_output_filename
                     )
-                )
+                ) from exc
         finally:
             self._exported = True
         return self._output_filename
