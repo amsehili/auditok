@@ -2,7 +2,9 @@ import filecmp
 import math
 import os
 import sys
+import wave
 from array import array
+from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import Mock, patch
 
@@ -66,28 +68,31 @@ def test_check_audio_data(data, sample_width, channels, valid):
 
 
 @pytest.mark.parametrize(
-    "fmt, filename, expected",
+    "filename, audio_format, expected",
     [
-        ("wav", "filename.wav", "wav"),  # extention_and_format_same
-        ("wav", "filename.mp3", "wav"),  # extention_and_format_different
-        (None, "filename.wav", "wav"),  # extention_no_format
-        ("wav", "filename", "wav"),  # format_no_extension
-        (None, "filename", None),  # no_format_no_extension
-        ("wave", "filename", "wav"),  # wave_as_wav
-        (None, "filename.wave", "wav"),  # wave_as_wav_extension
+        ("filename.wav", "wav", "wav"),  # extension_and_format_same
+        ("filename.mp3", "wav", "wav"),  # extension_and_format_different
+        ("filename.wav", None, "wav"),  # extension_no_format
+        ("filename", "wav", "wav"),  # format_no_extension
+        ("filename", None, None),  # no_format_no_extension
+        ("filename", "wave", "wav"),  # wave_as_wav
+        ("filename.wave", None, "wav"),  # wave_as_wav_extension
     ],
     ids=[
-        "extention_and_format_same",
-        "extention_and_format_different",
-        "extention_no_format",
+        "extension_and_format_same",
+        "extension_and_format_different",
+        "extension_no_format",
         "format_no_extension",
         "no_format_no_extension",
         "wave_as_wav",
         "wave_as_wav_extension",
     ],
 )
-def test_guess_audio_format(fmt, filename, expected):
-    result = _guess_audio_format(fmt, filename)
+def test_guess_audio_format(filename, audio_format, expected):
+    result = _guess_audio_format(filename, audio_format)
+    assert result == expected
+
+    result = _guess_audio_format(Path(filename), audio_format)
     assert result == expected
 
 
@@ -133,7 +138,6 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
     ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
 )
 def test_get_audio_parameters_missing_parameter(missing_param):
-
     params = AUDIO_PARAMS.copy()
     del params[missing_param]
     with pytest.raises(AudioParameterError):
@@ -150,7 +154,6 @@ def test_get_audio_parameters_missing_parameter(missing_param):
     ids=["missing_sampling_rate", "missing_sample_width", "missing_channels"],
 )
 def test_get_audio_parameters_missing_parameter_short(missing_param):
-
     params = AUDIO_PARAMS_SHORT.copy()
     del params[missing_param]
     with pytest.raises(AudioParameterError):
@@ -240,22 +243,80 @@ def test_from_file(filename, audio_format, funtion_name, kwargs):
     assert patch_function.called
 
 
-def test_from_file_large_file_raw():
-    filename = "tests/data/test_16KHZ_mono_400Hz.raw"
+@pytest.mark.parametrize(
+    "large_file, cls, size, use_pathlib",
+    [
+        (False, BufferAudioSource, -1, False),  # large_file_false_negative_size
+        (False, BufferAudioSource, None, False),  # large_file_false_None_size
+        (True, RawAudioSource, -1, False),  # large_file_true_negative_size
+        (True, RawAudioSource, None, False),  # large_file_true_None_size
+        (True, RawAudioSource, -1, True),  # large_file_true_negative_size_Path
+    ],
+    ids=[
+        "large_file_false_negative_size",
+        "large_file_false_None_size",
+        "large_file_true_negative_size",
+        "large_file_true_None_size",
+        "large_file_true_negative_size_Path",
+    ],
+)
+def test_from_file_raw_read_all(large_file, cls, size, use_pathlib):
+    filename = Path("tests/data/test_16KHZ_mono_400Hz.raw")
+    if use_pathlib:
+        filename = Path(filename)
     audio_source = from_file(
         filename,
-        large_file=True,
+        large_file=large_file,
         sampling_rate=16000,
         sample_width=2,
         channels=1,
     )
-    assert isinstance(audio_source, RawAudioSource)
+    assert isinstance(audio_source, cls)
+
+    with open(filename, "rb") as fp:
+        expected = fp.read()
+    audio_source.open()
+    data = audio_source.read(size)
+    audio_source.close()
+    assert data == expected
 
 
-def test_from_file_large_file_wave():
+@pytest.mark.parametrize(
+    "large_file, cls, size, use_pathlib",
+    [
+        (False, BufferAudioSource, -1, False),  # large_file_false_negative_size
+        (False, BufferAudioSource, None, False),  # large_file_false_None_size
+        (True, WaveAudioSource, -1, False),  # large_file_true_negative_size
+        (True, WaveAudioSource, None, False),  # large_file_true_None_size
+        (True, WaveAudioSource, -1, True),  # large_file_true_negative_size_Path
+    ],
+    ids=[
+        "large_file_false_negative_size",
+        "large_file_false_None_size",
+        "large_file_true_negative_size",
+        "large_file_true_None_size",
+        "large_file_true_negative_size_Path",
+    ],
+)
+def test_from_file_wave_read_all(large_file, cls, size, use_pathlib):
     filename = "tests/data/test_16KHZ_mono_400Hz.wav"
-    audio_source = from_file(filename, large_file=True)
-    assert isinstance(audio_source, WaveAudioSource)
+    if use_pathlib:
+        filename = Path(filename)
+    audio_source = from_file(
+        filename,
+        large_file=large_file,
+        sampling_rate=16000,
+        sample_width=2,
+        channels=1,
+    )
+    assert isinstance(audio_source, cls)
+
+    with wave.open(str(filename)) as fp:
+        expected = fp.readframes(-1)
+    audio_source.open()
+    data = audio_source.read(size)
+    audio_source.close()
+    assert data == expected
 
 
 def test_from_file_large_file_compressed():
@@ -466,15 +527,22 @@ def test_load_with_pydub(
 
 
 @pytest.mark.parametrize(
-    "filename, frequencies",
+    "filename, frequencies, use_pathlib",
     [
-        ("mono_400Hz.raw", (400,)),  # mono
-        ("3channel_400-800-1600Hz.raw", (400, 800, 1600)),  # three_channel
+        ("mono_400Hz.raw", (400,), False),  # mono
+        ("mono_400Hz.raw", (400,), True),  # mono_pathlib
+        (
+            "3channel_400-800-1600Hz.raw",
+            (400, 800, 1600),
+            False,
+        ),  # three_channel
     ],
-    ids=["mono", "three_channel"],
+    ids=["mono", "three_channel", "use_pathlib"],
 )
-def test_save_raw(filename, frequencies):
+def test_save_raw(filename, frequencies, use_pathlib):
     filename = "tests/data/test_16KHZ_{}".format(filename)
+    if use_pathlib:
+        filename = Path(filename)
     sample_width = 2
     dtype = SAMPLE_WIDTH_TO_DTYPE[sample_width]
     mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
@@ -485,15 +553,22 @@ def test_save_raw(filename, frequencies):
 
 
 @pytest.mark.parametrize(
-    "filename, frequencies",
+    "filename, frequencies, use_pathlib",
     [
-        ("mono_400Hz.wav", (400,)),  # mono
-        ("3channel_400-800-1600Hz.wav", (400, 800, 1600)),  # three_channel
+        ("mono_400Hz.wav", (400,), False),  # mono
+        ("mono_400Hz.wav", (400,), True),  # mono_pathlib
+        (
+            "3channel_400-800-1600Hz.wav",
+            (400, 800, 1600),
+            False,
+        ),  # three_channel
     ],
-    ids=["mono", "three_channel"],
+    ids=["mono", "mono_pathlib", "three_channel"],
 )
-def test_save_wave(filename, frequencies):
+def test_save_wave(filename, frequencies, use_pathlib):
     filename = "tests/data/test_16KHZ_{}".format(filename)
+    if use_pathlib:
+        filename = str(filename)
     sampling_rate = 16000
     sample_width = 2
     channels = len(frequencies)

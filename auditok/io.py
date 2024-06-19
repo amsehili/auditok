@@ -71,9 +71,19 @@ def check_audio_data(data, sample_width, channels):
         )
 
 
-def _guess_audio_format(fmt, filename):
+def _guess_audio_format(filename, fmt):
+    """Helper function to guess audio format from file extension, or by
+    normalizing a user provided format.
+
+    Args:
+        filename (str, Path): audio file name.
+        fmt (str): un-normalized user provided format.
+
+    Returns:
+        str, None: guessed audio format or None if no format could be guessed.
+    """
     if fmt is None:
-        extension = os.path.splitext(filename.lower())[1][1:]
+        extension = os.path.splitext(filename)[1][1:].lower()
         if extension:
             fmt = extension
         else:
@@ -411,7 +421,7 @@ class RawAudioSource(FileAudioSource):
 
     Parameters
     ----------
-    filename : str
+    filename : str, Path
         path to a raw audio file.
     sampling_rate : int
         Number of samples per second of audio data.
@@ -421,15 +431,15 @@ class RawAudioSource(FileAudioSource):
         Number of channels of audio data.
     """
 
-    def __init__(self, file, sampling_rate, sample_width, channels):
+    def __init__(self, filename, sampling_rate, sample_width, channels):
         FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
-        self._file = file
+        self._filename = filename
         self._audio_stream = None
         self._sample_size = sample_width * channels
 
     def open(self):
         if self._audio_stream is None:
-            self._audio_stream = open(self._file, "rb")
+            self._audio_stream = open(self._filename, "rb")
 
     def _read_from_stream(self, size):
         if size is None or size < 0:
@@ -449,12 +459,12 @@ class WaveAudioSource(FileAudioSource):
 
     Parameters
     ----------
-    filename : str
+    filename : str, Path
         path to a valid wave file.
     """
 
     def __init__(self, filename):
-        self._filename = filename
+        self._filename = str(filename)  # wave requires an str filename
         self._audio_stream = None
         stream = wave.open(self._filename, "rb")
         FileAudioSource.__init__(
@@ -751,7 +761,9 @@ def get_audio_source(input=None, **kwargs):
         )
 
 
-def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
+def _load_raw(
+    filename, sampling_rate, sample_width, channels, large_file=False
+):
     """
     Load a raw audio file with standard Python. If `large_file` is True, return
     a `RawAudioSource` object that reads data lazily from disk, otherwise load
@@ -759,7 +771,7 @@ def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
 
     Parameters
     ----------
-    file : str
+    filename : str, Path
         path to a raw audio data file.
     sampling_rate : int
         sampling rate of audio data.
@@ -776,6 +788,7 @@ def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
     source : RawAudioSource or BufferAudioSource
         an `AudioSource` that reads data from input file.
     """
+
     if None in (sampling_rate, sample_width, channels):
         raise AudioParameterError(
             "All audio parameters are required for raw audio files"
@@ -783,13 +796,13 @@ def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
 
     if large_file:
         return RawAudioSource(
-            file,
+            filename,
             sampling_rate=sampling_rate,
             sample_width=sample_width,
             channels=channels,
         )
 
-    with open(file, "rb") as fp:
+    with open(filename, "rb") as fp:
         data = fp.read()
     return BufferAudioSource(
         data,
@@ -799,7 +812,7 @@ def _load_raw(file, sampling_rate, sample_width, channels, large_file=False):
     )
 
 
-def _load_wave(file, large_file=False):
+def _load_wave(filename, large_file=False):
     """
     Load a wave audio file with standard Python. If `large_file` is True, return
     a `WaveAudioSource` object that reads data lazily from disk, otherwise load
@@ -807,7 +820,7 @@ def _load_wave(file, large_file=False):
 
     Parameters
     ----------
-    file : str
+    filename : str, Path
         path to a wav audio data file
     large_file : bool
         if True, return a `WaveAudioSource` otherwise a `BufferAudioSource`
@@ -818,9 +831,10 @@ def _load_wave(file, large_file=False):
     source : WaveAudioSource or BufferAudioSource
         an `AudioSource` that reads data from input file.
     """
+
     if large_file:
-        return WaveAudioSource(file)
-    with wave.open(file) as fp:
+        return WaveAudioSource(filename)
+    with wave.open(filename) as fp:
         channels = fp.getnchannels()
         srate = fp.getframerate()
         swidth = fp.getsampwidth()
@@ -830,30 +844,31 @@ def _load_wave(file, large_file=False):
     )
 
 
-def _load_with_pydub(file, audio_format=None):
+def _load_with_pydub(filename, audio_format=None):
     """
     Open compressed audio or video file using pydub. If a video file
     is passed, its audio track(s) are extracted and loaded.
 
     Parameters
     ----------
-    file : str
+    filename : str, Path
         path to audio file.
     audio_format : str, default: None
-        string, audio/video file format if known (e.g. raw, webm, wav, ogg)
+        audio file format if known (e.g. raw, webm, wav, ogg)
 
     Returns
     -------
     source : BufferAudioSource
         an `AudioSource` that reads data from input file.
     """
+
     func_dict = {
         "mp3": AudioSegment.from_mp3,
         "ogg": AudioSegment.from_ogg,
         "flv": AudioSegment.from_flv,
     }
     open_function = func_dict.get(audio_format, AudioSegment.from_file)
-    segment = open_function(file)
+    segment = open_function(filename)
     return BufferAudioSource(
         data=segment.raw_data,
         sampling_rate=segment.frame_rate,
@@ -890,7 +905,7 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
 
     Parameters
     ----------
-    filename : str
+    filename : str, Path
         path to input audio or video file.
     audio_format : str
         audio format used to save data  (e.g. raw, webm, wav, ogg).
@@ -919,7 +934,7 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
         raised if audio data cannot be read in the given
         format or if `format` is `raw` and one or more audio parameters are missing.
     """
-    audio_format = _guess_audio_format(audio_format, filename)
+    audio_format = _guess_audio_format(filename, audio_format)
 
     if audio_format == "raw":
         srate, swidth, channels = _get_audio_parameters(kwargs)
@@ -956,7 +971,7 @@ def _save_wave(data, file, sampling_rate, sample_width, channels):
         raise AudioParameterError(
             "All audio parameters are required to save wave audio files"
         )
-    with wave.open(file, "w") as fp:
+    with wave.open(str(file), "w") as fp:
         fp.setframerate(sampling_rate)
         fp.setsampwidth(sample_width)
         fp.setnchannels(channels)
@@ -980,11 +995,11 @@ def _save_with_pydub(
         segment.export(fp, format=audio_format)
 
 
-def to_file(data, file, audio_format=None, **kwargs):
+def to_file(data, filename, audio_format=None, **kwargs):
     """
     Writes audio data to file. If `audio_format` is `None`, output
     audio format will be guessed from extension. If `audio_format`
-    is `None` and `file` comes without an extension then audio
+    is `None` and `filename` comes without an extension then audio
     data will be written as a raw audio file.
 
     Parameters
@@ -992,7 +1007,7 @@ def to_file(data, file, audio_format=None, **kwargs):
     data : bytes-like
         audio data to be written. Can be a `bytes`, `bytearray`,
         `memoryview`, `array` or `numpy.ndarray` object.
-    file : str
+    filename : str, Path
         path to output audio file.
     audio_format : str
         audio format used to save data (e.g. raw, webm, wav, ogg)
@@ -1010,18 +1025,18 @@ def to_file(data, file, audio_format=None, **kwargs):
     audio parameters are missing. `AudioIOError` if audio data cannot be written
     in the desired format.
     """
-    audio_format = _guess_audio_format(audio_format, file)
+    audio_format = _guess_audio_format(filename, audio_format)
     if audio_format in (None, "raw"):
-        _save_raw(data, file)
+        _save_raw(data, filename)
         return
     sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
     if audio_format in ("wav", "wave"):
-        _save_wave(data, file, sampling_rate, sample_width, channels)
+        _save_wave(data, filename, sampling_rate, sample_width, channels)
     elif _WITH_PYDUB:
         _save_with_pydub(
-            data, file, audio_format, sampling_rate, sample_width, channels
+            data, filename, audio_format, sampling_rate, sample_width, channels
         )
     else:
         raise AudioIOError(
-            f"cannot write file format {audio_format} (file name: {file})"
+            f"cannot write file format {audio_format} (file name: {filename})"
         )
