@@ -228,6 +228,17 @@ class AudioSource(ABC):
         """Number of channels in audio stream (alias for `channels`)."""
         return self.channels
 
+    def __str__(self):
+        return f"{self.__class__.__name__}(sampling_rate={self.sr}, sampling_rate={self.sw}, channels={self.ch})"  # noqa: B950
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__name__}("
+            f"sampling_rate={self.sampling_rate!r}, "
+            f"sample_width={self.sample_width!r}, "
+            f"channels={self.channels!r})>"
+        )
+
 
 class Rewindable(AudioSource):
     """

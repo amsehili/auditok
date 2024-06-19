@@ -936,7 +936,7 @@ class AudioRegion(object):
         )
 
     def __repr__(self):
-        return str(self)
+        return "<{}>".format(str(self))
 
     def __add__(self, other):
         """
