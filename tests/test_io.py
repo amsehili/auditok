@@ -248,6 +248,12 @@ def test_from_file(filename, audio_format, funtion_name, kwargs):
     [
         (False, BufferAudioSource, -1, False),  # large_file_false_negative_size
         (False, BufferAudioSource, None, False),  # large_file_false_None_size
+        (
+            False,
+            BufferAudioSource,
+            None,
+            True,
+        ),  # large_file_false_None_size_Path
         (True, RawAudioSource, -1, False),  # large_file_true_negative_size
         (True, RawAudioSource, None, False),  # large_file_true_None_size
         (True, RawAudioSource, -1, True),  # large_file_true_negative_size_Path
@@ -255,6 +261,7 @@ def test_from_file(filename, audio_format, funtion_name, kwargs):
     ids=[
         "large_file_false_negative_size",
         "large_file_false_None_size",
+        "large_file_false_None_size_Path",
         "large_file_true_negative_size",
         "large_file_true_None_size",
         "large_file_true_negative_size_Path",
@@ -286,6 +293,12 @@ def test_from_file_raw_read_all(large_file, cls, size, use_pathlib):
     [
         (False, BufferAudioSource, -1, False),  # large_file_false_negative_size
         (False, BufferAudioSource, None, False),  # large_file_false_None_size
+        (
+            False,
+            BufferAudioSource,
+            None,
+            True,
+        ),  # large_file_false_None_size_Path
         (True, WaveAudioSource, -1, False),  # large_file_true_negative_size
         (True, WaveAudioSource, None, False),  # large_file_true_None_size
         (True, WaveAudioSource, -1, True),  # large_file_true_negative_size_Path
@@ -293,6 +306,7 @@ def test_from_file_raw_read_all(large_file, cls, size, use_pathlib):
     ids=[
         "large_file_false_negative_size",
         "large_file_false_None_size",
+        "large_file_false_None_size_Path",
         "large_file_true_negative_size",
         "large_file_true_None_size",
         "large_file_true_negative_size_Path",
