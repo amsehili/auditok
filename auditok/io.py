@@ -834,7 +834,7 @@ def _load_wave(filename, large_file=False):
 
     if large_file:
         return WaveAudioSource(filename)
-    with wave.open(filename) as fp:
+    with wave.open(str(filename)) as fp:
         channels = fp.getnchannels()
         srate = fp.getframerate()
         swidth = fp.getsampwidth()
