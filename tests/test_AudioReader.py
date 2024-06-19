@@ -36,9 +36,7 @@ class TestAudioReaderWithFileAudioSource:
 
     def test_AudioReader_type(self):
         reader = AudioReader(input=self.audio_source)
-        err_msg = (
-            "wrong object type, expected: 'AudioReader', found: {0}"
-        )
+        err_msg = "wrong object type, expected: 'AudioReader', found: {0}"
         assert isinstance(reader, AudioReader), err_msg.format(type(reader))
 
     def _test_default_block_size(self):
@@ -78,16 +76,16 @@ class TestAudioReaderWithFileAudioSource:
             (0.02, None, 940, 126),  # block_dur_20ms_hop_dur_None
             (0.025, None, 752, 206),  # block_dur_25ms_hop_dur_None
             (0.02, 0.01, 1878, 286),  # block_dur_20ms_hop_dur_10ms
-            (0.025, 0.005, 3754, 366),  # block_dur_25ms_hop_dur_None
+            (0.025, 0.005, 3754, 366),  # block_dur_25ms_hop_dur_5ms
         ],
         ids=[
             "default",
             "block_dur_10ms_hop_dur_None",
-            "block_dur_10ms_hop_dur_100ms",
+            "block_dur_10ms_hop_dur_10ms",
             "block_dur_20ms_hop_dur_None",
             "block_dur_25ms_hop_dur_None",
             "block_dur_20ms_hop_dur_10ms",
-            "block_dur_25ms_hop_dur_None",
+            "block_dur_25ms_hop_dur_5ms",
         ],
     )
     def test_hop_duration(
