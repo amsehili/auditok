@@ -896,9 +896,6 @@ class AudioRegion(object):
         )
         return regions
 
-    def __array__(self):
-        return self.samples
-
     @property
     def samples(self):
         """Audio region as arrays of samples, one array per channel."""
@@ -907,6 +904,12 @@ class AudioRegion(object):
                 self._data, self.sample_width, self.channels
             )
         return self._samples
+
+    def __array__(self):
+        return self.samples
+
+    def numpy(self):
+        return self.samples
 
     def __len__(self):
         """
