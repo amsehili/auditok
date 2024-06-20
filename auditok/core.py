@@ -578,14 +578,9 @@ class AudioRegion(object):
         number of bytes of one audio sample
     channels : int
         number of channels of audio data
-    meta : dict, default: None
-        any collection of <key:value> elements used to build metadata for
-        this `AudioRegion`. Meta data can be accessed via `region.meta.key`
-        if `key` is a valid python attribute name, or via `region.meta[key]`
-        if not. Note that the :func:`split` function (or the
-        :meth:`AudioRegion.split` method) returns `AudioRegions` with a ``start``
-        and a ``stop`` meta values that indicate the location in seconds of the
-        region in original audio data.
+    start : float, default: None
+        optional start time of the region. This is typically provided by the
+        `split` function.
 
     See also
     --------
@@ -597,27 +592,6 @@ class AudioRegion(object):
     sample_width: int
     channels: int
     start: float = field(default=None, repr=None)
-
-    def init__(self, data, sampling_rate, sample_width, channels, meta=None):
-        check_audio_data(data, sample_width, channels)
-        self.data = data
-        self.sampling_rate = sampling_rate
-        self.sample_width = sample_width
-        self.channels = channels
-        self._samples = None
-        self.splitp = self.split_and_plot
-
-        if meta is not None:
-            self._meta = _AudioRegionMetadata(meta)
-        else:
-            self._meta = None
-
-        self._seconds_view = _SecondsView(self)
-        self.sec = self.seconds
-        self.s = self.seconds
-
-        self._millis_view = _MillisView(self)
-        self.ms = self.millis
 
     def __post_init__(self):
 
