@@ -1,5 +1,6 @@
 import math
 import os
+from pathlib import Path
 from random import random
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
@@ -1362,8 +1363,7 @@ def test_creation(
     expected_duration_s,
     expected_duration_ms,
 ):
-    meta = {"start": start, "end": expected_end}
-    region = AudioRegion(data, sampling_rate, sample_width, channels, meta)
+    region = AudioRegion(data, sampling_rate, sample_width, channels, start)
     assert region.sampling_rate == sampling_rate
     assert region.sr == sampling_rate
     assert region.sample_width == sample_width
@@ -1518,9 +1518,7 @@ def test_load_from_microphone_with_nonzero_skip_exception():
 )
 def test_save(format, start, expected):
     with TemporaryDirectory() as tmpdir:
-        region = AudioRegion(b"0" * 160, 160, 1, 1)
-        meta = {"start": start, "end": start + region.duration}
-        region.meta = meta
+        region = AudioRegion(b"0" * 160, 160, 1, 1, start)
         format = os.path.join(tmpdir, format)
         filename = region.save(format)[len(tmpdir) + 1 :]
         assert filename == expected
@@ -1533,6 +1531,9 @@ def test_save_file_exists_exception():
         region = AudioRegion(b"0" * 160, 160, 1, 1)
         with pytest.raises(FileExistsError):
             region.save(filename, exists_ok=False)
+
+        with pytest.raises(FileExistsError):
+            region.save(Path(filename), exists_ok=False)
 
 
 @pytest.mark.parametrize(
