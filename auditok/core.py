@@ -518,7 +518,7 @@ class _MillisView(_SecondsView):
         start_sec = start_ms / 1000
         stop_sec = None if stop_ms is None else stop_ms / 1000
         index = slice(start_sec, stop_sec)
-        return super(_MillisView, self).__getitem__(index)
+        return super().__getitem__(index)
 
     def __len__(self):
         """

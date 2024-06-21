@@ -394,7 +394,7 @@ class _Recorder(_AudioReadingProxy):
     """
 
     def __init__(self, audio_source):
-        super(_Recorder, self).__init__(audio_source)
+        super().__init__(audio_source)
         self._cache = []
         self._read_block = self._read_and_cache
         self._read_from_cache = False
@@ -443,7 +443,7 @@ class _Limiter(_AudioReadingProxy):
     """
 
     def __init__(self, audio_source, max_read):
-        super(_Limiter, self).__init__(audio_source)
+        super().__init__(audio_source)
         self._max_read = max_read
         self._max_samples = round(max_read * self.sr)
         self._bytes_per_sample = self.sw * self.ch
@@ -470,7 +470,7 @@ class _Limiter(_AudioReadingProxy):
         return block
 
     def rewind(self):
-        super(_Limiter, self).rewind()
+        super().rewind()
         self._read_samples = 0
 
 
@@ -522,7 +522,7 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
         if hop_dur >= block_dur:
             raise ValueError('"hop_dur" should be <= "block_dur"')
 
-        super(_OverlapAudioReader, self).__init__(audio_source, block_dur)
+        super().__init__(audio_source, block_dur)
 
         self._hop_size = int(hop_dur * self.sr)
         self._blocks = self._iter_blocks_with_overlap()
@@ -559,7 +559,7 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
             return None
 
     def rewind(self):
-        super(_OverlapAudioReader, self).rewind()
+        super().rewind()
         self._blocks = self._iter_blocks_with_overlap()
 
     @property
