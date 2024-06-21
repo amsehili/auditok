@@ -4,7 +4,7 @@ class TooSmallBlockDuration(ValueError):
     def __init__(self, message, block_dur, sampling_rate):
         self.block_dur = block_dur
         self.sampling_rate = sampling_rate
-        super(TooSmallBlockDuration, self).__init__(message)
+        super().__init__(message)
 
 
 class TimeFormatError(Exception):
