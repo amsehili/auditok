@@ -14,7 +14,7 @@ import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .exceptions import TooSmallBlockDuration
+from .exceptions import AudioParameterError, TooSmallBlockDuration
 from .io import check_audio_data, get_audio_source, player_for, to_file
 from .plotting import plot
 from .util import AudioEnergyValidator, AudioReader, DataValidator
@@ -897,6 +897,34 @@ class AudioRegion(object):
         )
         return regions
 
+    def _check_other_parameters(self, other):
+        if other.sr != self.sr:
+            raise AudioParameterError(
+                "Can only concatenate AudioRegions of the same "
+                "sampling rate ({} != {})".format(self.sr, other.sr)
+            )
+        if other.sw != self.sw:
+            raise AudioParameterError(
+                "Can only concatenate AudioRegions of the same "
+                "sample width ({} != {})".format(self.sw, other.sw)
+            )
+        if other.ch != self.ch:
+            raise AudioParameterError(
+                "Can only concatenate AudioRegions of the same "
+                "number of channels ({} != {})".format(self.ch, other.ch)
+            )
+
+    def _check_iter_others(self, others):
+        for other in others:
+            self._check_other_parameters(other)
+            yield other
+
+    def join(self, others):
+        data = self.data.join(
+            other.data for other in self._check_iter_others(others)
+        )
+        return AudioRegion(data, self.sr, self.sw, self.ch)
+
     @property
     def samples(self):
         """Audio region as arrays of samples, one array per channel."""
@@ -950,21 +978,7 @@ class AudioRegion(object):
                 "Can only concatenate AudioRegion, "
                 'not "{}"'.format(type(other))
             )
-        if other.sr != self.sr:
-            raise ValueError(
-                "Can only concatenate AudioRegions of the same "
-                "sampling rate ({} != {})".format(self.sr, other.sr)
-            )
-        if other.sw != self.sw:
-            raise ValueError(
-                "Can only concatenate AudioRegions of the same "
-                "sample width ({} != {})".format(self.sw, other.sw)
-            )
-        if other.ch != self.ch:
-            raise ValueError(
-                "Can only concatenate AudioRegions of the same "
-                "number of channels ({} != {})".format(self.ch, other.ch)
-            )
+        self._check_other_parameters(other)
         data = self.data + other.data
         return AudioRegion(data, self.sr, self.sw, self.ch)
 
