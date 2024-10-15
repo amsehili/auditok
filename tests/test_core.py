@@ -1537,6 +1537,84 @@ def test_save_file_exists_exception():
 
 
 @pytest.mark.parametrize(
+    "sampling_rate, sample_width, channels",
+    [
+        (16000, 1, 1),  # mono_16K_1byte
+        (16000, 2, 1),  # mono_16K_2byte
+        (44100, 2, 2),  # stereo_44100_2byte
+        (44100, 2, 3),  # 3channel_44100_2byte
+    ],
+    ids=[
+        "mono_16K_1byte",
+        "mono_16K_2byte",
+        "stereo_44100_2byte",
+        "3channel_44100_2byte",
+    ],
+)
+def test_join(sampling_rate, sample_width, channels):
+    duration = 1
+    size = int(duration * sampling_rate * sample_width * channels)
+    glue_data = b"\0" * size
+    regions_data = [
+        b"\1" * int(size * 1.5),
+        b"\2" * int(size * 0.5),
+        b"\3" * int(size * 0.75),
+    ]
+
+    glue_region = AudioRegion(glue_data, sampling_rate, sample_width, channels)
+    regions = [
+        AudioRegion(data, sampling_rate, sample_width, channels)
+        for data in regions_data
+    ]
+    joined = glue_region.join(regions)
+    assert joined.data == glue_data.join(regions_data)
+    assert joined.duration == duration * 2 + 1.5 + 0.5 + 0.75
+
+
+@pytest.mark.parametrize(
+    "sampling_rate, sample_width, channels",
+    [
+        (32000, 1, 1),  # different_sampling_rate
+        (16000, 2, 1),  # different_sample_width
+        (16000, 1, 2),  # different_channels
+    ],
+    ids=[
+        "different_sampling_rate",
+        "different_sample_width",
+        "different_channels",
+    ],
+)
+def test_join_exception(sampling_rate, sample_width, channels):
+
+    glue_sampling_rate = 16000
+    glue_sample_width = 1
+    glue_channels = 1
+
+    duration = 1
+    size = int(
+        duration * glue_sampling_rate * glue_sample_width * glue_channels
+    )
+    glue_data = b"\0" * size
+    glue_region = AudioRegion(
+        glue_data, glue_sampling_rate, glue_sample_width, glue_channels
+    )
+
+    size = int(duration * sampling_rate * sample_width * channels)
+    regions_data = [
+        b"\1" * int(size * 1.5),
+        b"\2" * int(size * 0.5),
+        b"\3" * int(size * 0.75),
+    ]
+    regions = [
+        AudioRegion(data, sampling_rate, sample_width, channels)
+        for data in regions_data
+    ]
+
+    with pytest.raises(AudioParameterError):
+        glue_region.join(regions)
+
+
+@pytest.mark.parametrize(
     "region, slice_, expected_data",
     [
         (
@@ -1886,7 +1964,7 @@ def test_concatenation_different_sampling_rate_error():
     region_1 = AudioRegion(b"a" * 100, 8000, 1, 1)
     region_2 = AudioRegion(b"b" * 100, 3000, 1, 1)
 
-    with pytest.raises(ValueError) as val_err:
+    with pytest.raises(AudioParameterError) as val_err:
         region_1 + region_2
     assert str(val_err.value) == (
         "Can only concatenate AudioRegions of the same "
@@ -1898,7 +1976,7 @@ def test_concatenation_different_sample_width_error():
     region_1 = AudioRegion(b"a" * 100, 8000, 2, 1)
     region_2 = AudioRegion(b"b" * 100, 8000, 4, 1)
 
-    with pytest.raises(ValueError) as val_err:
+    with pytest.raises(AudioParameterError) as val_err:
         region_1 + region_2
     assert str(val_err.value) == (
         "Can only concatenate AudioRegions of the same sample width (2 != 4)"
@@ -1909,7 +1987,7 @@ def test_concatenation_different_number_of_channels_error():
     region_1 = AudioRegion(b"a" * 100, 8000, 1, 1)
     region_2 = AudioRegion(b"b" * 100, 8000, 1, 2)
 
-    with pytest.raises(ValueError) as val_err:
+    with pytest.raises(AudioParameterError) as val_err:
         region_1 + region_2
     assert str(val_err.value) == (
         "Can only concatenate AudioRegions of the same "
