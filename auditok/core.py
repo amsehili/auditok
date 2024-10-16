@@ -24,7 +24,7 @@ try:
 except ImportError:
     from . import signal
 
-__all__ = ["load", "split", "AudioRegion", "StreamTokenizer"]
+__all__ = ["load", "split", "make_silence", "AudioRegion", "StreamTokenizer"]
 
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
@@ -183,7 +183,7 @@ def split(
     max_read, mr : float, default: None, read until end of stream
         maximum data to read from source in seconds.
     validator, val : callable, DataValidator
-        custom data validator. If `None` (default), an `AudioEnergyValidtor` is
+        custom data validator. If `None` (default), an `AudioEnergyValidator` is
         used with the given energy threshold. Can be a callable or an instance
         of `DataValidator` that implements `is_valid`. In either case, it'll be
         called with with a window of audio data as the first parameter.
@@ -308,6 +308,31 @@ def split(
     return region_gen
 
 
+def make_silence(duration, sampling_rate=16000, sample_width=2, channels=1):
+    """Generate a silence of a specific  duration.
+
+    Parameters
+    ----------
+    duration : float
+        silence duration in seconds.
+    sampling_rate : int, optional
+        sampling rate of audio data, by default 16000.
+    sample_width : int, optional
+        number of bytes used to encode one audio sample, by default 2.
+    channels : int, optional
+        number of channels of audio data, by default 1.
+
+    Returns
+    -------
+    AudioRegion
+        a "silent" AudioRegion of the desired duration.
+    """
+    size = round(duration * sampling_rate) * sample_width * channels
+    data = b"\0" * size
+    region = AudioRegion(data, sampling_rate, sample_width, channels)
+    return region
+
+
 def _duration_to_nb_windows(
     duration, analysis_window, round_fn=round, epsilon=0
 ):
@@ -398,10 +423,6 @@ def _read_chunks_online(max_read, **kwargs):
         maximum amount of data to read in seconds.
     kwargs :
         audio parameters (sampling_rate, sample_width and channels).
-
-    See also
-    --------
-    `AudioRegion.build`
     """
     reader = AudioReader(None, block_dur=0.5, max_read=max_read, **kwargs)
     reader.open()
@@ -442,11 +463,6 @@ def _read_offline(input, skip=0, max_read=None, **kwargs):
         end of stream.
     kwargs :
         audio parameters (sampling_rate, sample_width and channels).
-
-    See also
-    --------
-    `AudioRegion.build`
-
     """
     audio_source = get_audio_source(input, **kwargs)
     audio_source.open()

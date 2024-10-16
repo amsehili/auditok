@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from auditok import AudioParameterError, AudioRegion, load, split
+from auditok import AudioParameterError, AudioRegion, load, make_silence, split
 from auditok.core import (
     _duration_to_nb_windows,
     _make_audio_region,
@@ -74,6 +74,34 @@ def test_load(skip, max_read, channels):
             to_read = round(max_read * sampling_rate * sample_width * channels)
         expected = fp.read(to_read)
     assert bytes(region) == expected
+
+
+@pytest.mark.parametrize(
+    "duration, sampling_rate, sample_width, channels",
+    [
+        (1.05, 16000, 1, 1),  # mono_16K_1byte
+        (1.5, 16000, 2, 1),  # mono_16K_2byte
+        (1.0001, 44100, 2, 2),  # stereo_44100_2byte
+        (1.000005, 48000, 2, 3),  # 3channel_48K_2byte
+        (1.0001, 48000, 4, 4),  # 4channel_48K_4byte
+        (0, 48000, 4, 4),  # 4channel_4K_4byte_0sec
+    ],
+    ids=[
+        "mono_16K_1byte",
+        "mono_16K_2byte",
+        "stereo_44100_2byte",
+        "3channel_48000_2byte",
+        "4channel_48K_4byte",
+        "4channel_4K_4byte_0sec",
+    ],
+)
+def test_make_silence(duration, sampling_rate, sample_width, channels):
+    silence = make_silence(duration, sampling_rate, sample_width, channels)
+    size = round(duration * sampling_rate) * sample_width * channels
+    expected_data = b"\0" * size
+    expected_duration = size / (sampling_rate * sample_width * channels)
+    assert silence.duration == expected_duration
+    assert silence.data == expected_data
 
 
 @pytest.mark.parametrize(
