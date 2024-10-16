@@ -8,7 +8,14 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from auditok import AudioParameterError, AudioRegion, load, make_silence, split
+from auditok import (
+    AudioParameterError,
+    AudioRegion,
+    load,
+    make_silence,
+    split,
+    split_and_join_with_silence,
+)
 from auditok.core import (
     _duration_to_nb_windows,
     _make_audio_region,
@@ -102,6 +109,63 @@ def test_make_silence(duration, sampling_rate, sample_width, channels):
     expected_duration = size / (sampling_rate * sample_width * channels)
     assert silence.duration == expected_duration
     assert silence.data == expected_data
+
+
+@pytest.mark.parametrize(
+    "duration",
+    [
+        (0,),  # zero_second
+        (1,),  # one_second
+        (1.0001,),  # 1.0001_second
+    ],
+    ids=[
+        "zero_second",
+        "one_second",
+        "1.0001_second",
+    ],
+)
+def test_split_and_join_with_silence(duration):
+    duration = 1.0
+    sampling_rate = 10
+    sample_width = 2
+    channels = 1
+
+    regions = split(
+        input="tests/data/test_split_10HZ_mono.raw",
+        min_dur=0.2,
+        max_dur=5,
+        max_silence=0.2,
+        drop_trailing_silence=False,
+        strict_min_dur=False,
+        analysis_window=0.1,
+        sr=sampling_rate,
+        sw=sample_width,
+        ch=channels,
+        eth=50,
+    )
+
+    size = round(duration * sampling_rate) * sample_width * channels
+    join_data = b"\0" * size
+    expected_data = join_data.join(region.data for region in regions)
+    expected_region = AudioRegion(
+        expected_data, sampling_rate, sample_width, channels
+    )
+
+    region_with_silence = split_and_join_with_silence(
+        input="tests/data/test_split_10HZ_mono.raw",
+        silence_duration=duration,
+        min_dur=0.2,
+        max_dur=5,
+        max_silence=0.2,
+        drop_trailing_silence=False,
+        strict_min_dur=False,
+        analysis_window=0.1,
+        sr=sampling_rate,
+        sw=sample_width,
+        ch=channels,
+        eth=50,
+    )
+    assert region_with_silence == expected_region
 
 
 @pytest.mark.parametrize(

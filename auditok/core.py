@@ -24,7 +24,14 @@ try:
 except ImportError:
     from . import signal
 
-__all__ = ["load", "split", "make_silence", "AudioRegion", "StreamTokenizer"]
+__all__ = [
+    "load",
+    "split",
+    "make_silence",
+    "split_and_join_with_silence",
+    "AudioRegion",
+    "StreamTokenizer",
+]
 
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
@@ -331,6 +338,36 @@ def make_silence(duration, sampling_rate=16000, sample_width=2, channels=1):
     data = b"\0" * size
     region = AudioRegion(data, sampling_rate, sample_width, channels)
     return region
+
+
+def split_and_join_with_silence(input, silence_duration, **kwargs):
+    """Split input audio and join (i.e. glue) the resulting regions with a
+    silence of duration `silence_duration`. This can be used to create audio
+    data with shortened or lengthened silence between audio events.
+
+
+    Parameters
+    ----------
+    silence_duration : float
+        silence duration in seconds.
+
+    Returns
+    -------
+    AudioRegion, None
+        An AudioRegion with the desired between-events silence duration.
+        None if no audio event could be detected in input data.
+
+    See also
+    --------
+    :func:`load`
+    """
+    regions = list(split(input, **kwargs))
+    if regions:
+        first = regions[0]
+        # create a silence with the same parameters as input audio
+        silence = make_silence(silence_duration, first.sr, first.sw, first.ch)
+        return silence.join(regions)
+    return None
 
 
 def _duration_to_nb_windows(
