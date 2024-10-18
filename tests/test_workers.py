@@ -4,6 +4,7 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
+import auditok.workers
 from auditok import AudioReader, AudioRegion
 from auditok.cmdline_util import make_logger
 from auditok.exceptions import AudioEncodingWarning
@@ -65,7 +66,8 @@ def test_TokenizerWorker(audio_data_source, expected_detections):
     )
     assert len(tokenizer.detections) == len(expected_detections)
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines), 1
+        zip(tokenizer.detections, expected_detections, log_lines, strict=True),
+        1,
     ):
         start, end = exp
         exp_log_line = log_fmt.format(i, start, end, end - start)
@@ -103,7 +105,8 @@ def test_PlayerWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[PLAY]: Detection {id} played"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines), 1
+        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        1,
     ):
         start, end = exp
         exp_log_line = log_fmt.format(id=i)
@@ -156,7 +159,8 @@ def test_RegionSaverWorker(audio_data_source, expected_detections):
 
     log_fmt = "[SAVE]: Detection {id} saved as '{filename}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines), 1
+        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        1,
     ):
         start, end = exp
         expected_filename = filename_format.format(
@@ -199,7 +203,8 @@ def test_CommandLineWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[COMMAND]: Detection {id} command '{command}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines), 1
+        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        1,
     ):
         start, end = exp
         exp_log_line = log_fmt.format(id=i, command=command_format)
@@ -237,7 +242,7 @@ def test_PrintWorker(audio_data_source, expected_detections):
     ]
     assert patched_print.mock_calls == expected_print_calls
     assert len(tokenizer.detections) == len(expected_detections)
-    for det, exp in zip(tokenizer.detections, expected_detections):
+    for det, exp in zip(tokenizer.detections, expected_detections, strict=True):
         start, end = exp
         assert pytest.approx(det.start) == start
         assert pytest.approx(det.end) == end
@@ -254,7 +259,7 @@ def test_StreamSaverWorker_wav(audio_data_source):
         tokenizer.join()
         saver.join()
 
-        output_filename = saver.save_stream()
+        output_filename = saver.export_audio()
         region = AudioRegion.load(
             "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
         )
@@ -276,7 +281,7 @@ def test_StreamSaverWorker_raw(audio_data_source):
         tokenizer.start_all()
         tokenizer.join()
         saver.join()
-        output_filename = saver.save_stream()
+        output_filename = saver.export_audio()
         region = AudioRegion.load(
             "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
         )
@@ -295,18 +300,24 @@ def test_StreamSaverWorker_encode_audio(audio_data_source):
             expected_filename = os.path.join(tmpdir, "output.ogg")
             tmp_expected_filename = expected_filename + ".wav"
             saver = StreamSaverWorker(audio_data_source, expected_filename)
+            print("########## saver._exported 1:", saver._exported)
+            # import auditok
+
+            # with pytest.raises(auditok.workers.AudioEncodingWarning) as rt_warn:
             saver.start()
             tokenizer = TokenizerWorker(saver)
             tokenizer.start_all()
             tokenizer.join()
             saver.join()
-            with pytest.raises(AudioEncodingWarning) as rt_warn:
-                saver.save_stream()
+
+            with pytest.raises(auditok.workers.AudioEncodingError) as ae_error:
+                saver._encode_export_audio()
+
         warn_msg = "Couldn't save audio data in the desired format "
-        warn_msg += "'ogg'. Either none of 'ffmpeg', 'avconv' or 'sox' "
+        warn_msg += "'ogg'.\nEither none of 'ffmpeg', 'avconv' or 'sox' "
         warn_msg += "is installed or this format is not recognized.\n"
         warn_msg += "Audio file was saved as '{}'"
-        assert warn_msg.format(tmp_expected_filename) == str(rt_warn.value)
+        assert warn_msg.format(tmp_expected_filename) == str(ae_error.value)
         ffmpef_avconv = [
             "-y",
             "-f",
@@ -334,5 +345,5 @@ def test_StreamSaverWorker_encode_audio(audio_data_source):
         region = AudioRegion.load(
             "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
         )
-        assert saver._exported
+        assert not saver._exported
         assert saver.data == bytes(region)

@@ -33,6 +33,7 @@ def make_kwargs(args_ns):
         "use_channel": use_channel,
         "save_stream": args_ns.save_stream,
         "save_detections_as": args_ns.save_detections_as,
+        "join_detections": args_ns.join_detections,
         "export_format": args_ns.output_format,
         "large_file": args_ns.large_file,
         "frames_per_buffer": args_ns.frame_per_buffer,
@@ -84,12 +85,30 @@ def initialize_workers(logger=None, **kwargs):
     observers = []
     reader = AudioReader(source=kwargs["input"], **kwargs)
     if kwargs["save_stream"] is not None:
-        reader = workers.StreamSaverWorker(
-            reader,
-            filename=kwargs["save_stream"],
-            export_format=kwargs["export_format"],
-        )
-        reader.start()
+
+        if kwargs["join_detections"] is not None:
+            print("Using event joiner...")
+            stream_saver = workers.AudioEventsJoinerWorker(
+                silence_duration=kwargs["join_detections"],
+                filename=kwargs["save_stream"],
+                export_format=kwargs["export_format"],
+                sampling_rate=reader.sampling_rate,
+                sample_width=reader.sample_width,
+                channels=reader.channels,
+            )
+            observers.append(stream_saver)
+
+        else:
+            print("Using full stream saver...")
+            reader = workers.StreamSaverWorker(
+                reader,
+                filename=kwargs["save_stream"],
+                export_format=kwargs["export_format"],
+            )
+            stream_saver = reader
+            stream_saver.start()
+    else:
+        stream_saver = None
 
     if kwargs["save_detections_as"] is not None:
         worker = workers.RegionSaverWorker(
@@ -124,4 +143,8 @@ def initialize_workers(logger=None, **kwargs):
         )
         observers.append(worker)
 
-    return reader, observers
+    tokenizer_worker = workers.TokenizerWorker(
+        reader, observers, logger=logger, **kwargs
+    )
+
+    return stream_saver, tokenizer_worker
