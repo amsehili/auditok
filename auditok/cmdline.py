@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 from auditok import AudioRegion, __version__
 
 from .cmdline_util import initialize_workers, make_kwargs, make_logger
-from .exceptions import AudioEncodingWarning, EndOfProcessing
+from .exceptions import ArgumentError, EndOfProcessing
 
 __all__ = []
 __date__ = "2015-11-23"
@@ -386,8 +386,14 @@ def main(argv=None):
         )
 
         args = parser.parse_args(argv)
+        try:
+            kwargs = make_kwargs(args)
+        except ArgumentError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+
         logger = make_logger(args.debug, args.debug_file)
-        kwargs = make_kwargs(args)
+
         stream_saver, tokenizer_worker = initialize_workers(
             logger=logger, **kwargs.split, **kwargs.io, **kwargs.miscellaneous
         )

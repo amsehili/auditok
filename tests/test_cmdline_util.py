@@ -12,6 +12,7 @@ from auditok.cmdline_util import (
     make_kwargs,
     make_logger,
 )
+from auditok.exceptions import ArgumentError
 from auditok.workers import (
     AudioEventsJoinerWorker,
     CommandLineWorker,
@@ -173,6 +174,49 @@ def test_make_kwargs(
     expected = KeywordArguments(io_kwargs, split_kwargs, miscellaneous)
     kwargs = make_kwargs(args_ns)
     assert kwargs == expected
+
+
+def test_make_kwargs_error():
+
+    args = (
+        "file",
+        30,
+        0.01,
+        16000,
+        2,
+        2,
+        1,
+        "raw",
+        "ogg",
+        True,
+        None,
+        1,
+        None,  # save_stream
+        None,
+        1.0,  # join_detections
+        None,
+        None,
+        0.2,
+        10,
+        0.3,
+        False,
+        False,
+        55,
+        False,
+        False,
+        None,
+        True,
+        None,
+        "TIME_FORMAT",
+        "TIMESTAMP_FORMAT",
+    )
+
+    args_ns = _ArgsNamespace(*args)
+    expected_err_msg = "using --join-detections/-j requires "
+    expected_err_msg += "--save-stream/-O to be specified."
+    with pytest.raises(ArgumentError) as arg_err:
+        make_kwargs(args_ns)
+    assert str(arg_err.value) == expected_err_msg
 
 
 def test_make_logger_stderr_and_file(capsys):
