@@ -91,7 +91,7 @@ class TokenizerWorker(Worker, AudioReader):
         self._detections = []
         self._log_format = "[DET]: Detection {0.id} (start: {0.start:.3f}, "
         self._log_format += "end: {0.end:.3f}, duration: {0.duration:.3f})"
-        Worker.__init__(self, timeout=0.2, logger=logger)
+        super().__init__(timeout=0.2, logger=logger)
 
     def _process_message(self):
         pass
@@ -434,7 +434,7 @@ class PlayerWorker(Worker):
         self._player = player
         self._progress_bar = progress_bar
         self._log_format = "[PLAY]: Detection {id} played"
-        Worker.__init__(self, timeout=timeout, logger=logger)
+        super().__init__(timeout=timeout, logger=logger)
 
     def _process_message(self, message):
         _id, audio_region = message
@@ -459,7 +459,7 @@ class RegionSaverWorker(Worker):
         self._audio_format = audio_format
         self._audio_parameters = audio_parameters
         self._debug_format = "[SAVE]: Detection {id} saved as '{filename}'"
-        Worker.__init__(self, timeout=timeout, logger=logger)
+        super().__init__(timeout=timeout, logger=logger)
 
     def _process_message(self, message):
         _id, audio_region = message
@@ -480,7 +480,7 @@ class RegionSaverWorker(Worker):
 class CommandLineWorker(Worker):
     def __init__(self, command, timeout=0.2, logger=None):
         self._command = command
-        Worker.__init__(self, timeout=timeout, logger=logger)
+        super().__init__(timeout=timeout, logger=logger)
         self._debug_format = "[COMMAND]: Detection {id} command: '{command}'"
 
     def _process_message(self, message):
@@ -507,7 +507,7 @@ class PrintWorker(Worker):
         self._format_time = make_duration_formatter(time_format)
         self._timestamp_format = timestamp_format
         self.detections = []
-        Worker.__init__(self, timeout=timeout)
+        super().__init__(timeout=timeout)
 
     def _process_message(self, message):
         _id, audio_region = message
