@@ -9,12 +9,8 @@ from queue import Empty, Queue
 from tempfile import NamedTemporaryFile
 from threading import Thread
 
-from .core import split
-from .exceptions import (
-    AudioEncodingError,
-    AudioEncodingWarning,
-    EndOfProcessing,
-)
+from .core import make_silence, split
+from .exceptions import AudioEncodingError, AudioEncodingWarning
 from .io import _guess_audio_format
 from .util import AudioReader, make_duration_formatter
 
@@ -90,7 +86,8 @@ class TokenizerWorker(Worker, AudioReader):
     def __init__(self, reader, observers=None, logger=None, **kwargs):
         self._observers = observers if observers is not None else []
         self._reader = reader
-        self._audio_region_gen = split(self, **kwargs)
+        kwargs["input"] = self
+        self._audio_region_gen = split(**kwargs)
         self._detections = []
         self._log_format = "[DET]: Detection {0.id} (start: {0.start:.3f}, "
         self._log_format += "end: {0.end:.3f}, duration: {0.duration:.3f})"
@@ -102,6 +99,10 @@ class TokenizerWorker(Worker, AudioReader):
     @property
     def detections(self):
         return self._detections
+
+    @property
+    def reader(self):
+        return self._reader
 
     def _notify_observers(self, message):
         for observer in self._observers:
@@ -150,27 +151,41 @@ class TokenizerWorker(Worker, AudioReader):
         return getattr(self._reader, name)
 
 
-class StreamSaverWorker(Worker):
+class AudioDataSaverWorker(Worker):
+
     def __init__(
         self,
-        audio_reader,
         filename,
-        export_format=None,
-        cache_size_sec=0.5,
+        export_format,
+        sampling_rate,
+        sample_width,
+        channels,
         timeout=0.2,
     ):
-        self._reader = audio_reader
-        sample_size_bytes = self._reader.sw * self._reader.ch
-        self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
+
+        super().__init__(timeout=timeout)
         self._output_filename = filename
+        self._sampling_rate = sampling_rate
+        self._sample_width = sample_width
+        self._channels = channels
+
         self._export_format = _guess_audio_format(filename, export_format)
         if self._export_format is None:
             self._export_format = "wav"
         self._init_output_stream()
         self._exported = False
-        self._cache = []
-        self._total_cached = 0
-        Worker.__init__(self, timeout=timeout)
+
+    @property
+    def sr(self):
+        return self._sampling_rate
+
+    @property
+    def sw(self):
+        return self._sample_width
+
+    @property
+    def ch(self):
+        return self._channels
 
     def _get_non_existent_filename(self):
         filename = self._output_filename + ".wav"
@@ -186,21 +201,90 @@ class StreamSaverWorker(Worker):
         else:
             self._tmp_output_filename = self._output_filename
         self._wfp = wave.open(self._tmp_output_filename, "wb")
-        self._wfp.setframerate(self._reader.sr)
-        self._wfp.setsampwidth(self._reader.sw)
-        self._wfp.setnchannels(self._reader.ch)
+        self._wfp.setframerate(self.sr)
+        self._wfp.setsampwidth(self.sw)
+        self._wfp.setnchannels(self.ch)
 
     @property
-    def sr(self):
-        return self._reader.sampling_rate
+    def data(self):
+        with wave.open(self._tmp_output_filename, "rb") as wfp:
+            return wfp.readframes(-1)
 
-    @property
-    def sw(self):
-        return self._reader.sample_width
+    def export_audio(self):
+        try:
+            self._encode_export_audio()
+        except AudioEncodingError as ae_error:
+            raise AudioEncodingWarning(str(ae_error)) from ae_error
+        return self._output_filename
 
-    @property
-    def ch(self):
-        return self._reader.channels
+    def _encode_export_audio(self):
+        if self._exported:
+            return self._output_filename
+
+        if self._export_format in ("raw", "wav"):
+            if self._export_format == "raw":
+                self._export_raw()
+            self._exported = True
+            return self._output_filename
+        try:
+            self._export_with_ffmpeg_or_avconv()
+
+        except AudioEncodingError:
+            try:
+                self._export_with_sox()
+            except AudioEncodingError as exc:
+                warn_msg = "Couldn't save audio data in the desired format "
+                warn_msg += "'{}'.\nEither none of 'ffmpeg', 'avconv' or 'sox' "
+                warn_msg += "is installed or this format is not recognized.\n"
+                warn_msg += "Audio file was saved as '{}'"
+                raise AudioEncodingError(
+                    warn_msg.format(
+                        self._export_format, self._tmp_output_filename
+                    )
+                ) from exc
+            else:
+                self._exported = True
+        else:
+            self._exported = True
+        return self._output_filename
+
+    def _export_raw(self):
+        with open(self._output_filename, "wb") as fp:
+            fp.write(self.data)
+
+    def _export_with_ffmpeg_or_avconv(self):
+        command = [
+            "-y",
+            "-f",
+            "wav",
+            "-i",
+            self._tmp_output_filename,
+            "-f",
+            self._export_format,
+            self._output_filename,
+        ]
+        returncode, stdout, stderr = _run_subprocess(["ffmpeg"] + command)
+        if returncode != 0:
+            returncode, stdout, stderr = _run_subprocess(["avconv"] + command)
+            if returncode != 0:
+                raise AudioEncodingError(stderr)
+        return stdout, stderr
+
+    def _export_with_sox(self):
+        command = [
+            "sox",
+            "-t",
+            "wav",
+            self._tmp_output_filename,
+            self._output_filename,
+        ]
+        returncode, stdout, stderr = _run_subprocess(command)
+        if returncode != 0:
+            raise AudioEncodingError(stderr)
+        return stdout, stderr
+
+    def close_output(self):
+        self._wfp.close()
 
     def __del__(self):
         self._post_process()
@@ -211,6 +295,33 @@ class StreamSaverWorker(Worker):
             and os.path.exists(self._tmp_output_filename)
         ):
             os.remove(self._tmp_output_filename)
+
+
+class StreamSaverWorker(AudioDataSaverWorker):
+    def __init__(
+        self,
+        audio_reader,
+        filename,
+        export_format=None,
+        cache_size_sec=0.5,
+        timeout=0.2,
+    ):
+        self._reader = audio_reader
+        super().__init__(
+            filename,
+            export_format,
+            self._reader.sr,
+            self._reader.sw,
+            self._reader.ch,
+            timeout=timeout,
+        )
+
+        sample_size_bytes = self._reader.sw * self._reader.ch
+        self._cache_size = cache_size_sec * self._reader.sr * sample_size_bytes
+
+        self._exported = False
+        self._cache = []
+        self._total_cached = 0
 
     def _process_message(self, data):
         self._cache.append(data)
@@ -253,72 +364,6 @@ class StreamSaverWorker(Worker):
         with wave.open(self._tmp_output_filename, "rb") as wfp:
             return wfp.readframes(-1)
 
-    def save_stream(self):
-        if self._exported:
-            return self._output_filename
-
-        if self._export_format in ("raw", "wav"):
-            if self._export_format == "raw":
-                self._export_raw()
-            self._exported = True
-            return self._output_filename
-        try:
-            self._export_with_ffmpeg_or_avconv()
-        except AudioEncodingError:
-            try:
-                self._export_with_sox()
-            except AudioEncodingError as exc:
-                warn_msg = "Couldn't save audio data in the desired format "
-                warn_msg += "'{}'. Either none of 'ffmpeg', 'avconv' or 'sox' "
-                warn_msg += "is installed or this format is not recognized.\n"
-                warn_msg += "Audio file was saved as '{}'"
-                raise AudioEncodingWarning(
-                    warn_msg.format(
-                        self._export_format, self._tmp_output_filename
-                    )
-                ) from exc
-        finally:
-            self._exported = True
-        return self._output_filename
-
-    def _export_raw(self):
-        with open(self._output_filename, "wb") as wfp:
-            wfp.write(self.data)
-
-    def _export_with_ffmpeg_or_avconv(self):
-        command = [
-            "-y",
-            "-f",
-            "wav",
-            "-i",
-            self._tmp_output_filename,
-            "-f",
-            self._export_format,
-            self._output_filename,
-        ]
-        returncode, stdout, stderr = _run_subprocess(["ffmpeg"] + command)
-        if returncode != 0:
-            returncode, stdout, stderr = _run_subprocess(["avconv"] + command)
-            if returncode != 0:
-                raise AudioEncodingError(stderr)
-        return stdout, stderr
-
-    def _export_with_sox(self):
-        command = [
-            "sox",
-            "-t",
-            "wav",
-            self._tmp_output_filename,
-            self._output_filename,
-        ]
-        returncode, stdout, stderr = _run_subprocess(command)
-        if returncode != 0:
-            raise AudioEncodingError(stderr)
-        return stdout, stderr
-
-    def close_output(self):
-        self._wfp.close()
-
     def read(self):
         data = self._reader.read()
         if data is not None:
@@ -328,9 +373,60 @@ class StreamSaverWorker(Worker):
         return data
 
     def __getattr__(self, name):
-        if name == "data":
-            return self.data
-        return getattr(self._reader, name)
+        try:
+            return getattr(self._reader, name)
+        except AttributeError:
+            return getattr(self, name)
+
+
+class AudioEventsJoinerWorker(AudioDataSaverWorker):
+
+    def __init__(
+        self,
+        silence_duration,
+        filename,
+        export_format,
+        sampling_rate,
+        sample_width,
+        channels,
+        timeout=0.2,
+    ):
+
+        super().__init__(
+            filename,
+            export_format,
+            sampling_rate,
+            sample_width,
+            channels,
+            timeout,
+        )
+
+        self._silence_data = make_silence(
+            silence_duration, sampling_rate, sample_width, channels
+        ).data
+        self._first_event = True
+
+    def _process_message(self, message):
+        _, audio_event = message
+        self._write_audio_event(audio_event.data)
+
+    def _post_process(self):
+        while True:
+            try:
+                message = self._inbox.get_nowait()
+                if message != _STOP_PROCESSING:
+                    _, audio_event = message
+                    self._write_audio_event(audio_event.data)
+            except Empty:
+                break
+        self._wfp.close()
+
+    def _write_audio_event(self, data):
+        if not self._first_event:
+            self._wfp.writeframes(self._silence_data)
+        else:
+            self._first_event = False
+        self._wfp.writeframes(data)
 
 
 class PlayerWorker(Worker):
@@ -357,7 +453,7 @@ class RegionSaverWorker(Worker):
         audio_format=None,
         timeout=0.2,
         logger=None,
-        **audio_parameters
+        **audio_parameters,
     ):
         self._filename_format = filename_format
         self._audio_format = audio_format

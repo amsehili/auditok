@@ -22,11 +22,8 @@ from argparse import ArgumentParser
 
 from auditok import AudioRegion, __version__
 
-from . import workers
 from .cmdline_util import initialize_workers, make_kwargs, make_logger
 from .exceptions import AudioEncodingWarning, EndOfProcessing
-from .io import player_for
-from .util import AudioDataSource
 
 __all__ = []
 __date__ = "2015-11-23"
@@ -127,6 +124,17 @@ def main(argv=None):
             "{end} and {duration}. Time placeholders are in seconds. "
             "Example: 'Event_{id}_{start}-{end}_{duration:.3f}.wav'",
             metavar="STRING",
+        )
+        group.add_argument(
+            "-j",
+            "--join-detections",
+            dest="join_detections",
+            type=float,
+            default=None,
+            help="Join (i.e., glue) detected audio events with a silence of "
+            "this duration. Should be used jointly with the --save-stream / "
+            "-O option.",
+            metavar="FLOAT",
         )
         group.add_argument(
             "-T",
@@ -380,11 +388,8 @@ def main(argv=None):
         args = parser.parse_args(argv)
         logger = make_logger(args.debug, args.debug_file)
         kwargs = make_kwargs(args)
-        reader, observers = initialize_workers(
-            logger=logger, **kwargs.io, **kwargs.miscellaneous
-        )
-        tokenizer_worker = workers.TokenizerWorker(
-            reader, observers, logger=logger, **kwargs.split
+        stream_saver, tokenizer_worker = initialize_workers(
+            logger=logger, **kwargs.split, **kwargs.io, **kwargs.miscellaneous
         )
         tokenizer_worker.start_all()
 
@@ -397,15 +402,17 @@ def main(argv=None):
         if tokenizer_worker is not None:
             tokenizer_worker.stop_all()
 
-            if isinstance(reader, workers.StreamSaverWorker):
-                reader.join()
+            if stream_saver is not None:
+                stream_saver.join()
                 try:
-                    reader.save_stream()
-                except AudioEncodingWarning as ae_warn:
-                    print(str(ae_warn), file=sys.stderr)
+                    stream_saver.export_audio()
+                except Exception as aee:
+                    print(aee, file=sys.stderr)
 
             if args.plot or args.save_image is not None:
                 from .plotting import plot
+
+                reader = tokenizer_worker.reader
 
                 reader.rewind()
                 record = AudioRegion(

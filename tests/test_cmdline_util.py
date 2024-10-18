@@ -13,6 +13,7 @@ from auditok.cmdline_util import (
     make_logger,
 )
 from auditok.workers import (
+    AudioEventsJoinerWorker,
     CommandLineWorker,
     PlayerWorker,
     PrintWorker,
@@ -37,6 +38,7 @@ _ArgsNamespace = namedtuple(
         "input_device_index",
         "save_stream",
         "save_detections_as",
+        "join_detections",
         "plot",
         "save_image",
         "min_duration",
@@ -57,25 +59,25 @@ _ArgsNamespace = namedtuple(
 
 
 @pytest.mark.parametrize(
-    "save_stream, save_detections_as, plot, save_image, use_channel, exp_use_channel, exp_record",
+    "save_stream, save_detections_as, join_detections, plot, save_image, use_channel, exp_use_channel, exp_record",  # noqa: B950
     [
-        # no_record
-        ("stream.ogg", None, False, None, "mix", "mix", False),
-        # no_record_plot
-        ("stream.ogg", None, True, None, None, None, False),
+        # no_record_no_join
+        ("stream.ogg", None, None, False, None, "mix", "mix", False),
+        # no_record_plot_join
+        ("stream.ogg", None, 1.0, True, None, None, None, False),
         # no_record_save_image
-        ("stream.ogg", None, True, "image.png", None, None, False),
+        ("stream.ogg", None, None, True, "image.png", None, None, False),
         # record_plot
-        (None, None, True, None, None, None, True),
+        (None, None, None, True, None, None, None, True),
         # record_save_image
-        (None, None, False, "image.png", None, None, True),
+        (None, None, None, False, "image.png", None, None, True),
         # int_use_channel
-        ("stream.ogg", None, False, None, "1", 1, False),
+        ("stream.ogg", None, None, False, None, "1", 1, False),
         # save_detections_as
-        ("stream.ogg", "{id}.wav", False, None, None, None, False),
+        ("stream.ogg", "{id}.wav", None, False, None, None, None, False),
     ],
     ids=[
-        "no_record",
+        "no_record_no_join",
         "no_record_plot",
         "no_record_save_image",
         "record_plot",
@@ -87,6 +89,7 @@ _ArgsNamespace = namedtuple(
 def test_make_kwargs(
     save_stream,
     save_detections_as,
+    join_detections,
     plot,
     save_image,
     use_channel,
@@ -108,6 +111,7 @@ def test_make_kwargs(
         1,
         save_stream,
         save_detections_as,
+        join_detections,
         plot,
         save_image,
         0.2,
@@ -138,6 +142,7 @@ def test_make_kwargs(
         "use_channel": exp_use_channel,
         "save_stream": save_stream,
         "save_detections_as": save_detections_as,
+        "join_detections": join_detections,
         "audio_format": "raw",
         "export_format": "ogg",
         "large_file": True,
@@ -187,15 +192,16 @@ def test_make_logger_None():
     assert logger is None
 
 
-def test_initialize_workers_all():
+def test_initialize_workers_all_plus_full_stream_saver():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
         with TemporaryDirectory() as tmpdir:
             export_filename = os.path.join(tmpdir, "output.wav")
-            reader, observers = initialize_workers(
+            reader, tokenizer_worker = initialize_workers(
                 input="tests/data/test_16KHZ_mono_400Hz.wav",
                 save_stream=export_filename,
                 export_format="wave",
                 save_detections_as="{id}.wav",
+                join_detections=None,
                 echo=True,
                 progress_bar=False,
                 command="some command",
@@ -208,13 +214,48 @@ def test_initialize_workers_all():
             assert patched_player_for.called
             assert isinstance(reader, StreamSaverWorker)
             for obs, cls in zip(
-                observers,
+                tokenizer_worker._observers,
                 [
                     RegionSaverWorker,
                     PlayerWorker,
                     CommandLineWorker,
                     PrintWorker,
                 ],
+                strict=True,
+            ):
+                assert isinstance(obs, cls)
+
+
+def test_initialize_workers_all_plus_audio_event_joiner():
+    with patch("auditok.cmdline_util.player_for") as patched_player_for:
+        with TemporaryDirectory() as tmpdir:
+            export_filename = os.path.join(tmpdir, "output.wav")
+            reader, tokenizer_worker = initialize_workers(
+                input="tests/data/test_16KHZ_mono_400Hz.wav",
+                save_stream=export_filename,
+                export_format="wave",
+                save_detections_as="{id}.wav",
+                join_detections=1,
+                echo=True,
+                progress_bar=False,
+                command="some command",
+                quiet=False,
+                printf="abcd",
+                time_format="%S",
+                timestamp_format="%h:%M:%S",
+            )
+            assert patched_player_for.called
+            assert not isinstance(reader, StreamSaverWorker)
+            for obs, cls in zip(
+                tokenizer_worker._observers,
+                [
+                    AudioEventsJoinerWorker,
+                    RegionSaverWorker,
+                    PlayerWorker,
+                    CommandLineWorker,
+                    PrintWorker,
+                ],
+                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -223,11 +264,12 @@ def test_initialize_workers_no_RegionSaverWorker():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
         with TemporaryDirectory() as tmpdir:
             export_filename = os.path.join(tmpdir, "output.wav")
-            reader, observers = initialize_workers(
+            reader, tokenizer_worker = initialize_workers(
                 input="tests/data/test_16KHZ_mono_400Hz.wav",
                 save_stream=export_filename,
                 export_format="wave",
                 save_detections_as=None,
+                join_detections=None,
                 echo=True,
                 progress_bar=False,
                 command="some command",
@@ -240,7 +282,9 @@ def test_initialize_workers_no_RegionSaverWorker():
             assert patched_player_for.called
             assert isinstance(reader, StreamSaverWorker)
             for obs, cls in zip(
-                observers, [PlayerWorker, CommandLineWorker, PrintWorker]
+                tokenizer_worker._observers,
+                [PlayerWorker, CommandLineWorker, PrintWorker],
+                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -249,11 +293,12 @@ def test_initialize_workers_no_PlayerWorker():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
         with TemporaryDirectory() as tmpdir:
             export_filename = os.path.join(tmpdir, "output.wav")
-            reader, observers = initialize_workers(
+            reader, tokenizer_worker = initialize_workers(
                 input="tests/data/test_16KHZ_mono_400Hz.wav",
                 save_stream=export_filename,
                 export_format="wave",
                 save_detections_as="{id}.wav",
+                join_detections=None,
                 echo=False,
                 progress_bar=False,
                 command="some command",
@@ -266,8 +311,9 @@ def test_initialize_workers_no_PlayerWorker():
             assert not patched_player_for.called
             assert isinstance(reader, StreamSaverWorker)
             for obs, cls in zip(
-                observers,
+                tokenizer_worker._observers,
                 [RegionSaverWorker, CommandLineWorker, PrintWorker],
+                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -276,11 +322,12 @@ def test_initialize_workers_no_CommandLineWorker():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
         with TemporaryDirectory() as tmpdir:
             export_filename = os.path.join(tmpdir, "output.wav")
-            reader, observers = initialize_workers(
+            reader, tokenizer_worker = initialize_workers(
                 input="tests/data/test_16KHZ_mono_400Hz.wav",
                 save_stream=export_filename,
                 export_format="wave",
                 save_detections_as="{id}.wav",
+                join_detections=None,
                 echo=True,
                 progress_bar=False,
                 command=None,
@@ -293,7 +340,9 @@ def test_initialize_workers_no_CommandLineWorker():
             assert patched_player_for.called
             assert isinstance(reader, StreamSaverWorker)
             for obs, cls in zip(
-                observers, [RegionSaverWorker, PlayerWorker, PrintWorker]
+                tokenizer_worker._observers,
+                [RegionSaverWorker, PlayerWorker, PrintWorker],
+                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -302,11 +351,12 @@ def test_initialize_workers_no_PrintWorker():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
         with TemporaryDirectory() as tmpdir:
             export_filename = os.path.join(tmpdir, "output.wav")
-            reader, observers = initialize_workers(
+            reader, tokenizer_worker = initialize_workers(
                 input="tests/data/test_16KHZ_mono_400Hz.wav",
                 save_stream=export_filename,
                 export_format="wave",
                 save_detections_as="{id}.wav",
+                join_detections=None,
                 echo=True,
                 progress_bar=False,
                 command="some command",
@@ -319,15 +369,16 @@ def test_initialize_workers_no_PrintWorker():
             assert patched_player_for.called
             assert isinstance(reader, StreamSaverWorker)
             for obs, cls in zip(
-                observers,
+                tokenizer_worker._observers,
                 [RegionSaverWorker, PlayerWorker, CommandLineWorker],
+                strict=True,
             ):
                 assert isinstance(obs, cls)
 
 
 def test_initialize_workers_no_observers():
     with patch("auditok.cmdline_util.player_for") as patched_player_for:
-        reader, observers = initialize_workers(
+        reader, tokenizer_worker = initialize_workers(
             input="tests/data/test_16KHZ_mono_400Hz.wav",
             save_stream=None,
             export_format="wave",
@@ -342,4 +393,4 @@ def test_initialize_workers_no_observers():
         )
         assert patched_player_for.called
         assert not isinstance(reader, StreamSaverWorker)
-        assert len(observers) == 1
+        assert len(tokenizer_worker._observers) == 1
