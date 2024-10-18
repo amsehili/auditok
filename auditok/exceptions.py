@@ -1,3 +1,7 @@
+class ArgumentError(Exception):
+    """Raised when command line arguments have invalid values."""
+
+
 class TooSmallBlockDuration(ValueError):
     """Raised when block_dur results in a block_size smaller than one sample."""
 

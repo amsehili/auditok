@@ -3,6 +3,7 @@ import sys
 from collections import namedtuple
 
 from . import workers
+from .exceptions import ArgumentError
 from .io import player_for
 from .util import AudioReader
 
@@ -21,6 +22,12 @@ def make_kwargs(args_ns):
         use_channel = int(args_ns.use_channel)
     except (ValueError, TypeError):
         use_channel = args_ns.use_channel
+
+    if args_ns.join_detections is not None and args_ns.save_stream is None:
+        raise ArgumentError(
+            "using --join-detections/-j requires --save-stream/-O "
+            "to be specified."
+        )
 
     io_kwargs = {
         "input": args_ns.input,
@@ -87,7 +94,6 @@ def initialize_workers(logger=None, **kwargs):
     if kwargs["save_stream"] is not None:
 
         if kwargs["join_detections"] is not None:
-            print("Using event joiner...")
             stream_saver = workers.AudioEventsJoinerWorker(
                 silence_duration=kwargs["join_detections"],
                 filename=kwargs["save_stream"],
