@@ -99,7 +99,6 @@ def initialize_workers(logger=None, **kwargs):
             observers.append(stream_saver)
 
         else:
-            print("Using full stream saver...")
             reader = workers.StreamSaverWorker(
                 reader,
                 filename=kwargs["save_stream"],
