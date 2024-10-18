@@ -5,10 +5,10 @@ from unittest.mock import Mock, call, patch
 import pytest
 
 import auditok.workers
-from auditok import AudioReader, AudioRegion
+from auditok import AudioReader, AudioRegion, split, split_and_join_with_silence
 from auditok.cmdline_util import make_logger
-from auditok.exceptions import AudioEncodingWarning
 from auditok.workers import (
+    AudioEventsJoinerWorker,
     CommandLineWorker,
     PlayerWorker,
     PrintWorker,
@@ -270,11 +270,22 @@ def test_StreamSaverWorker_wav(audio_data_source):
         assert saver.data == bytes(expected_region)
 
 
-def test_StreamSaverWorker_raw(audio_data_source):
+@pytest.mark.parametrize(
+    "export_format",
+    [
+        "raw",  # raw
+        "wav",  # wav
+    ],
+    ids=[
+        "raw",
+        "raw",
+    ],
+)
+def test_StreamSaverWorker(audio_data_source, export_format):
     with TemporaryDirectory() as tmpdir:
-        expected_filename = os.path.join(tmpdir, "output")
+        expected_filename = os.path.join(tmpdir, f"output.{export_format}")
         saver = StreamSaverWorker(
-            audio_data_source, expected_filename, export_format="raw"
+            audio_data_source, expected_filename, export_format=export_format
         )
         saver.start()
         tokenizer = TokenizerWorker(saver)
@@ -286,7 +297,7 @@ def test_StreamSaverWorker_raw(audio_data_source):
             "tests/data/test_split_10HZ_mono.raw", sr=10, sw=2, ch=1
         )
         expected_region = AudioRegion.load(
-            output_filename, sr=10, sw=2, ch=1, audio_format="raw"
+            output_filename, sr=10, sw=2, ch=1, audio_format=export_format
         )
         assert output_filename == expected_filename
         assert region == expected_region
@@ -300,10 +311,6 @@ def test_StreamSaverWorker_encode_audio(audio_data_source):
             expected_filename = os.path.join(tmpdir, "output.ogg")
             tmp_expected_filename = expected_filename + ".wav"
             saver = StreamSaverWorker(audio_data_source, expected_filename)
-            print("########## saver._exported 1:", saver._exported)
-            # import auditok
-
-            # with pytest.raises(auditok.workers.AudioEncodingWarning) as rt_warn:
             saver.start()
             tokenizer = TokenizerWorker(saver)
             tokenizer.start_all()
@@ -347,3 +354,44 @@ def test_StreamSaverWorker_encode_audio(audio_data_source):
         )
         assert not saver._exported
         assert saver.data == bytes(region)
+
+
+@pytest.mark.parametrize(
+    "export_format",
+    [
+        "raw",  # raw
+        "wav",  # wav
+    ],
+    ids=[
+        "raw",
+        "raw",
+    ],
+)
+def test_AudioEventsJoinerWorker(audio_data_source, export_format):
+    with TemporaryDirectory() as tmpdir:
+        expected_filename = os.path.join(tmpdir, f"output.{export_format}")
+        joiner = AudioEventsJoinerWorker(
+            silence_duration=1.0,
+            filename=expected_filename,
+            export_format=export_format,
+            sampling_rate=audio_data_source.sampling_rate,
+            sample_width=audio_data_source.sample_width,
+            channels=audio_data_source.channels,
+        )
+
+        tokenizer = TokenizerWorker(audio_data_source, observers=[joiner])
+        tokenizer.start_all()
+        tokenizer.join()
+        joiner.join()
+
+        output_filename = joiner.export_audio()
+        expected_region = split_and_join_with_silence(
+            "tests/data/test_split_10HZ_mono.raw",
+            silence_duration=1.0,
+            sr=10,
+            sw=2,
+            ch=1,
+            aw=0.1,
+        )
+        assert output_filename == expected_filename
+        assert joiner.data == bytes(expected_region)
