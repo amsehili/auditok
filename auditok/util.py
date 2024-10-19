@@ -40,65 +40,69 @@ __all__ = [
 
 def make_duration_formatter(fmt):
     """
-    Make and return a function used to format durations in seconds. Accepted
-    format directives are:
+    Create and return a function to format durations in seconds using a
+    specified format. Accepted format directives are:
 
-    - ``%S`` : absolute number of seconds with 3 decimals. This direction should
-      be used alone.
+    - ``%S`` : absolute seconds with 3 decimals; must be used alone.
     - ``%i`` : milliseconds
     - ``%s`` : seconds
     - ``%m`` : minutes
     - ``%h`` : hours
 
-    These last 4 directives should all be specified. They can be placed anywhere
-    in the input string.
+    The last four directives (%i, %s, %m, %h) should all be specified and can
+    be placed in any order within the input format string.
 
     Parameters
     ----------
     fmt : str
-        duration format.
+        Format string specifying the duration format.
 
     Returns
     -------
     formatter : callable
-        a function that takes a duration in seconds (float) and returns a string
-        that corresponds to that duration.
+        A function that takes a duration in seconds (float) and returns a
+        formatted string.
 
     Raises
     ------
     TimeFormatError
-        if the format contains an unknown directive.
+        Raised if the format contains an unknown directive.
 
     Examples
     --------
-
-    Using ``%S``:
+    Using ``%S`` for total seconds with three decimal precision:
 
     .. code:: python
 
         formatter = make_duration_formatter("%S")
         formatter(123.589)
-        '123.589'
+        # '123.589'
         formatter(123)
-        '123.000'
+        # '123.000'
 
-    Using the other directives:
+    Using combined directives:
 
     .. code:: python
 
         formatter = make_duration_formatter("%h:%m:%s.%i")
-        formatter(3600+120+3.25)
-        '01:02:03.250'
+        formatter(3723.25)
+        # '01:02:03.250'
 
         formatter = make_duration_formatter("%h hrs, %m min, %s sec and %i ms")
-        formatter(3600+120+3.25)
-        '01 hrs, 02 min, 03 sec and 250 ms'
+        formatter(3723.25)
+        # '01 hrs, 02 min, 03 sec and 250 ms'
 
-        # omitting one of the 4 directives might result in a wrong duration
-        formatter = make_duration_formatter("%m min, %s sec and %i ms")
-        formatter(3600+120+3.25)
-        '02 min, 03 sec and 250 ms'
+    Note:
+        Omitting any of the four main directives (%i, %s, %m, %h) may result
+        in incorrect formatting:
+
+        .. code:: python
+
+            formatter = make_duration_formatter("%m min, %s sec and %i ms")
+            formatter(3723.25)
+            # '02 min, 03 sec and 250 ms'
     """
+
     if fmt == "%S":
 
         def formatter(seconds):
@@ -133,53 +137,46 @@ def make_duration_formatter(fmt):
 
 
 def make_channel_selector(sample_width, channels, selected=None):
-    """Create and return a callable used for audio channel selection. The
-    returned selector can be used as `selector(audio_data)` and returns data
-    that contains selected channel only.
+    """
+    Create and return a callable for selecting a specific audio channel. The
+    returned `selector` function can be used as `selector(audio_data)` and
+    returns data for the specified channel.
 
-    Importantly, if `selected` is None or equals "any", `selector(audio_data)`
-    will separate and return a list of available channels:
-    `[data_channel_1, data_channel_2, ...].`
+    If `selected` is None or "any", the `selector` will separate and return a
+    list of available channels: `[data_channel_1, data_channel_2, ...]`.
 
-    Note also that returned `selector` expects `bytes` format for input data but
-    does not necessarily return a `bytes` object. In fact, in order to extract
-    the desired channel (or compute the average channel if `selected` = "avg"),
-    it first converts input data into a `array.array` (or `numpy.ndarray`)
-    object. After the channel of interest is selected/computed, it is returned as
-    such, without any reconversion to `bytes`. This behavior is wanted for
-    efficiency purposes because returned objects can be directly used as buffers
-    of bytes. In any case, returned objects can be converted back to `bytes`
-    using `bytes(obj)`.
+    Note that `selector` expects input data in `bytes` format but does not
+    necessarily return a `bytes` object. To select or compute the desired
+    channel (or average channel if `selected="avg"`), it converts the input
+    data into an `array.array` or `numpy.ndarray`. After selection, the data
+    is returned as is, without reconversion to `bytes`, for efficiency. The
+    output can be converted back to `bytes` with `bytes(obj)` if needed.
 
-    Exception to this is the special case where `channels` = 1 in which input
-    data is returned without any processing.
-
+    Special case: If `channels=1`, the input data is returned without processing.
 
     Parameters
     ----------
     sample_width : int
-        number of bytes used to encode one audio sample, should be 1, 2 or 4.
+        Number of bytes per audio sample; should be 1, 2, or 4.
     channels : int
-        number of channels of raw audio data that the returned selector should
-        expect.
-    selected : int or str, default: None
-        audio channel to select and return when calling `selector(raw_data)`. It
-        should be an int >= `-channels` and < `channels`. If one of "mix",
-        "avg" or "average" is passed then `selector` will return the average
-        channel of audio data. If None or "any", return a list of all available
-        channels at each call.
+        Number of channels in the audio data that the selector should expect.
+    selected : int or str, optional
+        Channel to select in each call to `selector(raw_data)`. Acceptable values:
+        - An integer in range [-channels, channels).
+        - "mix", "avg", or "average" for averaging across channels.
+        - None or "any" to return a list of all channels.
 
     Returns
     -------
     selector : callable
-        a callable that can be used as `selector(audio_data)` and returns data
-        that contains channel of interest.
+        A function that can be called as `selector(audio_data)` and returns data
+        for the selected channel.
 
     Raises
     ------
     ValueError
-        if `sample_width` is not one of 1, 2 or 4, or if `selected` has an
-        unexpected value.
+        If `sample_width` is not one of {1, 2, 4}, or if `selected` has an
+        unsupported value.
     """
     to_array_ = partial(
         signal.to_array, sample_width=sample_width, channels=channels
@@ -207,29 +204,50 @@ def make_channel_selector(sample_width, channels, selected=None):
 
 class DataSource(ABC):
     """
-    Base class for objects passed to :func:`StreamTokenizer.tokenize`.
-    Subclasses should implement a :func:`DataSource.read` method.
+    Base class for objects used as data sources in
+    :func:`StreamTokenizer.tokenize`.
+
+    Subclasses should implement a :func:`DataSource.read` method, which is
+    expected to return a frame (or slice) of data from the source, and None
+    when there is no more data to read.
     """
 
     @abstractmethod
     def read(self):
         """
-        Read a block (i.e., window) of data read from this source.
-        If no more data is available, return None.
+        Read a block (or window) of data from this source.
+
+        Returns
+        -------
+        data : object or None
+            A block of data from the source. If no more data is available,
+            should return None.
         """
 
 
 class DataValidator(ABC):
     """
-    Base class for a validator object used by :class:`.core.StreamTokenizer`
-    to check if read data is valid.
-    Subclasses should implement :func:`is_valid` method.
+    Base class for validator objects used by :class:`.core.StreamTokenizer`
+    to verify the validity of read data.
+
+    Subclasses should implement the :func:`is_valid` method to define the
+    specific criteria for data validity.
     """
 
     @abstractmethod
     def is_valid(self, data):
         """
-        Check whether `data` is valid
+        Determine whether the provided `data` meets validity criteria.
+
+        Parameters
+        ----------
+        data : object
+            The data to be validated.
+
+        Returns
+        -------
+        bool
+            True if `data` is valid, otherwise False.
         """
 
 
@@ -239,33 +257,33 @@ class AudioEnergyValidator(DataValidator):
     samples (see :func:`AudioEnergyValidator.is_valid`), the energy is computed
     as:
 
-    .. math:: energy = 20 \log(\sqrt({1}/{N}\sum_{i}^{N}{a_i}^2))  % # noqa: W605
+    .. math::
+        energy = 20 \log(\sqrt({1}/{N} \sum_{i=1}^{N} {a_i}^2))  % # noqa: W605
 
-    where `a_i` is the i-th audio sample.
+    where `a_i` represents the i-th audio sample.
 
     Parameters
     ----------
     energy_threshold : float
-        minimum energy that audio window should have to be valid.
+        Minimum energy required for an audio window to be considered valid.
     sample_width : int
-        size in bytes of one audio sample.
+        Size in bytes of a single audio sample.
     channels : int
-        number of channels of audio data.
+        Number of audio channels in the data.
     use_channel : {None, "any", "mix", "avg", "average"} or int
-        channel to use for energy computation. The following values are
-        accepted:
+        Specifies the channel used for energy computation:
 
-        - None (alias "any") : compute energy for each of the channels and return
-          the maximum value.
-        - "mix" (alias "avg" or "average") : compute the average channel then
-          compute its energy.
-        - int (>= 0 , < `channels`) : compute the energy of the specified channel
-          and ignore the other ones.
+        - None or "any": Compute energy for each channel and return the maximum.
+        - "mix" (or "avg" / "average"): Average across all channels, then
+          compute energy.
+        - int (0 <= value < `channels`): Compute energy for the specified channel
+          only, ignoring others.
 
     Returns
     -------
     energy : float
-        energy of the audio window.
+        Computed energy of the audio window, used to validate if the window
+        meets the `energy_threshold`.
     """
 
     def __init__(
@@ -280,17 +298,20 @@ class AudioEnergyValidator(DataValidator):
 
     def is_valid(self, data):
         """
+        Determine if the audio data meets the energy threshold.
 
         Parameters
         ----------
         data : bytes-like
-            array of raw audio data
+            An array of raw audio data.
 
         Returns
         -------
         bool
-            True if the energy of audio data is >= threshold, False otherwise.
+            True if the energy of the audio data is greater than or equal to
+            the specified threshold; otherwise, False.
         """
+
         log_energy = signal.calculate_energy(
             self._selector(data), self._energy_agg_fn
         )
@@ -299,16 +320,16 @@ class AudioEnergyValidator(DataValidator):
 
 class StringDataSource(DataSource):
     """
-    Class that represent a :class:`DataSource` as a string buffer.
-    Each call to :func:`DataSource.read` returns on character and moves one
-    step forward. If the end of the buffer is reached, :func:`read` returns
+    A :class:`DataSource` implementation that reads from a string buffer.
+
+    Each call to :mrth:`read` returns one character from the buffer and advances
+    by one position. When the end of the buffer is reached, :meth:`read` returns
     None.
 
     Parameters
     ----------
     data : str
-        a string object used as data.
-
+        The string data to be used as the source.
     """
 
     def __init__(self, data):
@@ -324,7 +345,7 @@ class StringDataSource(DataSource):
         Returns
         -------
         char : str
-            current character or None if end of buffer is reached.
+            current character or None if the end of the buffer is reached.
         """
 
         if self._current >= len(self._data):
@@ -389,8 +410,10 @@ class _AudioReadingProxy:
 
 class _Recorder(_AudioReadingProxy):
     """
-    Class for `AudioReader` objects that can record all data they read. Useful
-    when reading data from microphone.
+    A class for `AudioReader` objects that records all data read from the source.
+
+    This class is particularly useful for capturing audio data when reading from
+    a microphone or similar live audio sources.
     """
 
     def __init__(self, audio_source):
@@ -406,7 +429,7 @@ class _Recorder(_AudioReadingProxy):
     @property
     def data(self):
         if self._data is None:
-            err_msg = "Unrewinded recorder. `rewind` should be called before "
+            err_msg = "Un-rewinded recorder. `rewind` should be called before "
             err_msg += "accessing recorded data"
             raise RuntimeError(err_msg)
         return self._data
@@ -437,9 +460,10 @@ class _Recorder(_AudioReadingProxy):
 
 class _Limiter(_AudioReadingProxy):
     """
-    Class for `AudioReader` objects that can read a fixed amount of data.
-    This can be useful when reading data from the microphone or from large
-    audio files.
+    A class for `AudioReader` objects that restricts the amount of data read.
+
+    This class is useful for limiting data intake when reading from a microphone
+    or large audio files, ensuring only a specified amount of data is processed.
     """
 
     def __init__(self, audio_source, max_read):
@@ -476,7 +500,7 @@ class _Limiter(_AudioReadingProxy):
 
 class _FixedSizeAudioReader(_AudioReadingProxy):
     """
-    Class to read fixed-size audio windows from source.
+    A class to read fixed-size audio windows from a source.
     """
 
     def __init__(self, audio_source, block_dur):
@@ -513,8 +537,11 @@ class _FixedSizeAudioReader(_AudioReadingProxy):
 
 class _OverlapAudioReader(_FixedSizeAudioReader):
     """
-    Class for `AudioReader` objects that can read and return overlapping audio
+    A class for `AudioReader` objects that reads and returns overlapping audio
     windows.
+
+    Useful for applications requiring overlapping segments, such as audio
+    analysis or feature extraction.
     """
 
     def __init__(self, audio_source, block_dur, hop_dur):
@@ -576,86 +603,74 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
 
 class AudioReader(DataSource):
     """
-    Class to read fixed-size chunks of audio data from a source. A source can
-    be a file on disk, standard input (with `input` = "-") or microphone. This
-    is normally used by tokenization algorithms that expect source objects with
-    a `read` function that returns a windows of data of the same size at each
-    call expect when remaining data does not make up a full window.
+    A class to read fixed-size chunks of audio data from a source, which can
+    be a file, standard input (with `input` set to "-"), or a microphone.
+    Typically used by tokenization algorithms that require source objects with
+    a `read` function to return data windows of consistent size, except for
+    the last window if remaining data is insufficient.
 
-    Objects of this class can be set up to return audio windows with a given
-    overlap and to record the whole stream for later access (useful when
-    reading data from the microphone). They can also have
-    a limit for the maximum amount of data to read.
+    This class supports overlapping audio windows, recording the audio stream
+    for later access (useful for microphone input), and limiting the maximum
+    amount of data read.
 
     Parameters
     ----------
-    input : str, bytes, AudioSource, AudioReader, AudioRegion or None
-        input audio data. If the type of the passed argument is `str`, it should
-        be a path to an existing audio file. "-" is interpreted as standard input.
-        If the type is `bytes`, input is considered as a buffer of raw audio
-        data. If None, read audio from microphone. Every object that is not an
-        :class:`AudioReader` will be transformed, when possible, into an
-        :class:`AudioSource` before processing. If it is an `str` that refers to
-        a raw audio file, `bytes` or None, audio parameters should be provided
-        using kwargs (i.e., `sampling_rate`, `sample_width` and `channels` or
-        their alias: `sr`, `sw` and `ch`).
-    block_dur: float, default: 0.01
-        length in seconds of audio data to return for each `read` call.
-    hop_dur: float, default: None
-        length in seconds of data amount to skip from previous window. If
-        defined, it is used to compute the temporal overlap between previous and
-        current window (namely `overlap = block_dur - hop_dur`). Default, None,
-        means that consecutive windows do not overlap.
-    record: bool, default: False
-        whether to record read audio data for later access. If True, audio data
-        can be retrieved by first calling `rewind()`, then using the `data`
-        property. Note that once `rewind()` is called, no new data will be read
-        from source (subsequent `read()` call will read data from cache) and
-        that there's no need to call `rewind()` again to access `data` property.
-    max_read: float, default: None
-        maximum amount of audio data to read in seconds. Default is None meaning
-        that data will be read until end of stream is reached or, when reading
-        from microphone a Ctrl-C is sent.
+    input : str, bytes, AudioSource, AudioReader, AudioRegion, or None
+        Input audio data. If a string, it should be the path to an audio file
+        (use "-" for standard input). If bytes, the input is treated as raw
+        audio data. If None, audio is read from a microphone. Any input that
+        is not an :class:`AudioReader` will be converted, if possible, to an
+        :class:`AudioSource` for processing. For raw audio (string path, bytes,
+        or None), specify audio parameters using kwargs (`sampling_rate`,
+        `sample_width`, `channels` or their aliases: `sr`, `sw`, `ch`).
+    block_dur : float, default=0.01
+        Duration of audio data (in seconds) to return in each `read` call.
+    hop_dur : float, optional
+        Duration of data to skip (in seconds) from the previous window. If set,
+        it is used to calculate temporal overlap between the current and
+        previous window (`overlap = block_dur - hop_dur`). If None (default),
+        windows do not overlap.
+    record : bool, default=False
+        Whether to record audio data for later access. If True, recorded audio
+        can be accessed using the `data` property after calling `rewind()`.
+        Note: after `rewind()`, no new data is read from the source—subsequent
+        `read` calls use the cached data.
+    max_read : float, optional
+        Maximum duration of audio data to read (in seconds). If None (default),
+        data is read until the end of the stream or, for microphone input, until
+        a Ctrl-C interruption.
 
-    When `input` is None, of type bytes or a raw audio files some of the
-    following kwargs are mandatory.
+    Additional audio parameters may be required if `input` is raw audio
+    (None, bytes, or raw audio file):
 
     Other Parameters
     ----------------
     audio_format, fmt : str
-        type of audio data (e.g., wav, ogg, flac, raw, etc.). This will only be
-        used if `input` is a string path to an audio file. If not given, audio
-        type will be guessed from file name extension or from file header.
+        Type of audio data (e.g., wav, ogg, flac, raw). Used if `input` is a
+        file path. If not provided, the format is inferred from the file
+        extension or header.
     sampling_rate, sr : int
-        sampling rate of audio data. Required if `input` is a raw audio file, is
-        a bytes object or None (i.e., read from microphone).
+        Sampling rate of the audio data. Required for raw audio (bytes, None,
+        or raw file).
     sample_width, sw : int
-        number of bytes used to encode one audio sample, typically 1, 2 or 4.
-        Required for raw data, see `sampling_rate`.
+        Number of bytes per audio sample (typically 1, 2, or 4). Required for
+        raw data.
     channels, ch : int
-        number of channels of audio data. Required for raw data, see
-        `sampling_rate`.
+        Number of audio channels. Required for raw data.
     use_channel, uc : {None, "any", "mix", "avg", "average"} or int
-        which channel to use for split if `input` has multiple audio channels.
-        Regardless of which channel is used for splitting, returned audio events
-        contain data from *all* the channels of `input`. The following values
-        are accepted:
+        Specifies the channel used for split if `input` has multiple channels.
+        All returned audio data includes data from *all* input channels. Options:
 
-        - None (alias "any"): accept audio activity from any channel, even if
-          other channels are silent. This is the default behavior.
+        - None or "any": Use any active channel, regardless of silence in others.
+          (Default)
+        - "mix" / "avg" / "average": Combine all channels by averaging.
+        - int: Use the specified channel ID (0 <= value < `channels`).
 
-        - "mix" (alias "avg" or "average"): mix down all channels (i.e., compute
-          average channel) and split the resulting channel.
-
-        - int (>= 0 , < `channels`): use one channel, specified by its integer
-          id, for split.
-
-    large_file : bool, default: False
-        If True, AND if `input` is a path to a *wav* of a *raw* audio file
-        (and only these two formats) then audio data is lazily loaded to memory
-        (i.e., one analysis window a time). Otherwise the whole file is loaded
-        to memory before split. Set to True if the size of the file is larger
-        than available memory.
+    large_file : bool, default=False
+        If True and `input` is a path to a *wav* or *raw* file, audio data is
+        loaded lazily (one analysis window at a time). Otherwise, the entire
+        file is loaded before processing. Use True for large files exceeding
+        available memory.
     """
 
     def __init__(
@@ -746,14 +761,16 @@ class AudioReader(DataSource):
 
 
 class Recorder(AudioReader):
-    """Class to read fixed-size chunks of audio data from a source and keeps
-    data in a cache. Using this class is equivalent to initializing
-    :class:`AudioReader` with `record=True`. For more information about the
-    other parameters see :class:`AudioReader`.
+    """
+    A class to read fixed-size chunks of audio data from a source and store
+    them in a cache. This class is equivalent to initializing
+    :class:`AudioReader` with `record=True`. For more details on additional
+    parameters, refer to :class:`AudioReader`.
 
-    Once the desired amount of data is read, you can call the :func:`rewind`
-    method then get the recorded data via the :attr:`data` attribute. You can also
-    re-read cached data one window a time by calling :func:`read`.
+    Once the desired amount of data is read, you can call the :meth:`rewind`
+    method to access the recorded data via the :attr:`data` attribute. The
+    cached data can also be re-read in fixed-size windows by calling
+    :meth:`read`.
     """
 
     def __init__(

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
-"""
-`auditok` -- An Audio Activity Detection tool
+"""`auditok` -- An Audio Activity Detection Tool
 
-`auditok` is a program that can be used for Audio/Acoustic
-activity detection. It can read audio data from audio files as well
-as from the microphone or standard input.
+`auditok` is a program designed for audio or acoustic activity detection.
+It supports reading audio data from various sources, including audio files,
+microphones, and standard input.
 
 @author:     Mohamed El Amine SEHILI
 @copyright:  2015-2021 Mohamed El Amine SEHILI
