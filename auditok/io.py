@@ -394,7 +394,7 @@ class FileAudioSource(AudioSource):
     """
 
     def __init__(self, sampling_rate, sample_width, channels):
-        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        super().__init__(sampling_rate, sample_width, channels)
         self._audio_stream = None
 
     def __del__(self):
@@ -443,7 +443,7 @@ class RawAudioSource(FileAudioSource):
     """
 
     def __init__(self, filename, sampling_rate, sample_width, channels):
-        FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
+        super().__init__(sampling_rate, sample_width, channels)
         self._filename = filename
         self._audio_stream = None
         self._sample_size = sample_width * channels
@@ -478,8 +478,7 @@ class WaveAudioSource(FileAudioSource):
         self._filename = str(filename)  # wave requires an str filename
         self._audio_stream = None
         stream = wave.open(self._filename, "rb")
-        FileAudioSource.__init__(
-            self,
+        super().__init__(
             stream.getframerate(),
             stream.getsampwidth(),
             stream.getnchannels(),
@@ -525,7 +524,7 @@ class PyAudioSource(AudioSource):
         input_device_index=None,
     ):
 
-        AudioSource.__init__(self, sampling_rate, sample_width, channels)
+        super().__init__(sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer
         self.input_device_index = input_device_index
 
@@ -588,7 +587,7 @@ class StdinAudioSource(FileAudioSource):
         sample_width=2,
         channels=1,
     ):
-        FileAudioSource.__init__(self, sampling_rate, sample_width, channels)
+        super().__init__(sampling_rate, sample_width, channels)
         self._is_open = False
         self._sample_size = sample_width * channels
         self._stream = sys.stdin.buffer
