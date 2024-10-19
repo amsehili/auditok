@@ -649,10 +649,7 @@ class AudioRegion(object):
     def __post_init__(self):
 
         check_audio_data(self.data, self.sample_width, self.channels)
-
         object.__setattr__(self, "splitp", self.split_and_plot)
-        object.__setattr__(self, "_samples", None)
-
         duration = len(self.data) / (
             self.sampling_rate * self.sample_width * self.channels
         )
@@ -980,18 +977,20 @@ class AudioRegion(object):
 
     @property
     def samples(self):
-        """Audio region as arrays of samples, one array per channel."""
-        if self._samples is None:  # TODO fixit
-            _samples = signal.to_array(
-                self.data, self.sample_width, self.channels
-            )
-        return _samples
+        warnings.warn(
+            "`AudioRegion.samples` is deprecated and will be removed in future "
+            "versions. Please use `AudioRegion.numpy()`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.numpy()
 
     def __array__(self):
-        return self.samples
+        return self.numpy()
 
     def numpy(self):
-        return self.samples
+        """Audio region a 2D numpy array of shape (n_channels, n_samples)."""
+        return signal.to_array(self.data, self.sample_width, self.channels)
 
     def __len__(self):
         """
