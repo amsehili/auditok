@@ -72,16 +72,27 @@ def check_audio_data(data, sample_width, channels):
 
 
 def _guess_audio_format(filename, fmt):
-    """Helper function to guess audio format from file extension, or by
-    normalizing a user provided format.
+    """Guess the audio format from a file extension or normalize a provided
+    format.
 
-    Args:
-        filename (str, Path): audio file name.
-        fmt (str): un-normalized user provided format.
+    This helper function attempts to determine the audio format based on the
+    file extension of `filename` or by normalizing the format specified by the
+    user in `fmt`.
 
-    Returns:
-        str, None: guessed audio format or None if no format could be guessed.
+    Parameters
+    ----------
+    filename : str or Path
+        The audio file name, including its extension.
+    fmt : str
+        The un-normalized format provided by the user.
+
+    Returns
+    -------
+    str or None
+        The guessed audio format as a string, or None if no format could be
+        determined.
     """
+
     if fmt is None:
         extension = os.path.splitext(filename)[1][1:].lower()
         if extension:
@@ -96,24 +107,36 @@ def _guess_audio_format(filename, fmt):
 
 def _get_audio_parameters(param_dict):
     """
-    Get audio parameters from a dictionary of parameters. An audio parameter can
-    have a long name or a short name. If the long name is present, the short
-    name will be ignored. If neither is present then `AudioParameterError` is
-    raised.
+    Retrieve audio parameters from a dictionary of parameters.
 
-    Expected parameters are:
+    Each audio parameter can have a long name or a short name. If both are
+    present, the long name takes precedence. If neither is found, an
+    `AudioParameterError` is raised.
 
-        - `sampling_rate`, `sr` : int, sampling rate.
+    Expected parameters:
+        - `sampling_rate`, `sr` : int, the sampling rate.
+        - `sample_width`, `sw` : int, the sample size in bytes.
+        - `channels`, `ch` : int, the number of audio channels.
 
-        - `sample_width`, `sw` : int, sample size in bytes.
-
-        - `channels`, `ch` : int, number of channels.
+    Parameters
+    ----------
+    param_dict : dict
+        A dictionary containing audio parameters, with possible keys as
+        defined above.
 
     Returns
     -------
-    audio_parameters : tuple
-        a tuple for audio parameters as (sampling_rate, sample_width, channels).
+    tuple
+        A tuple containing audio parameters as
+        (sampling_rate, sample_width, channels).
+
+    Raises
+    ------
+    AudioParameterError
+        If a required parameter is missing, is not an integer, or is not a
+        positive value.
     """
+
     parameters = []
     for long_name, short_name in (
         ("sampling_rate", "sr"),
@@ -134,17 +157,18 @@ class AudioSource(ABC):
     """
     Base class for audio source objects.
 
-    Subclasses should implement methods to open/close and audio stream
-    and read the desired amount of audio samples.
+    This class provides a foundation for audio source objects. Subclasses are
+    expected to implement methods to open and close an audio stream, as well as
+    to read the desired number of audio samples.
 
     Parameters
     ----------
     sampling_rate : int
-        number of samples per second of audio data.
+        The number of samples per second of audio data.
     sample_width : int
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
+        The size, in bytes, of each audio sample. Accepted values are 1, 2, or 4.
     channels : int
-        number of channels of audio data.
+        The number of audio channels.
     """
 
     def __init__(
@@ -177,23 +201,26 @@ class AudioSource(ABC):
 
     @abstractmethod
     def read(self, size):
-        """
-        Read and return `size` audio samples at most.
+        """Read and return up to `size` audio samples.
+
+        This abstract method reads audio data and returns it as a bytes object,
+        containing at most `size` samples.
 
         Parameters
-        -----------
+        ----------
         size : int
-            Number of samples to read.
+            The number of samples to read.
 
         Returns
         -------
-        data : bytes
-            Audio data as a bytes object of length `N * sample_width * channels`
-            where `N` equals:
+        bytes
+            A bytes object containing the audio data, with a length of
+            `N * sample_width * channels`, where `N` is:
 
-            - `size` if `size` <= remaining samples
-
-            - remaining samples if `size` > remaining samples
+            - `size`, if `size` is less than or equal to the number of remaining
+            samples
+            - the number of remaining samples, if `size` exceeds the remaining
+            samples
         """
 
     @property
@@ -241,12 +268,12 @@ class AudioSource(ABC):
 
 
 class Rewindable(AudioSource):
-    """
-    Base class for rewindable audio streams.
+    """Base class for rewindable audio sources.
 
-    Subclasses should implement a method to return back to the start of an the
-    stream (`rewind`), as well as a property getter/setter named `position` that
-    reads/sets stream position expressed in number of samples.
+    This class serves as a base for audio sources that support rewinding.
+    Subclasses should implement a method to return to the beginning of the
+    stream (`rewind`), and provide a property `position` that allows getting
+    and setting the current stream position, expressed in number of samples.
     """
 
     @abstractmethod
@@ -287,20 +314,22 @@ class Rewindable(AudioSource):
 
 
 class BufferAudioSource(Rewindable):
-    """
-    An `AudioSource` that encapsulates and reads data from a memory buffer.
+    """An `AudioSource` that reads audio data from a memory buffer.
 
-    This class implements the `Rewindable` interface.
+    This class implements the `Rewindable` interface, allowing audio data
+    stored in a buffer to be read with support for rewinding and position
+    control.
+
     Parameters
     ----------
     data : bytes
-        audio data
-    sampling_rate : int, default: 16000
-        number of samples per second of audio data.
-    sample_width : int, default: 2
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
-    channels : int, default: 1
-        number of channels of audio data.
+        The audio data stored in a memory buffer.
+    sampling_rate : int, optional, default=16000
+        The number of samples per second of audio data.
+    sample_width : int, optional, default=2
+        The size in bytes of one audio sample. Accepted values are 1, 2, or 4.
+    channels : int, optional, default=1
+        The number of audio channels.
     """
 
     def __init__(
@@ -380,17 +409,19 @@ class BufferAudioSource(Rewindable):
 
 
 class FileAudioSource(AudioSource):
-    """
-    Base class `AudioSource`s that read audio data from a file.
+    """Base class for `AudioSource`s that read audio data from a file.
+
+    This class provides a foundation for audio sources that retrieve audio data
+    from file sources.
 
     Parameters
     ----------
-    sampling_rate : int, default: 16000
-        number of samples per second of audio data.
-    sample_width : int, default: 2
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
-    channels : int, default: 1
-        number of channels of audio data.
+    sampling_rate : int, optional, default=16000
+        The number of samples per second of audio data.
+    sample_width : int, optional, default=2
+        The size in bytes of one audio sample. Accepted values are 1, 2, or 4.
+    channels : int, optional, default=1
+        The number of audio channels.
     """
 
     def __init__(self, sampling_rate, sample_width, channels):
@@ -424,22 +455,21 @@ class FileAudioSource(AudioSource):
 
 class RawAudioSource(FileAudioSource):
     """
-    A class for an `AudioSource` that reads data from a raw (headerless) audio
-    file.
+    An `AudioSource` class for reading data from a raw (headerless) audio file.
 
-    This class should be used for large raw audio files to avoid loading the
-    whole data to memory.
+    This class is suitable for large raw audio files, allowing for efficient
+    data handling without loading the entire file into memory.
 
     Parameters
     ----------
-    filename : str, Path
-        path to a raw audio file.
+    filename : str or Path
+        The path to the raw audio file.
     sampling_rate : int
-        Number of samples per second of audio data.
+        The number of samples per second of audio data.
     sample_width : int
-        Size in bytes of one audio sample. Possible values : 1, 2, 4.
+        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
     channels : int
-        Number of channels of audio data.
+        The number of audio channels.
     """
 
     def __init__(self, filename, sampling_rate, sample_width, channels):
@@ -463,15 +493,15 @@ class RawAudioSource(FileAudioSource):
 
 class WaveAudioSource(FileAudioSource):
     """
-    A class for an `AudioSource` that reads data from a wave file.
+        An `AudioSource` class for reading data from a wave file.
 
-    This class should be used for large wave files to avoid loading the whole
-    data to memory.
+    This class is suitable for large wave files, allowing for efficient data
+    handling without loading the entire file into memory.
 
     Parameters
     ----------
-    filename : str, Path
-        path to a valid wave file.
+    filename : str or Path
+        The path to a valid wave file.
     """
 
     def __init__(self, filename):
@@ -496,23 +526,25 @@ class WaveAudioSource(FileAudioSource):
 
 
 class PyAudioSource(AudioSource):
-    """
-    A class for an `AudioSource` that reads data from built-in microphone using
-    PyAudio (https://people.csail.mit.edu/hubert/pyaudio/).
+    """An `AudioSource` class for reading data from a built-in microphone using
+    PyAudio.
+
+    This class leverages PyAudio (https://people.csail.mit.edu/hubert/pyaudio/)
+    to capture audio data directly from a microphone.
 
     Parameters
     ----------
-    sampling_rate : int, default: 16000
-        number of samples per second of audio data.
-    sample_width : int, default: 2
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
-    channels : int, default: 1
-        number of channels of audio data.
-    frames_per_buffer : int, default: 1024
-        PyAudio number of frames per buffer.
-    input_device_index: None or int, default: None
-        PyAudio index of audio device to read audio data from. If None default
-        device is used.
+    sampling_rate : int, optional, default=16000
+        The number of samples per second of audio data.
+    sample_width : int, optional, default=2
+        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+    channels : int, optional, default=1
+        The number of audio channels.
+    frames_per_buffer : int, optional, default=1024
+        The number of frames per buffer, as specified by PyAudio.
+    input_device_index : int or None, optional, default=None
+        The PyAudio index of the audio device to read from. If None, the default
+        audio device is used.
     """
 
     def __init__(
@@ -569,16 +601,19 @@ class PyAudioSource(AudioSource):
 
 class StdinAudioSource(FileAudioSource):
     """
-    A class for an `AudioSource` that reads data from standard input.
+    An `AudioSource` class for reading audio data from standard input.
+
+    This class is designed to capture audio data directly from standard input,
+    making it suitable for streaming audio sources.
 
     Parameters
     ----------
-    sampling_rate : int, default: 16000
-        number of samples per second of audio data.
-    sample_width : int, default: 2
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
-    channels : int, default: 1
-        number of channels of audio data.
+    sampling_rate : int, optional, default=16000
+        The number of samples per second of audio data.
+    sample_width : int, optional, default=2
+        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+    channels : int, optional, default=1
+        The number of audio channels.
     """
 
     def __init__(
@@ -622,18 +657,19 @@ def _make_tqdm_progress_bar(iterable, total, duration, **tqdm_kwargs):
 
 
 class PyAudioPlayer:
-    """
-    A class for audio playback using Pyaudio
+    """A class for audio playback using PyAudio.
+
+    This class facilitates audio playback through the PyAudio library
     (https://people.csail.mit.edu/hubert/pyaudio/).
 
     Parameters
     ----------
-    sampling_rate : int, default: 16000
-        number of samples per second of audio data.
-    sample_width : int, default: 2
-        size in bytes of one audio sample. Possible values: 1, 2 or 4.
-    channels : int, default: 1
-        number of channels of audio data.
+    sampling_rate : int, optional, default=16000
+        The number of samples per second of audio data.
+    sample_width : int, optional, default=2
+        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+    channels : int, optional, default=1
+        The number of audio channels.
     """
 
     def __init__(
@@ -704,21 +740,26 @@ class PyAudioPlayer:
 
 def player_for(source):
     """
-    Return an `AudioPlayer` compatible with `source` (i.e., has the same
-    sampling rate, sample width and number of channels).
+    Return an `AudioPlayer` compatible with the specified `source`.
+
+    This function creates an `AudioPlayer` instance (currently only
+    `PyAudioPlayer` is implemented) that matches the audio properties of the
+    provided `source`, ensuring compatibility in terms of sampling rate, sample
+    width, and number of channels.
 
     Parameters
     ----------
     source : AudioSource
-        An object that has `sampling_rate`, `sample_width` and `sample_width`
+        An object with `sampling_rate`, `sample_width`, and `channels`
         attributes.
 
     Returns
     -------
-    player : PyAudioPlayer
-        An audio player that has the same sampling rate, sample width
-        and number of channels as `source`.
+    PyAudioPlayer
+        An audio player with the same sampling rate, sample width, and number
+        of channels as `source`.
     """
+
     return PyAudioPlayer(
         source.sampling_rate, source.sample_width, source.channels
     )
@@ -726,30 +767,37 @@ def player_for(source):
 
 def get_audio_source(input=None, **kwargs):
     """
-    Create and return an AudioSource from input.
+    Create and return an `AudioSource` based on the specified input.
+
+    This function generates an `AudioSource` instance from various input types,
+    allowing flexibility for audio data sources such as file paths, raw data,
+    standard input, or microphone input via PyAudio.
 
     Parameters
     ----------
-    input : str, bytes, "-" or None (default)
-        source to read audio data from. If `str`, it should be a path to a valid
-        audio file. If `bytes`, it is used as raw audio data. If it is "-",
-        raw data will be read from stdin. If None, read audio data from the
-        microphone using PyAudio.
-    kwargs
-        audio parameters used to build the `AudioSource` object. Depending on
-        the nature of `input`, theses may be omitted (e.g., when `input` is an
-        audio file in a popular audio format such as wav, ogg, flac, etc.) or
-        include parameters such as `sampling_rate`, `sample_width`, `channels`
-        (or their respective short name versions `sr`, `sw` and `ch`) if `input`
-        is a path to a raw (headerless) audio file, a bytes object for raw audio
-        data or None (to read data from built-in microphone). See the respective
-        `AudioSource` classes from more information about possible parameters.
+    input : str, bytes, "-", or None, optional
+        The source to read audio data from. Possible values are:
+        - `str`: Path to a valid audio file.
+        - `bytes`: Raw audio data.
+        - "-": Read raw data from standard input.
+        - None (default): Read audio data from the microphone using PyAudio.
+    kwargs : dict, optional
+        Additional audio parameters used to construct the `AudioSource` object.
+        Depending on the `input` type, these may be optional (e.g., for common
+        audio file formats such as wav, ogg, or flac). When required, parameters
+        include `sampling_rate`, `sample_width`, `channels`, or their short
+        forms `sr`, `sw`, and `ch`. These parameters are typically needed when
+        `input` is a path to a raw audio file, a bytes object with raw audio
+        data, or None (for microphone input). See respective `AudioSource`
+        classes for detailed parameter requirements.
 
     Returns
     -------
-    source : AudioSource
-        audio source created from input parameters
+    AudioSource
+        An audio source created based on the specified input and audio
+        parameters.
     """
+
     if input == "-":
         return StdinAudioSource(*_get_audio_parameters(kwargs))
 
@@ -775,28 +823,34 @@ def _load_raw(
     filename, sampling_rate, sample_width, channels, large_file=False
 ):
     """
-    Load a raw audio file with standard Python. If `large_file` is True, return
-    a `RawAudioSource` object that reads data lazily from disk, otherwise load
-    all data to memory and return a `BufferAudioSource` object.
+    Load a raw audio file using standard Python file handling.
+
+    This function loads audio data from a raw file. If `large_file` is set to
+    True, it returns a `RawAudioSource` object that reads data lazily from disk.
+    Otherwise, it loads all data into memory and returns a `BufferAudioSource`
+    object.
 
     Parameters
     ----------
-    filename : str, Path
-        path to a raw audio data file.
+    filename : str or Path
+        The path to the raw audio data file.
     sampling_rate : int
-        sampling rate of audio data.
+        The sampling rate of the audio data.
     sample_width : int
-        size in bytes of one audio sample.
+        The size, in bytes, of each audio sample.
     channels : int
-        number of channels of audio data.
-    large_file : bool
-        if True, return a `RawAudioSource` otherwise a `BufferAudioSource`
-        object.
+        The number of audio channels.
+    large_file : bool, optional
+        If True, a `RawAudioSource` is returned to allow lazy data loading from
+        disk. If False, returns a `BufferAudioSource` with all data loaded into
+        memory.
 
     Returns
     -------
-    source : RawAudioSource or BufferAudioSource
-        an `AudioSource` that reads data from input file.
+    AudioSource
+        An `AudioSource` that reads data from the specified file. The source is
+        either a `RawAudioSource` (for lazy loading) or a `BufferAudioSource`
+        (for in-memory loading), depending on the value of `large_file`.
     """
 
     if None in (sampling_rate, sample_width, channels):
@@ -824,22 +878,28 @@ def _load_raw(
 
 def _load_wave(filename, large_file=False):
     """
-    Load a wave audio file with standard Python. If `large_file` is True, return
-    a `WaveAudioSource` object that reads data lazily from disk, otherwise load
-    all data to memory and return a `BufferAudioSource` object.
+    Load a wave audio file using standard Python module `wave`.
+
+    This function loads audio data from a wave (.wav) file. If `large_file` is
+    set to True, it returns a `WaveAudioSource` object that reads data lazily
+    from disk. Otherwise, it loads all data into memory and returns a
+    `BufferAudioSource` object.
 
     Parameters
     ----------
-    filename : str, Path
-        path to a wav audio data file
-    large_file : bool
-        if True, return a `WaveAudioSource` otherwise a `BufferAudioSource`
-        object.
+    filename : str or Path
+        The path to the wave audio data file.
+    large_file : bool, optional
+        If True, a `WaveAudioSource` is returned to allow lazy data loading from
+        disk. If False, returns a `BufferAudioSource` with all data loaded into
+        memory.
 
     Returns
     -------
-    source : WaveAudioSource or BufferAudioSource
-        an `AudioSource` that reads data from input file.
+    AudioSource
+        An `AudioSource` that reads data from the specified file. The source is
+        either a `WaveAudioSource` (for lazy loading) or a `BufferAudioSource`
+        (for in-memory loading), depending on the value of `large_file`.
     """
 
     if large_file:
@@ -856,20 +916,22 @@ def _load_wave(filename, large_file=False):
 
 def _load_with_pydub(filename, audio_format=None):
     """
-    Open compressed audio or video file using pydub. If a video file
-    is passed, its audio track(s) are extracted and loaded.
+    Load audio from a compressed audio or video file using `pydub`.
+
+    This function uses `pydub` to load compressed audio files. If a video file
+    is specified, the audio track(s) are extracted and loaded.
 
     Parameters
     ----------
-    filename : str, Path
-        path to audio file.
-    audio_format : str, default: None
-        audio file format if known (e.g. raw, webm, wav, ogg)
+    filename : str or Path
+        The path to the audio file.
+    audio_format : str, optional, default=None
+        The audio file format, if known (e.g., raw, webm, wav, ogg).
 
     Returns
     -------
-    source : BufferAudioSource
-        an `AudioSource` that reads data from input file.
+    BufferAudioSource
+        An `AudioSource` that reads data from the specified file.
     """
 
     func_dict = {
@@ -888,62 +950,60 @@ def _load_with_pydub(filename, audio_format=None):
 
 
 def from_file(filename, audio_format=None, large_file=False, **kwargs):
-    """
-    Read audio data from `filename` and return an `AudioSource` object.
-    if `audio_format` is None, the appropriate `AudioSource` class is guessed
-    from file's extension. `filename` can be a compressed audio or video file.
-    This will require installing `pydub` (https://github.com/jiaaro/pydub).
+    """Read audio data from `filename` and return an `AudioSource` object.
 
-    The normal behavior is to load all audio data to memory from which a
-    :class:`BufferAudioSource` object is created. This should be convenient
-    most     of the time unless audio file is very large. In that case, and
-    in order to load audio data in lazy manner (i.e. read data from disk each
-    time :func:`AudioSource.read` is called), `large_file` should be True.
+    If `audio_format` is None, the appropriate `AudioSource` class is inferred
+    from the file extension. The `filename` can refer to a compressed audio or
+    video file; if a video file is provided, its audio track(s) are extracted.
+    This functionality requires `pydub` (https://github.com/jiaaro/pydub).
 
-    Note that the current implementation supports only wave and raw formats for
-    lazy audio loading.
+    By default, all audio data is loaded into memory to create a
+    `BufferAudioSource` object, suitable for most cases. For very large files,
+    set `large_file=True` to enable lazy loading, which reads audio data from
+    disk each time `AudioSource.read` is called. Currently, lazy loading
+    supports only wave and raw formats.
 
-    If an audio format is `raw`, the following keyword arguments are required:
+    If `audio_format` is `raw`, the following keyword arguments are required:
 
-        - `sampling_rate`, `sr`: int,  sampling rate of audio data.
+        - `sampling_rate`, `sr`: int, sampling rate of audio data.
         - `sample_width`, `sw`: int, size in bytes of one audio sample.
         - `channels`, `ch`: int, number of channels of audio data.
 
-    See also
+    See Also
     --------
-    :func:`to_file`.
+    to_file : A related function for saving audio data to a file.
 
     Parameters
     ----------
-    filename : str, Path
-        path to input audio or video file.
-    audio_format : str
-        audio format used to save data  (e.g. raw, webm, wav, ogg).
-    large_file : bool, default: False
-        if True, audio won't fully be loaded to memory but only when a window
-        is read from disk.
-
+    filename : str or Path
+        The path to the input audio or video file.
+    audio_format : str, optional
+        The audio format (e.g., raw, webm, wav, ogg).
+    large_file : bool, optional, default=False
+        If True, the audio data is read lazily from disk rather than being
+        fully loaded into memory.
 
     Other Parameters
     ----------------
-    sampling_rate, sr: int
-        sampling rate of audio data
+    sampling_rate, sr : int
+        The sampling rate of the audio data.
     sample_width : int
-        sample width (i.e. number of bytes used to represent one audio sample)
+        The sample width in bytes (i.e., number of bytes per audio sample).
     channels : int
-        number of channels of audio data
+        The number of audio channels.
 
     Returns
     -------
-    audio_source : AudioSource
-        an :class:`AudioSource` object that reads data from input file.
+    AudioSource
+        An `AudioSource` object that reads data from the specified file.
 
     Raises
     ------
-    `AudioIOError`
-        raised if audio data cannot be read in the given
-        format or if `format` is `raw` and one or more audio parameters are missing.
+    AudioIOError
+        If audio data cannot be read in the given format or if `audio_format`
+        is `raw` and one or more required audio parameters are missing.
     """
+
     audio_format = _guess_audio_format(filename, audio_format)
 
     if audio_format == "raw":
@@ -965,18 +1025,52 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
 
 def _save_raw(data, file):
     """
-    Saves audio data as a headerless (i.e. raw) file.
-    See also :func:`to_file`.
+    Save audio data as a headerless (raw) file.
+
+    This function writes audio data to a file in raw format, without any header
+    information.
+
+    Parameters
+    ----------
+    data : bytes
+        The audio data to be saved.
+    file : str or Path
+        The path to the file where audio data will be saved.
+
+    See Also
+    --------
+    to_file : A related function for saving audio data in various formats.
     """
+
     with open(file, "wb") as fp:
         fp.write(data)
 
 
 def _save_wave(data, file, sampling_rate, sample_width, channels):
     """
-    Saves audio data to a wave file.
-    See also :func:`to_file`.
+    Save audio data to a wave file.
+
+    This function writes audio data to a file in the wave format, including
+    header information based on the specified audio parameters.
+
+    Parameters
+    ----------
+    data : bytes
+        The audio data to be saved.
+    file : str or Path
+        The path to the file where audio data will be saved.
+    sampling_rate : int
+        The sampling rate of the audio data.
+    sample_width : int
+        The size, in bytes, of each audio sample.
+    channels : int
+        The number of audio channels.
+
+    See Also
+    --------
+    to_file : A related function for saving audio data in various formats.
     """
+
     if None in (sampling_rate, sample_width, channels):
         raise AudioParameterError(
             "All audio parameters are required to save wave audio files"
@@ -992,9 +1086,31 @@ def _save_with_pydub(
     data, file, audio_format, sampling_rate, sample_width, channels
 ):
     """
-    Saves audio data with pydub (https://github.com/jiaaro/pydub).
-    See also :func:`to_file`.
+    Save audio data using pydub.
+
+    This function saves audio data to a file in various formats supported by
+    pydub (https://github.com/jiaaro/pydub), such as mp3, wav, ogg, etc.
+
+    Parameters
+    ----------
+    data : bytes
+        The audio data to be saved.
+    file : str or Path
+        The path to the file where audio data will be saved.
+    audio_format : str
+        The audio format to save the file in (e.g., mp3, wav, ogg).
+    sampling_rate : int
+        The sampling rate of the audio data.
+    sample_width : int
+        The size, in bytes, of each audio sample.
+    channels : int
+        The number of audio channels.
+
+    See Also
+    --------
+    to_file : A related function for saving audio data in various formats.
     """
+
     segment = AudioSegment(
         data,
         frame_rate=sampling_rate,
@@ -1007,34 +1123,38 @@ def _save_with_pydub(
 
 def to_file(data, filename, audio_format=None, **kwargs):
     """
-    Writes audio data to file. If `audio_format` is `None`, output
-    audio format will be guessed from extension. If `audio_format`
-    is `None` and `filename` comes without an extension then audio
-    data will be written as a raw audio file.
+    Write audio data to a file.
+
+    This function writes audio data to a file in the specified format. If
+    `audio_format` is None, the output format will be inferred from the file
+    extension. If `audio_format` is None and `filename` has no extension,
+    the data will be saved as a raw audio file.
 
     Parameters
     ----------
     data : bytes-like
-        audio data to be written. Can be a `bytes`, `bytearray`,
-        `memoryview`, `array` or `numpy.ndarray` object.
-    filename : str, Path
-        path to output audio file.
-    audio_format : str
-        audio format used to save data (e.g. raw, webm, wav, ogg)
-    kwargs: dict
-        If an audio format other than `raw` is used, the following keyword
-        arguments are required:
+        The audio data to be written. Accepts `bytes`, `bytearray`, `memoryview`,
+        `array`, or `numpy.ndarray` objects.
+    filename : str or Path
+        The path to the output audio file.
+    audio_format : str, optional
+        The audio format to use for saving the data (e.g., raw, webm, wav, ogg).
+    kwargs : dict, optional
+        Additional parameters required for non-raw audio formats:
 
-        - `sampling_rate`, `sr`: int,  sampling rate of audio data.
-        - `sample_width`, `sw`: int, size in bytes of one audio sample.
-        - `channels`, `ch`: int, number of channels of audio data.
+        - `sampling_rate`, `sr` : int, the sampling rate of the audio data.
+        - `sample_width`, `sw` : int, the size in bytes of one audio sample.
+        - `channels`, `ch` : int, the number of audio channels.
 
     Raises
     ------
-    `AudioParameterError` if output format is different than raw and one or more
-    audio parameters are missing. `AudioIOError` if audio data cannot be written
-    in the desired format.
+    AudioParameterError
+        Raised if the output format is not raw and one or more required audio
+        parameters are missing.
+    AudioIOError
+        Raised if the audio data cannot be written in the specified format.
     """
+
     audio_format = _guess_audio_format(filename, audio_format)
     if audio_format in (None, "raw"):
         _save_raw(data, filename)
