@@ -26,7 +26,7 @@ def _sample_generator(*data_buffers):
     >>> list(gen)
     ["a", "A", "b", "B", "c", "C", "d", "D"]
     """
-    frame_gen = zip(*data_buffers, strict=True)
+    frame_gen = zip(*data_buffers)
     return (sample for frame in frame_gen for sample in frame)
 
 

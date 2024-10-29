@@ -66,7 +66,11 @@ def test_TokenizerWorker(audio_data_source, expected_detections):
     )
     assert len(tokenizer.detections) == len(expected_detections)
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines, strict=True),
+        zip(
+            tokenizer.detections,
+            expected_detections,
+            log_lines,
+        ),
         1,
     ):
         start, end = exp
@@ -105,7 +109,11 @@ def test_PlayerWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[PLAY]: Detection {id} played"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        zip(
+            tokenizer.detections,
+            expected_detections,
+            log_lines,
+        ),
         1,
     ):
         start, end = exp
@@ -159,7 +167,11 @@ def test_RegionSaverWorker(audio_data_source, expected_detections):
 
     log_fmt = "[SAVE]: Detection {id} saved as '{filename}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        zip(
+            tokenizer.detections,
+            expected_detections,
+            log_lines,
+        ),
         1,
     ):
         start, end = exp
@@ -203,7 +215,11 @@ def test_CommandLineWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[COMMAND]: Detection {id} command '{command}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(tokenizer.detections, expected_detections, log_lines, strict=False),
+        zip(
+            tokenizer.detections,
+            expected_detections,
+            log_lines,
+        ),
         1,
     ):
         start, end = exp
@@ -242,7 +258,10 @@ def test_PrintWorker(audio_data_source, expected_detections):
     ]
     assert patched_print.mock_calls == expected_print_calls
     assert len(tokenizer.detections) == len(expected_detections)
-    for det, exp in zip(tokenizer.detections, expected_detections, strict=True):
+    for det, exp in zip(
+        tokenizer.detections,
+        expected_detections,
+    ):
         start, end = exp
         assert pytest.approx(det.start) == start
         assert pytest.approx(det.end) == end

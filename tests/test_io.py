@@ -1,21 +1,15 @@
 import filecmp
-import math
 import os
-import sys
 import wave
-from array import array
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
-from test_AudioSource import (
-    PURE_TONE_DICT,
-    _generate_pure_tone,
-    _sample_generator,
-)
+from test_AudioSource import PURE_TONE_DICT, _sample_generator
 
+import auditok
 from auditok.io import (
     AudioIOError,
     AudioParameterError,
@@ -98,20 +92,14 @@ def test_guess_audio_format(filename, audio_format, expected):
 
 def test_get_audio_parameters_short_params():
     expected = (8000, 2, 1)
-    params = dict(zip(("sr", "sw", "ch"), expected, strict=True))
+    params = dict(zip(("sr", "sw", "ch"), expected))
     result = _get_audio_parameters(params)
     assert result == expected
 
 
 def test_get_audio_parameters_long_params():
     expected = (8000, 2, 1)
-    params = dict(
-        zip(
-            ("sampling_rate", "sample_width", "channels"),
-            expected,
-            strict=True,
-        )
-    )
+    params = dict(zip(("sampling_rate", "sample_width", "channels"), expected))
     result = _get_audio_parameters(params)
     assert result == expected
 
@@ -120,10 +108,18 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
     expected = (8000, 2, 1)
     params = dict(
         zip(
-            ("sampling_rate", "sample_width", "channels"), expected, strict=True
+            ("sampling_rate", "sample_width", "channels"),
+            expected,
         )
     )
-    params.update(dict(zip(("sr", "sw", "ch"), "xxx", strict=True)))
+    params.update(
+        dict(
+            zip(
+                ("sr", "sw", "ch"),
+                "xxx",
+            )
+        )
+    )
     result = _get_audio_parameters(params)
     assert result == expected
 
@@ -181,7 +177,10 @@ def test_get_audio_parameters_missing_parameter_short(missing_param):
 )
 def test_get_audio_parameters_invalid(values):
     params = dict(
-        zip(("sampling_rate", "sample_width", "channels"), values, strict=True)
+        zip(
+            ("sampling_rate", "sample_width", "channels"),
+            values,
+        )
     )
     with pytest.raises(AudioParameterError):
         _get_audio_parameters(params)

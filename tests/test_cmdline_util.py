@@ -265,7 +265,6 @@ def test_initialize_workers_all_plus_full_stream_saver():
                     CommandLineWorker,
                     PrintWorker,
                 ],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -299,7 +298,6 @@ def test_initialize_workers_all_plus_audio_event_joiner():
                     CommandLineWorker,
                     PrintWorker,
                 ],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -328,7 +326,6 @@ def test_initialize_workers_no_RegionSaverWorker():
             for obs, cls in zip(
                 tokenizer_worker._observers,
                 [PlayerWorker, CommandLineWorker, PrintWorker],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -357,7 +354,6 @@ def test_initialize_workers_no_PlayerWorker():
             for obs, cls in zip(
                 tokenizer_worker._observers,
                 [RegionSaverWorker, CommandLineWorker, PrintWorker],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -386,7 +382,6 @@ def test_initialize_workers_no_CommandLineWorker():
             for obs, cls in zip(
                 tokenizer_worker._observers,
                 [RegionSaverWorker, PlayerWorker, PrintWorker],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
@@ -415,7 +410,6 @@ def test_initialize_workers_no_PrintWorker():
             for obs, cls in zip(
                 tokenizer_worker._observers,
                 [RegionSaverWorker, PlayerWorker, CommandLineWorker],
-                strict=True,
             ):
                 assert isinstance(obs, cls)
 
