@@ -30,13 +30,10 @@ jobs:
       run: |
         sudo apt-get update --fix-missing
         pip install numpy pytest pydub matplotlib
-<<<<<<< HEAD
-=======
 
-    - name: Install specific package for Python 3.8 only
+    - name: Install specific package for Python 3.13 only
       if: matrix.python-version == '3.13'
       run: pip install audioop-lts
->>>>>>> fd245f3 (Refactor test_plotting.py)
 
     - name: Run tests
       run: pytest -s -p no:warnings "tests"
