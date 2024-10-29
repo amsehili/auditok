@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 from random import random
 from tempfile import TemporaryDirectory
-from unittest.mock import Mock, patch
+from unittest import mock
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -25,6 +26,8 @@ from auditok.core import (
 from auditok.io import get_audio_source
 from auditok.signal import to_array
 from auditok.util import AudioReader
+
+mock._magics.add("__round__")
 
 
 def _make_random_length_regions(
@@ -409,7 +412,7 @@ def test_split_params(
     assert len(regions_ar) == len(expected), err_msg
 
     sample_width = 2
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
+    for reg, reg_ar, exp in zip(regions, regions_ar, expected):
         onset, offset = exp
         exp_data = data[onset * sample_width : offset * sample_width]
         assert bytes(reg) == exp_data
@@ -538,7 +541,11 @@ def test_split_kwargs(channels, kwargs, expected):
 
     sample_width = 2
     sample_size_bytes = sample_width * channels
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
+    for reg, reg_ar, exp in zip(
+        regions,
+        regions_ar,
+        expected,
+    ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
         assert len(bytes(reg)) == len(exp_data)
@@ -959,7 +966,11 @@ def test_split_analysis_window(
 
     sample_width = 2
     sample_size_bytes = sample_width * channels
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
+    for reg, reg_ar, exp in zip(
+        regions,
+        regions_ar,
+        expected,
+    ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
         assert bytes(reg) == exp_data
@@ -1007,7 +1018,11 @@ def test_split_custom_validator():
     assert len(regions_ar) == len(expected), err_msg
 
     sample_size_bytes = 2
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
+    for reg, reg_ar, exp in zip(
+        regions,
+        regions_ar,
+        expected,
+    ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
         assert bytes(reg) == exp_data
@@ -1095,7 +1110,10 @@ def test_split_input_type(input, kwargs):
     err_msg = "Wrong number of regions after split, expected: "
     err_msg += "{}, found: {}".format(expected, regions)
     assert len(regions) == len(expected), err_msg
-    for reg, exp in zip(regions, expected, strict=True):
+    for reg, exp in zip(
+        regions,
+        expected,
+    ):
         onset, offset = exp
         exp_data = data[onset * sample_width * 2 : offset * sample_width * 2]
         assert bytes(reg) == exp_data
@@ -2157,7 +2175,10 @@ def test_truediv(data):
     region = AudioRegion(b"".join(data), 80, 1, 1)
 
     sub_regions = region / len(data)
-    for data_i, region in zip(data, sub_regions, strict=True):
+    for data_i, region in zip(
+        data,
+        sub_regions,
+    ):
         assert len(data_i) == len(bytes(region))
 
 
