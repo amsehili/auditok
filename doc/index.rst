@@ -11,7 +11,7 @@ auditok, an AUDIo TOKenization tool
 
 
 
-```auditok`` is an **Audio Activity Detection** tool that processes online data
+``auditok`` is an **Audio Activity Detection** tool that processes online data
 (from an audio device or standard input) and audio files. It can be used via the command line or through its API.
 
 Full documentation is available on `Read the Docs <https://auditok.readthedocs.io/en/latest/>`_.

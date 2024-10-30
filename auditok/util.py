@@ -324,7 +324,7 @@ class StringDataSource(DataSource):
     """
     A :class:`DataSource` implementation that reads from a string buffer.
 
-    Each call to :mrth:`read` returns one character from the buffer and advances
+    Each call to :meth:`read` returns one character from the buffer and advances
     by one position. When the end of the buffer is reached, :meth:`read` returns
     None.
 

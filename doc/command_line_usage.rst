@@ -160,8 +160,8 @@ can do this with a format like:
     auditok -o "{id}_{start:.3f}_{end:.3f}.wav"
 
 
-Save whole audio stream
------------------------
+Record the full audio stream
+----------------------------
 
 When reading audio data from the microphone, you may want to save it to disk.
 To do this, use the ``-O`` or ``--save-stream`` option:
@@ -173,14 +173,14 @@ To do this, use the ``-O`` or ``--save-stream`` option:
 Note that this will work even if you read data from a file on disk.
 
 
-Join detected audio events with a silence of a given duration
--------------------------------------------------------------
+Join detected audio events, inserting a silence between them
+------------------------------------------------------------
 
 Sometimes, you may want to detect audio events while also
 creating a file that contains the same events with modified
 pause durations.
 
-To do this, use the ``-j`` or ``--join-detections`` option together
+To achieve this, use the ``-j`` or ``--join-detections`` option together
 with the ``-O`` / ``--save-stream`` option. In the example below, we
 read data from `input.wav` and save audio events to `output.wav`, adding
 1-second pauses between them:
