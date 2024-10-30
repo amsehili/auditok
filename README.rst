@@ -17,7 +17,7 @@ Full documentation is available on `Read the Docs <https://auditok.readthedocs.i
 Installation
 ------------
 
-``auditok`` requires Python 3.7+.
+``auditok`` requires Python 3.7 or higher.
 
 To install the latest stable version, use pip:
 

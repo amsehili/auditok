@@ -1,38 +1,54 @@
 Load audio data
 ---------------
 
-Audio data is loaded with the :func:`load` function which can read from audio
-files, the microphone or use raw audio data.
+Audio data is loaded using the :func:`load` function, which can read from
+audio files, capture from the microphone, or accept raw audio data
+(as a ``bytes`` object).
 
 From a file
 ===========
 
-If the first argument of :func:`load` is a string, it should be a path to an
-audio file.
+If the first argument of :func:`load` is a string or a `Path`, it should
+refer to an existing audio file.
 
 .. code:: python
 
     import auditok
     region = auditok.load("audio.ogg")
 
-If input file contains raw (headerless) audio data, passing `audio_format="raw"`
-and other audio parameters (`sampling_rate`, `sample_width` and `channels`) is
-mandatory. In the following example we pass audio parameters with their short
-names:
+If the input file contains raw (headerless) audio data, specifying audio
+parameters (``sampling_rate``, ``sample_width``, and ``channels``) is required.
+Additionally, if the file name does not end with 'raw', you should explicitly
+pass `audio_format="raw"` to the function.
+
+In the example below, we provide audio parameters using their abbreviated names:
 
 .. code:: python
 
     region = auditok.load("audio.dat",
                           audio_format="raw",
                           sr=44100, # alias for `sampling_rate`
-                          sw=2      # alias for `sample_width`
+                          sw=2,      # alias for `sample_width`
                           ch=1      # alias for `channels`
                           )
+
+Alternatively you can user :class:`AudioRegion` to load audio data:
+
+.. code:: python
+
+    from auditok import AudioRegion
+    region = AudioRegion.load("audio.dat",
+                              audio_format="raw",
+                              sr=44100, # alias for `sampling_rate`
+                              sw=2,      # alias for `sample_width`
+                              ch=1      # alias for `channels`
+                              )
+
 
 From a `bytes` object
 =====================
 
-If the type of the first argument `bytes`, it's interpreted as raw audio data:
+If the first argument is of type `bytes`, it is interpreted as raw audio data:
 
 .. code:: python
 
@@ -43,7 +59,7 @@ If the type of the first argument `bytes`, it's interpreted as raw audio data:
     region = auditok.load(data, sr=sr, sw=sw, ch=ch)
     print(region)
     # alternatively you can use
-    #region = auditok.AudioRegion(data, sr, sw, ch)
+    region = auditok.AudioRegion(data, sr, sw, ch)
 
 output:
 
@@ -54,9 +70,9 @@ output:
 From the microphone
 ===================
 
-If the first argument is `None`, :func:`load` will try to read data from the
-microphone. Audio parameters, as well as the `max_read` parameter are mandatory:
-
+If the first argument is `None`, :func:`load` will attempt to read data from the
+microphone. In this case, audio parameters, along with the `max_read` parameter,
+are required.
 
 .. code:: python
 
@@ -76,8 +92,8 @@ output:
 Skip part of audio data
 =======================
 
-If the `skip` parameter is > 0, :func:`load` will skip that amount  in seconds
-of leading audio data:
+If the ``skip`` parameter is greater than 0, :func:`load` will skip that specified
+amount of leading audio data, measured in seconds:
 
 .. code:: python
 
@@ -90,7 +106,7 @@ This argument must be 0 when reading data from the microphone.
 Limit the amount of read audio
 ==============================
 
-If the `max_read` parameter is > 0, :func:`load` will read at most that amount
+If the ``max_read`` parameter is > 0, :func:`load` will read at most that amount
 in seconds of audio data:
 
 .. code:: python
@@ -99,67 +115,64 @@ in seconds of audio data:
     region = auditok.load("audio.ogg", max_read=5)
     assert region.duration <= 5
 
-This argument is mandatory when reading data from the microphone.
+This argument is required when reading data from the microphone.
 
 
 Basic split example
 -------------------
 
-In the following we'll use the :func:`split` function to tokenize an audio file,
-requiring that valid audio events be at least 0.2 second long, at most 4 seconds
-long and contain a maximum of 0.3 second of continuous silence. Limiting the size
-of detected events to 4 seconds means that an event of, say, 9.5 seconds will
-be returned as two 4-second events plus a third 1.5-second event. Moreover, a
-valid event might contain many *silences* as far as none of them exceeds 0.3
-second.
+In the following example, we'll use the :func:`split` function to tokenize an
+audio file.We’ll specify that valid audio events must be at least 0.2 seconds
+long, no longer than 4 seconds, and contain no more than 0.3 seconds of continuous
+silence. By setting a 4-second limit, an event lasting 9.5 seconds, for instance,
+will be returned as two 4-second events plus a final 1.5-second event. Additionally,
+a valid event may contain multiple silences, as long as none exceed 0.3 seconds.
 
-:func:`split` returns a generator of :class:`AudioRegion`. An :class:`AudioRegion`
-can be played, saved, repeated (i.e., multiplied by an integer) and concatenated
-with another region (see examples below). Notice that :class:`AudioRegion` objects
-returned by :func:`split` have a ``start`` a ``stop`` information stored in
-their meta data that can be accessed like `object.meta.start`.
+:func:`split` returns a generator of :class:`AudioRegion` objects. Each
+:class:`AudioRegion` can be played, saved, repeated (multiplied by an integer),
+and concatenated with another region (see examples below). Note that
+:class:`AudioRegion` objects returned by :func:`split` include `start` and `stop`
+attributes, which mark the beginning and end of the audio event relative to the
+input audio stream.
 
 .. code:: python
 
     import auditok
 
-    # split returns a generator of AudioRegion objects
-    audio_regions = auditok.split(
+    # `split` returns a generator of AudioRegion objects
+    audio_events = auditok.split(
         "audio.wav",
-        min_dur=0.2,     # minimum duration of a valid audio event in seconds
-        max_dur=4,       # maximum duration of an event
-        max_silence=0.3, # maximum duration of tolerated continuous silence within an event
-        energy_threshold=55 # threshold of detection
+        min_dur=0.2,     # Minimum duration of a valid audio event in seconds
+        max_dur=4,       # Maximum duration of an event
+        max_silence=0.3, # Maximum tolerated silence duration within an event
+        energy_threshold=55 # Detection threshold
     )
 
-    for i, r in enumerate(audio_regions):
+    for i, r in enumerate(audio_events):
+        # AudioRegions returned by `split` have defined 'start' and 'end' attributes
+        print(f"Event {i}: {r.start:.3f}s -- {r.end:.3f}")
 
-        # Regions returned by `split` have 'start' and 'end' metadata fields
-        print("Region {i}: {r.meta.start:.3f}s -- {r.meta.end:.3f}s".format(i=i, r=r))
+        # Play the audio event
+        r.play(progress_bar=True)
 
-        # play detection
-        # r.play(progress_bar=True)
+        # Save the event with start and end times in the filename
+        filename = r.save("event_{start:.3f}-{end:.3f}.wav")
+        print(f"Event saved as: {filename}")
 
-        # region's metadata can also be used with the `save` method
-        # (no need to explicitly specify region's object and `format` arguments)
-        filename = r.save("region_{meta.start:.3f}-{meta.end:.3f}.wav")
-        print("region saved as: {}".format(filename))
-
-output example:
+Example output:
 
 .. code:: bash
 
-    Region 0: 0.700s -- 1.400s
-    region saved as: region_0.700-1.400.wav
-    Region 1: 3.800s -- 4.500s
-    region saved as: region_3.800-4.500.wav
-    Region 2: 8.750s -- 9.950s
-    region saved as: region_8.750-9.950.wav
-    Region 3: 11.700s -- 12.400s
-    region saved as: region_11.700-12.400.wav
-    Region 4: 15.050s -- 15.850s
-    region saved as: region_15.050-15.850.wav
-
+    Event 0: 0.700s -- 1.400s
+    Event saved as: event_0.700-1.400.wav
+    Event 1: 3.800s -- 4.500s
+    Event saved as: event_3.800-4.500.wav
+    Event 2: 8.750s -- 9.950s
+    Event saved as: event_8.750-9.950.wav
+    Event 3: 11.700s -- 12.400s
+    Event saved as: event_11.700-12.400.wav
+    Event 4: 15.050s -- 15.850s
+    Event saved as: event_15.050-15.850.wav
 
 Split and plot
 --------------
@@ -176,11 +189,36 @@ output figure:
 
 .. image:: figures/example_1.png
 
+Split an audio stream and re-join (glue) audio events with silence
+------------------------------------------------------------------
+
+The following code detects audio events within an audio stream, then insert
+1 second of silence between them to create an audio with pauses:
+
+.. code:: python
+
+    # Create a 1-second silent audio region
+    # Audio parameters must match the original stream
+    from auditok import split, make_silence
+    silence = make_silence(duration=1,
+                           sampling_rate=16000,
+                           sample_width=2,
+                           channels=1)
+    events = split("audio.wav")
+    audio_with_pauses = silence.join(events)
+
+Alternatively, use ``split_and_join_with_silence``:
+
+.. code:: python
+
+    from auditok import split_and_join_with_silence
+    audio_with_pauses = split_and_join_with_silence(silence_duration=1, input="audio.wav")
+
 
 Read and split data from the microphone
 ---------------------------------------
 
-If the first argument of :func:`split` is None, audio data is read from the
+If the first argument of :func:`split` is ``None``, audio data is read from the
 microphone (requires `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_):
 
 .. code:: python
@@ -200,15 +238,16 @@ microphone (requires `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_):
          pass
 
 
-:func:`split` will continue reading audio data until you press ``Ctrl-C``. If
-you want to read a specific amount of audio data, pass the desired number of
-seconds with the `max_read` argument.
+:func:`split` will continue reading audio data until you press ``Ctrl-C``. To read
+a specific amount of audio data, pass the desired number of seconds using the
+`max_read` argument.
 
 
 Access recorded data after split
 --------------------------------
 
-Using a :class:`Recorder` object you can get hold of acquired audio data:
+Using a :class:`Recorder` object you can access to audio data read from a file
+of from the mirophone. With the following code press ``Ctrl-C`` to stop recording:
 
 
 .. code:: python
@@ -221,11 +260,13 @@ Using a :class:`Recorder` object you can get hold of acquired audio data:
     eth = 55 # alias for energy_threshold, default value is 50
 
     rec = auditok.Recorder(input=None, sr=sr, sw=sw, ch=ch)
+    events = []
 
     try:
         for region in auditok.split(rec, sr=sr, sw=sw, ch=ch, eth=eth):
             print(region)
-            region.play(progress_bar=True) # progress bar requires `tqdm`
+            region.play(progress_bar=True)
+            events.append(region)
     except KeyboardInterrupt:
          pass
 
@@ -233,6 +274,7 @@ Using a :class:`Recorder` object you can get hold of acquired audio data:
     full_audio = load(rec.data, sr=sr, sw=sw, ch=ch)
     # alternatively you can use
     full_audio = auditok.AudioRegion(rec.data, sr, sw, ch)
+    full_audio.play(progress_bar=True)
 
 
 :class:`Recorder` also accepts a `max_read` argument.
@@ -240,9 +282,8 @@ Using a :class:`Recorder` object you can get hold of acquired audio data:
 Working with AudioRegions
 -------------------------
 
-The following are a couple of interesting operations you can do with
-:class:`AudioRegion` objects.
-
+In the following sections, we will review several operations
+that can be performed with :class:AudioRegion objects.
 
 Basic region information
 ========================
@@ -257,6 +298,9 @@ Basic region information
     region.sample_width # alias `sw`
     region.channels # alias `ch`
 
+When an audio region is returned by the :func:`split` function, it includes defined
+``start`` and ``end`` attributes that refer to the beginning and end of the audio
+event relative to the input audio stream.
 
 Concatenate regions
 ===================
@@ -268,7 +312,8 @@ Concatenate regions
     region_2 = auditok.load("audio_2.wav")
     region_3 = region_1 + region_2
 
-Particularly useful if you want to join regions returned by :func:`split`:
+This is particularly useful when you want to join regions returned by the
+:func:`split` function:
 
 .. code:: python
 
@@ -290,8 +335,7 @@ Multiply by a positive integer:
 Split one region into N regions of equal size
 =============================================
 
-Divide by a positive integer (this has nothing to do with silence-based
-tokenization):
+Divide by a positive integer (this is unrelated to silence-based tokenization!):
 
 .. code:: python
 
@@ -300,21 +344,21 @@ tokenization):
     regions = regions / 5
     assert sum(regions) == region
 
-Note that if no perfect division is possible, the last region might be a bit
-shorter than the previous N-1 regions.
+Note that if an exact split is not possible, the last region may be shorter
+than the preceding N-1 regions.
 
 Slice a region by samples, seconds or milliseconds
 ==================================================
 
-Slicing an :class:`AudioRegion` can be interesting in many situations. You can for
-example remove a fixed-size portion of audio data from the beginning or from the
-end of a region or crop a region by an arbitrary amount as a data augmentation
-strategy.
+Slicing an :class:`AudioRegion` can be useful in various situations.
+For example, you can remove a fixed-length portion of audio data from
+the beginning or end of a region, or crop a region by an arbitrary amount
+as a data augmentation strategy.
 
-The most accurate way to slice an `AudioRegion` is to use indices that
-directly refer to raw audio samples. In the following example, assuming that the
-sampling rate of audio data is 16000, you can extract a 5-second region from
-main region, starting from the 20th second as follows:
+The most accurate way to slice an `AudioRegion` is by using indices that
+directly refer to raw audio samples. In the following example, assuming
+the audio data has a sampling rate of 16000, you can extract a 5-second
+segment from the main region, starting at the 20th second, as follows:
 
 .. code:: python
 
@@ -324,9 +368,9 @@ main region, starting from the 20th second as follows:
     stop = 25 * 16000
     five_second_region = region[start:stop]
 
-This allows you to practically start and stop at any audio sample within the region.
-Just as with a `list` you can omit one of `start` and `stop`, or both. You can
-also use negative indices:
+This allows you to start and stop at any audio sample within the region. Similar
+to a ``list``, you can omit either ``start`` or ``stop``, or both. Negative
+indices are also supported:
 
 .. code:: python
 
@@ -335,9 +379,9 @@ also use negative indices:
     start = -3 * region.sr # `sr` is an alias of `sampling_rate`
     three_last_seconds = region[start:]
 
-While slicing by raw samples is flexible, slicing with temporal indices is more
-intuitive. You can do so by accessing the ``millis`` or ``seconds`` views of an
-`AudioRegion` (or their shortcut alias `ms` and `sec` or `s`).
+While slicing by raw samples offers flexibility, using temporal indices is
+often more intuitive. You can achieve this by accessing the ``millis`` or ``seconds``
+*views* of an :class:`AudioRegion` (or using their shortcut aliases ``ms``, ``sec``, or ``s``).
 
 With the ``millis`` view:
 
@@ -346,6 +390,8 @@ With the ``millis`` view:
     import auditok
     region = auditok.load("audio.wav")
     five_second_region = region.millis[5000:10000]
+    # or
+    five_second_region = region.ms[5000:10000]
 
 or with the ``seconds`` view:
 
@@ -354,6 +400,10 @@ or with the ``seconds`` view:
     import auditok
     region = auditok.load("audio.wav")
     five_second_region = region.seconds[5:10]
+    # or
+    five_second_region = region.sec[5:10]
+    # or
+    five_second_region = region.s[5:10]
 
 ``seconds`` indices can also be floats:
 
@@ -363,27 +413,13 @@ or with the ``seconds`` view:
     region = auditok.load("audio.wav")
     five_second_region = region.seconds[2.5:7.5]
 
-Get arrays of audio samples
-===========================
-
-If `numpy` is not installed, the `samples` attributes is a list of audio samples
-arrays (standard `array.array` objects), one per channels. If numpy is installed,
-`samples` is a 2-D `numpy.ndarray` where the fist dimension is the channel
-and the second is the the sample.
+Export an ``AudioRegion`` as a ``numpy`` array
+==============================================
 
 .. code:: python
 
-    import auditok
-    region = auditok.load("audio.wav")
-    samples = region.samples
-    assert len(samples) == region.channels
-
-
-If `numpy` is installed you can use:
-
-.. code:: python
-
-    import numpy as np
-    region = auditok.load("audio.wav")
-    samples = np.asarray(region)
-    assert len(samples.shape) == 2
+    from auditok import load, AudioRegion
+    audio = load("audio.wav") # or use `AudioRegion.load("audio.wav")`
+    x = audio.numpy()
+    assert x.shape[0] == audio.channels
+    assert x.shape[1] == len(audio)
