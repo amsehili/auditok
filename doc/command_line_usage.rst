@@ -1,53 +1,56 @@
-``auditok`` can also be used from the command-line. For more information about
-parameters and their description type:
+Command-line guide
+==================
 
+``auditok`` can also be used from the command line. For information
+about available parameters and descriptions, type:
 
 .. code:: bash
 
     auditok -h
 
-In the following we'll a few examples that covers most use-cases.
+Below, we provide several examples covering the most common use cases.
 
 
-Read and split audio data online
---------------------------------
+Read audio data and detect audio events online
+----------------------------------------------
 
-To try ``auditok`` from the command line with you voice, you should either
-install `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_ so that ``auditok``
-can directly read data from the microphone, or record data with an external program
-(e.g., `sox`) and redirect its output to ``auditok``.
+To try ``auditok`` from the command line with your own voice, you’ll need to
+either install `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_ so
+that ``auditok`` can read directly from the microphone, or record audio with
+an external program (e.g., `sox`) and redirect its output to ``auditok``.
 
-Read data from the microphone (`pyaudio` installed):
+To read data directly from the microphone and use default parameters for audio
+data and tokenization, simply type:
 
 .. code:: bash
 
     auditok
 
-This will print the *id*, *start time* and *end time* of each detected audio
-event. Note that we didn't pass any additional arguments to the previous command,
-so ``auditok`` will use default values. The most important arguments are:
+This will print the **id**, **start time**, and **end time** of each detected
+audio event. As mentioned above, no additional arguments were passed in the
+previous command, so ``auditok`` will use its default values. The most important
+arguments are:
 
 
-- ``-n``, ``--min-duration`` : minimum duration of a valid audio event in seconds, default: 0.2
-- ``-m``, ``--max-duration`` : maximum duration of a valid audio event in seconds, default: 5
-- ``-s``, ``--max-silence`` : maximum duration of a consecutive silence within a valid audio event in seconds, default: 0.3
-- ``-e``, ``--energy-threshold`` : energy threshold for detection, default: 50
+- ``-n``, ``--min-duration``: minimum duration of a valid audio event in seconds, default: 0.2
+- ``-m``, ``--max-duration``: maximum duration of a valid audio event in seconds, default: 5
+- ``-s``, ``--max-silence``: maximum duration of a continuous silence within a valid audio event in seconds, default: 0.3
+- ``-e``, ``--energy-threshold``: energy threshold for detection, default: 50
 
 
 Read audio data with an external program
 ----------------------------------------
-
-If you don't have `pyaudio`, you can use `sox` for data acquisition
-(`sudo apt-get install sox`) and make ``auditok`` read data from standard input:
+You can use an external program, such as `sox` (``sudo apt-get install sox``),
+to record audio data in real-time, redirect it, and have `auditok` read the data
+from standard input:
 
 .. code:: bash
 
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok - -r 16000 -w 2 -c 1
 
-Note that when data is read from standard input, the same audio parameters must
-be used for both `sox` (or any other data generation/acquisition tool) and
-``auditok``. The following table summarizes audio parameters.
-
+Note that when reading data from standard input, the same audio parameters must
+be set for both `sox` (or any other data generation/acquisition tool) and ``auditok``.
+The following table provides a summary of the audio parameters:
 
 +-----------------+------------+------------------+-----------------------+
 | Audio parameter | sox option | `auditok` option | `auditok` default     |
@@ -61,28 +64,23 @@ be used for both `sox` (or any other data generation/acquisition tool) and
 | Encoding        | -e         | NA               | always a signed int   |
 +-----------------+------------+------------------+-----------------------+
 
-According to this table, the previous command can be run with the default
-parameters as:
+Based on the table, the previous command can be run with the default parameters as:
 
 .. code:: bash
 
-    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -i -
+    rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok -
+
 
 Play back audio detections
 --------------------------
 
-Use the ``-E`` option (for echo):
+Use the ``-E`` (or ``--echo``) option :
 
 .. code:: bash
 
     auditok -E
     # or
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok - -E
-
-The second command works without further argument because data is recorded with
-``auditok``'s default audio parameters . If one of the parameters is not at the
-default value you should specify it alongside ``-E``.
-
 
 
 Using ``-E`` requires `pyaudio`, if it's not installed you can use the ``-C``
@@ -101,10 +99,10 @@ program but you can use it to run any other command.
 Print out detection information
 -------------------------------
 
-By default ``auditok`` prints out the **id**, the **start** and the **end** of
-each detected audio event. The latter two values represent the absolute position
-of the event within input stream (file or microphone) in seconds. The following
-listing is an example output with the default format:
+By default, ``auditok`` outputs the **id**, **start**, and **end** times for each
+detected audio event. The start and end values indicate the beginning and end of
+the event within the input stream (file or microphone) in seconds. Below is an
+example of the output in the default format:
 
 .. code:: bash
 
@@ -123,7 +121,7 @@ Using the following format for example:
 
     auditok audio.wav  --printf "{id}: [{timestamp}] start:{start}, end:{end}, dur: {duration}"
 
-the output would be something like:
+the output will look like:
 
 .. code:: bash
 
@@ -145,7 +143,7 @@ Save detections
 ---------------
 
 You can save audio events to disk as they're detected using ``-o`` or
-``--save-detections-as``. To get a uniq file name for each event, you can use
+``--save-detections-as``. To create a uniq file name for each event, you can use
 ``{id}``, ``{start}``, ``{end}`` and ``{duration}`` placeholders. Example:
 
 
@@ -153,9 +151,9 @@ You can save audio events to disk as they're detected using ``-o`` or
 
     auditok --save-detections-as "{id}_{start}_{end}.wav"
 
-When using ``{start}``, ``{end}`` and ``{duration}`` placeholders, it's
-recommended that the number of decimals of the corresponding values be limited
-to 3. You can use something like:
+When using ``{start}``, ``{end}``, and ``{duration}`` placeholders, it is
+recommended to limit the number of decimal places for these values to 3. You
+can do this with a format like:
 
 .. code:: bash
 
@@ -165,22 +163,39 @@ to 3. You can use something like:
 Save whole audio stream
 -----------------------
 
-When reading audio data from the microphone, you most certainly want to save it
-to disk. For this you can use the ``-O`` or ``--save-stream`` option.
+When reading audio data from the microphone, you may want to save it to disk.
+To do this, use the ``-O`` or ``--save-stream`` option:
 
 .. code:: bash
 
-    auditok --save-stream "stream.wav"
+    auditok --save-stream output.wav
 
-Note this will work even if you read data from another file on disk.
+Note that this will work even if you read data from a file on disk.
 
+
+Join detected audio events with a silence of a given duration
+-------------------------------------------------------------
+
+Sometimes, you may want to detect audio events while also
+creating a file that contains the same events with modified
+pause durations.
+
+To do this, use the ``-j`` or ``--join-detections`` option together
+with the ``-O`` / ``--save-stream`` option. In the example below, we
+read data from `input.wav` and save audio events to `output.wav`, adding
+1-second pauses between them:
+
+
+.. code:: bash
+
+    auditok input.wav --join-detections 1 -O output.wav
 
 Plot detections
 ---------------
 
 Audio signal and detections can be plotted using the ``-p`` or ``--plot`` option.
 You can also save plot to disk using ``--save-image``. The following example
-does both:
+demonstrates both:
 
 .. code:: bash
 

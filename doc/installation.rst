@@ -1,31 +1,31 @@
 Installation
 ------------
 
-A basic version of ``auditok`` will run with standard Python (>=3.4). However,
-without installing additional dependencies, ``auditok`` can only deal with audio
-files in *wav* or *raw* formats. if you want more features, the following
-packages are needed:
+**Dependencies**
 
-- `pydub <https://github.com/jiaaro/pydub>`_ : read audio files in popular audio formats (ogg, mp3, etc.) or extract audio from a video file.
-- `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_ : read audio data from the microphone and play audio back.
-- `tqdm <https://github.com/tqdm/tqdm>`_ : show progress bar while playing audio clips.
-- `matplotlib <https://matplotlib.org/stable/index.html>`_ : plot audio signal and detections.
-- `numpy <https://numpy.org/>`_ : required by matplotlib. Also used for some math operations instead of standard python if available.
+The following dependencies are required by ``auditok`` and will be installed automatically:
 
+- `numpy <https://numpy.org/>`_: Used for signal processing.
+- `pydub <https://github.com/jiaaro/pydub>`_: to read audio files in popular formats (e.g., ogg, mp3) or extract audio from video files.
+- `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_: to read audio data from the microphone and play audio back.
+- `tqdm <https://github.com/tqdm/tqdm>`_: to display a progress bar while playing audio clips.
+- `matplotlib <https://matplotlib.org/stable/index.html>`_: to plot audio signal and detections.
 
-Install the latest stable version with pip:
+``auditok`` requires Python 3.7 or higher.
+
+To install the latest stable version, use pip:
 
 .. code:: bash
 
     sudo pip install auditok
 
-Install with the latest development version from github:
+To install the latest development version from GitHub:
 
 .. code:: bash
 
     pip install git+https://github.com/amsehili/auditok
 
-or
+Alternatively, clone the repository and install it manually:
 
 .. code:: bash
 

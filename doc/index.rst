@@ -1,8 +1,8 @@
 auditok, an AUDIo TOKenization tool
 ===================================
 
-.. image:: https://travis-ci.org/amsehili/auditok.svg?branch=master
-    :target: https://travis-ci.org/amsehili/auditok
+.. image:: https://github.com/amsehili/auditok/actions/workflows/ci.yml/badge.svg
+    :target: https://github.com/amsehili/auditok/actions/workflows/ci.yml/
     :alt: Build Status
 
 .. image:: https://readthedocs.org/projects/auditok/badge/?version=latest
@@ -11,9 +11,10 @@ auditok, an AUDIo TOKenization tool
 
 
 
-``auditok`` is an **Audio Activity Detection** tool that can process online data
-(read from an audio device or from standard input) as well as audio files. It
-can be used as a command line program or by calling its API.
+```auditok`` is an **Audio Activity Detection** tool that processes online data
+(from an audio device or standard input) and audio files. It can be used via the command line or through its API.
+
+Full documentation is available on `Read the Docs <https://auditok.readthedocs.io/en/latest/>`_.
 
 
 .. toctree::
@@ -39,8 +40,8 @@ can be used as a command line program or by calling its API.
     util
     io
     signal
-    dataset
 
 License
 -------
+
 MIT.
