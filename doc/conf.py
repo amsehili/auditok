@@ -15,7 +15,6 @@
 import ast
 import os
 import re
-import shlex
 import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -64,7 +63,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "auditok"
-copyright = "2015-2021, Amine Sehili"
+copyright = "2015-2024, Amine Sehili"
 author = "Amine Sehili"
 
 # The version info for the project you're documenting, acts as replacement for
