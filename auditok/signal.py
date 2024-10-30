@@ -1,4 +1,6 @@
 """
+Module for main signal processing operations.
+
 .. autosummary::
     :toctree: generated/
 

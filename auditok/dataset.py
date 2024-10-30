@@ -1,5 +1,5 @@
 """
-This module contains links to audio files that can be used for test purposes.
+A module that contains links to audio files that can be used for test purposes.
 
 .. autosummary::
     :toctree: generated/

@@ -1,4 +1,6 @@
 """
+Module for high-level audio input-output operations.
+
 .. autosummary::
     :toctree: generated/
 
