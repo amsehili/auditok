@@ -13,9 +13,9 @@
 # serve to show the default.
 
 import ast
-import os
 import re
 import sys
+from datetime import datetime
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -63,7 +63,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "auditok"
-copyright = "2015-2024, Amine Sehili"
+copyright = f"2015-{datetime.now().year}, Amine Sehili"
 author = "Amine Sehili"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -80,7 +80,7 @@ author = "Amine Sehili"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -108,7 +108,7 @@ exclude_patterns = ["_build"]
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "sphinx"
+pygments_style = "native"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -124,16 +124,9 @@ todo_include_todos = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-# html_theme = 'sphinxdoc'
+html_theme = "sphinx_rtd_theme"
 
 
-# on_rtd is whether we are on readthedocs.org
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
-
-    html_theme = "sphinx_rtd_theme"
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_theme_options = {
     "logo_only": True,
     "style_nav_header_background": "#000000",
