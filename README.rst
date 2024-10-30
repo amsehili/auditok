@@ -42,7 +42,7 @@ Alternatively, clone the repository and install it manually:
 Basic example
 -------------
 
-Here's a simple example of using `auditok` to detect audio events:
+Here's a simple example of using ``auditok`` to detect audio events:
 
 .. code:: python
 
@@ -101,8 +101,8 @@ Example output:
 Split an audio stream and re-join (glue) audio events with silence
 ------------------------------------------------------------------
 
-The following detects audio events within an audio stream, then insert
-1 second of silence between them to create an audio with pauses.
+The following code detects audio events within an audio stream, then insert
+1 second of silence between them to create an audio with pauses:
 
 .. code:: python
 
@@ -116,12 +116,24 @@ The following detects audio events within an audio stream, then insert
     events = split("audio.wav")
     audio_with_pauses = silence.join(events)
 
-Alternatively, use `split_and_join_with_silence`:
+Alternatively, use ``split_and_join_with_silence``:
 
 .. code:: python
 
     from auditok import split_and_join_with_silence
     audio_with_pauses = split_and_join_with_silence(silence_duration=1, input="audio.wav")
+
+Export an ``AudioRegion`` as a ``numpy`` array
+----------------------------------------------
+
+.. code:: python
+
+    from auditok import load, AudioRegion
+    audio = load("audio.wav") # or use `AudioRegion.load("audio.wav")`
+    x = audio.numpy()
+    assert x.shape[0] == audio.channels
+    assert x.shape[1] == len(audio)
+
 
 Limitations
 -----------
