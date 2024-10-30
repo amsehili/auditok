@@ -7,10 +7,10 @@ It supports reading audio data from various sources, including audio files,
 microphones, and standard input.
 
 @author:     Mohamed El Amine SEHILI
-@copyright:  2015-2021 Mohamed El Amine SEHILI
+@copyright:  2015-2024 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 01 Mar 2021
+@deffield    updated: 30 Oct 2024
 """
 
 import os
@@ -26,7 +26,7 @@ from .exceptions import ArgumentError, EndOfProcessing
 
 __all__ = []
 __date__ = "2015-11-23"
-__updated__ = "2021-03-01"
+__updated__ = "2024-10-30"
 
 
 def main(argv=None):

@@ -1,4 +1,6 @@
 """
+Module for main data structures and tokenization algorithms.
+
 .. autosummary::
     :toctree: generated/
 
