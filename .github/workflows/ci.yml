@@ -29,11 +29,11 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update --fix-missing
-        pip install numpy pytest pydub matplotlib
+        pip install pytest-cov pytest numpy pydub matplotlib
 
     - name: Install specific package for Python 3.13 only
       if: matrix.python-version == '3.13'
       run: pip install audioop-lts
 
     - name: Run tests
-      run: pytest -s -p no:warnings "tests"
+      run: pytest -s  -p no:warnings --cov --cov-report=xml tests
