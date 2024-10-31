@@ -1,6 +1,18 @@
 auditok Changelog
 =================
 
+Version 0.3.0
+-------------
+
+- Use `numpy` instead of the `audioop` (deprecated then removed in Python 13) for signal processing operations
+- Use `pytest` instead of `genty` for tests
+- Accept input of type `Path` for `split`
+- Remove deprecated `ADSFactory`
+- Implement `AudioRegion.join`, `make_silence` and `split_and_join_with_silence`
+- Use Github Actions instead of travis for CI
+- Use Codecov for tests coverage
+
+
 Version 0.2.0
 -------------
 
