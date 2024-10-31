@@ -5,6 +5,9 @@
     :target: https://github.com/amsehili/auditok/actions/workflows/ci.yml/
     :alt: Build Status
 
+.. image:: https://codecov.io/github/amsehili/auditok/graph/badge.svg?token=0rwAqYBdkf
+ :target: https://codecov.io/github/amsehili/auditok
+
 .. image:: https://readthedocs.org/projects/auditok/badge/?version=latest
     :target: http://auditok.readthedocs.org/en/latest/?badge=latest
     :alt: Documentation Status
