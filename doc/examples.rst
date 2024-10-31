@@ -8,7 +8,7 @@ audio files, capture from the microphone, or accept raw audio data
 From a file
 ===========
 
-If the first argument of :func:`load` is a string or a `Path`, it should
+If the first argument of :func:`load` is a string or a ``Path``, it should
 refer to an existing audio file.
 
 .. code:: python
@@ -19,7 +19,7 @@ refer to an existing audio file.
 If the input file contains raw (headerless) audio data, specifying audio
 parameters (``sampling_rate``, ``sample_width``, and ``channels``) is required.
 Additionally, if the file name does not end with 'raw', you should explicitly
-pass `audio_format="raw"` to the function.
+pass ``audio_format="raw"`` to the function.
 
 In the example below, we provide audio parameters using their abbreviated names:
 
@@ -40,15 +40,15 @@ Alternatively you can user :class:`AudioRegion` to load audio data:
     region = AudioRegion.load("audio.dat",
                               audio_format="raw",
                               sr=44100, # alias for `sampling_rate`
-                              sw=2,      # alias for `sample_width`
+                              sw=2,     # alias for `sample_width`
                               ch=1      # alias for `channels`
                               )
 
 
-From a `bytes` object
-=====================
+From a ``bytes`` object
+=======================
 
-If the first argument is of type `bytes`, it is interpreted as raw audio data:
+If the first argument is of type ``bytes``, it is interpreted as raw audio data:
 
 .. code:: python
 
@@ -70,8 +70,8 @@ output:
 From the microphone
 ===================
 
-If the first argument is `None`, :func:`load` will attempt to read data from the
-microphone. In this case, audio parameters, along with the `max_read` parameter,
+If the first argument is ``None``, :func:`load` will attempt to read data from the
+microphone. In this case, audio parameters, along with the ``max_read`` parameter,
 are required.
 
 .. code:: python
@@ -131,7 +131,7 @@ a valid event may contain multiple silences, as long as none exceed 0.3 seconds.
 :func:`split` returns a generator of :class:`AudioRegion` objects. Each
 :class:`AudioRegion` can be played, saved, repeated (multiplied by an integer),
 and concatenated with another region (see examples below). Note that
-:class:`AudioRegion` objects returned by :func:`split` include `start` and `stop`
+:class:`AudioRegion` objects returned by :func:`split` include ``start`` and ``stop``
 attributes, which mark the beginning and end of the audio event relative to the
 input audio stream.
 
@@ -157,22 +157,22 @@ input audio stream.
 
         # Save the event with start and end times in the filename
         filename = r.save("event_{start:.3f}-{end:.3f}.wav")
-        print(f"Event saved as: {filename}")
+        print(f"event saved as: {filename}")
 
 Example output:
 
 .. code:: bash
 
     Event 0: 0.700s -- 1.400s
-    Event saved as: event_0.700-1.400.wav
+    event saved as: event_0.700-1.400.wav
     Event 1: 3.800s -- 4.500s
-    Event saved as: event_3.800-4.500.wav
+    event saved as: event_3.800-4.500.wav
     Event 2: 8.750s -- 9.950s
-    Event saved as: event_8.750-9.950.wav
+    event saved as: event_8.750-9.950.wav
     Event 3: 11.700s -- 12.400s
-    Event saved as: event_11.700-12.400.wav
+    event saved as: event_11.700-12.400.wav
     Event 4: 15.050s -- 15.850s
-    Event saved as: event_15.050-15.850.wav
+    event saved as: event_15.050-15.850.wav
 
 Split and plot
 --------------
@@ -215,8 +215,8 @@ Alternatively, use ``split_and_join_with_silence``:
     audio_with_pauses = split_and_join_with_silence(silence_duration=1, input="audio.wav")
 
 
-Read and split data from the microphone
----------------------------------------
+Read audio data from the microphone and perform real-time event detection
+-------------------------------------------------------------------------
 
 If the first argument of :func:`split` is ``None``, audio data is read from the
 microphone (requires `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_):
@@ -240,7 +240,7 @@ microphone (requires `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_):
 
 :func:`split` will continue reading audio data until you press ``Ctrl-C``. To read
 a specific amount of audio data, pass the desired number of seconds using the
-`max_read` argument.
+``max_read`` argument.
 
 
 Access recorded data after split
@@ -277,13 +277,13 @@ of from the mirophone. With the following code press ``Ctrl-C`` to stop recordin
     full_audio.play(progress_bar=True)
 
 
-:class:`Recorder` also accepts a `max_read` argument.
+:class:`Recorder` also accepts a ``max_read`` argument.
 
 Working with AudioRegions
 -------------------------
 
 In the following sections, we will review several operations
-that can be performed with :class:AudioRegion objects.
+that can be performed with :class:`AudioRegion` objects.
 
 Basic region information
 ========================
@@ -355,8 +355,8 @@ For example, you can remove a fixed-length portion of audio data from
 the beginning or end of a region, or crop a region by an arbitrary amount
 as a data augmentation strategy.
 
-The most accurate way to slice an `AudioRegion` is by using indices that
-directly refer to raw audio samples. In the following example, assuming
+The most accurate way to slice an :class:`AudioRegion` is by using indices
+that directly refer to raw audio samples. In the following example, assuming
 the audio data has a sampling rate of 16000, you can extract a 5-second
 segment from the main region, starting at the 20th second, as follows:
 

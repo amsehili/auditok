@@ -11,8 +11,8 @@ about available parameters and descriptions, type:
 Below, we provide several examples covering the most common use cases.
 
 
-Read audio data and detect audio events online
-----------------------------------------------
+Real-Time audio acquisition and event detection
+-----------------------------------------------
 
 To try ``auditok`` from the command line with your own voice, you’ll need to
 either install `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_ so
@@ -96,8 +96,8 @@ command. In the above example we used ``-C`` to play audio data with an external
 program but you can use it to run any other command.
 
 
-Print out detection information
--------------------------------
+Output detection details
+------------------------
 
 By default, ``auditok`` outputs the **id**, **start**, and **end** times for each
 detected audio event. The start and end values indicate the beginning and end of
@@ -139,12 +139,14 @@ and `%i` (milliseconds) directives is possible (e.g., "%h:%m:%s.%i).
 
 To completely disable printing detection information use ``-q``.
 
+
 Save detections
 ---------------
 
 You can save audio events to disk as they're detected using ``-o`` or
-``--save-detections-as``. To create a uniq file name for each event, you can use
-``{id}``, ``{start}``, ``{end}`` and ``{duration}`` placeholders. Example:
+``--save-detections-as`` followed by a file name with placeholders. To create
+a uniq file name for each event, you can use ``{id}``, ``{start}``, ``{end}``
+and ``{duration}`` placeholders as in this example:
 
 
 .. code:: bash
@@ -160,8 +162,8 @@ can do this with a format like:
     auditok -o "{id}_{start:.3f}_{end:.3f}.wav"
 
 
-Record the full audio stream
-----------------------------
+Save the full audio stream
+--------------------------
 
 When reading audio data from the microphone, you may want to save it to disk.
 To do this, use the ``-O`` or ``--save-stream`` option:
@@ -176,25 +178,26 @@ Note that this will work even if you read data from a file on disk.
 Join detected audio events, inserting a silence between them
 ------------------------------------------------------------
 
-Sometimes, you may want to detect audio events while also
-creating a file that contains the same events with modified
-pause durations.
+Sometimes, you may want to detect audio events and create a new file containing
+these events with pauses of a specific duration between them. This is useful if
+you wish to preserve your original audio data while adjusting the length of pauses
+(either shortening or extending them).
 
 To achieve this, use the ``-j`` or ``--join-detections`` option together
 with the ``-O`` / ``--save-stream`` option. In the example below, we
-read data from `input.wav` and save audio events to `output.wav`, adding
+read data from ``input.wav`` and save audio events to ``output.wav``, adding
 1-second pauses between them:
-
 
 .. code:: bash
 
     auditok input.wav --join-detections 1 -O output.wav
 
+
 Plot detections
 ---------------
 
 Audio signal and detections can be plotted using the ``-p`` or ``--plot`` option.
-You can also save plot to disk using ``--save-image``. The following example
+You can also save the plot to disk using ``--save-image``. The following example
 demonstrates both:
 
 .. code:: bash
