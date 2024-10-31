@@ -90,7 +90,7 @@ def calculate_energy(x, agg_fn=None):
     The energy is calculated as:
 
     .. math::
-       \text{energy} = 20 \log\left(\sqrt{\frac{1}{N} \sum_{i=1}^{N} a_i^2}\right) % # noqa: W605
+       \\text{energy} = 20 \\log(\\sqrt({1}/{N} \\sum_{i=1}^{N} {a_i}^2))  % # noqa: W605
 
     where `a_i` is the i-th audio sample and `N` is the total number of samples
     in `x`.

@@ -260,7 +260,7 @@ class AudioEnergyValidator(DataValidator):
     as:
 
     .. math::
-        energy = 20 \log(\sqrt({1}/{N} \sum_{i=1}^{N} {a_i}^2))  % # noqa: W605
+        \\text{energy} = 20 \\log(\\sqrt({1}/{N} \\sum_{i=1}^{N} {a_i}^2))  % # noqa: W605
 
     where `a_i` represents the i-th audio sample.
 
