@@ -10,7 +10,7 @@ microphones, and standard input.
 @copyright:  2015-2024 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 30 Oct 2024
+@deffield    updated: 01 Nov 2024
 """
 
 import os
