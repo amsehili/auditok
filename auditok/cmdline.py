@@ -35,16 +35,17 @@ def main(argv=None):
         argv = sys.argv[1:]
     try:
         parser = ArgumentParser(
-            prog=program_name, description="An Audio Tokenization tool"
+            prog=program_name,
+            description="auditok, an audio tokenization tool.",
         )
         parser.add_argument(
             "--version", "-v", action="version", version=__version__
         )
-        group = parser.add_argument_group("Input-Output options")
+        group = parser.add_argument_group("Input-Output options:")
         group.add_argument(
             dest="input",
             help="Input audio or video file. Use '-' for stdin "
-            "[default: read from microphone using pyaudio]",
+            "[Default: read from a microphone using PyAudio].",
             metavar="input",
             nargs="?",
             default=None,
@@ -53,8 +54,8 @@ def main(argv=None):
             "-I",
             "--input-device-index",
             dest="input_device_index",
-            help="Audio device index [default: %(default)s]. "
-            "Optional and only effective when using PyAudio",
+            help="Audio device index [Default: %(default)s]. "
+            "Optional and only effective when using PyAudio.",
             type=int,
             default=None,
             metavar="INT",
@@ -63,8 +64,8 @@ def main(argv=None):
             "-F",
             "--audio-frame-per-buffer",
             dest="frame_per_buffer",
-            help="Audio frame per buffer [default: %(default)s]. "
-            "Optional and only effective when using PyAudio",
+            help="Audio frame per buffer [Default: %(default)s]. "
+            "Optional and only effective when using PyAudio.",
             type=int,
             default=1024,
             metavar="INT",
@@ -75,10 +76,11 @@ def main(argv=None):
             dest="input_format",
             type=str,
             default=None,
-            help="Input audio file format. If not given, guess format from "
-            "extension. If output file name has no extension, guess format "
-            "from file header (requires pydub). If none of the previous is "
-            "true, raise an error",
+            help="Specify the input audio file format. If not provided, the "
+            "format is inferred from the file extension. If the output file "
+            "name lacks an extension, the format is guessed from the file "
+            "header (requires pydub). If neither condition is met, an error "
+            "is raised.",
             metavar="STRING",
         )
         group.add_argument(
@@ -87,8 +89,8 @@ def main(argv=None):
             dest="max_read",
             type=float,
             default=None,
-            help="Maximum data (in seconds) to read from microphone or file "
-            "[default: read until the end of file/stream]",
+            help="Maximum data (in seconds) to read from a microphone or a file"
+            " [Default: read until the end of the file or stream].",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -97,9 +99,9 @@ def main(argv=None):
             dest="large_file",
             action="store_true",
             default=False,
-            help="Whether input file should be treated as a large file. "
+            help="Whether the input file should be treated as a large file. "
             "If True, data will be read from file on demand, otherwise all "
-            "audio data is loaded to memory before tokenization.",
+            "audio data is loaded into memory before tokenization.",
         )
         group.add_argument(
             "-O",
@@ -107,8 +109,8 @@ def main(argv=None):
             dest="save_stream",
             type=str,
             default=None,
-            help="Save acquired audio data (from file or microphone) to disk."
-            " If omitted no data will be saved. [default: omitted]",
+            help="Save read audio data (from a file or a microphone) to a file."
+            " If omitted, no audio data will be saved.",
             metavar="FILE",
         )
         group.add_argument(
@@ -117,11 +119,11 @@ def main(argv=None):
             dest="save_detections_as",
             type=str,
             default=None,
-            help="File name format for detections."
-            "The following placeholders can be used to build output file name "
-            "for each detection: {id} (sequential, starts from 1), {start}, "
-            "{end} and {duration}. Time placeholders are in seconds. "
-            "Example: 'Event_{id}_{start}-{end}_{duration:.3f}.wav'",
+            help="Specify the file name format to save detected events. You can "
+            "use the following placeholders to construct the output file name: "
+            "{id} (sequential, starting from 1), {start}, {end}, and {duration}. "
+            "Time placeholders are in seconds. "
+            "Example: 'Event_{id}{start}-{end}{duration:.3f}.wav'",
             metavar="STRING",
         )
         group.add_argument(
@@ -130,9 +132,9 @@ def main(argv=None):
             dest="join_detections",
             type=float,
             default=None,
-            help="Join (i.e., glue) detected audio events with a silence of "
-            "this duration. Should be used jointly with the --save-stream / "
-            "-O option.",
+            help="Join (glue) detected audio events with a specified duration "
+            "of silence between them. To be used in combination with the "
+            "--save-stream / -O option.",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -141,9 +143,9 @@ def main(argv=None):
             dest="output_format",
             type=str,
             default=None,
-            help="Audio format used to save detections and/or main stream. "
-            "If not supplied, then it will: (1. be guessed from extension or "
-            "(2. use raw format",
+            help="Specify the audio format for saving detections and/or the "
+            "main stream. If not provided, the format will be (1) inferred from"
+            " the file extension or (2) default to raw format.",
             metavar="STRING",
         )
         group.add_argument(
@@ -152,21 +154,21 @@ def main(argv=None):
             dest="use_channel",
             type=str,
             default=None,
-            help="Which channel to use for tokenization when input stream is "
-            "multi-channel (0 is the first channel). Default is None, meaning "
-            "that all channels will be considered for tokenization (i.e., get "
-            "any valid audio event regardless of the channel it occurs in). "
-            "This value can also be 'mix' (alias 'avg' or 'average') and "
-            "means mix down all audio channels into one channel (i.e. compute "
-            "average channel) and use the resulting channel for tokenization. "
-            "Whatever option is used, saved audio events will contain the same"
-            " number of channels as input stream. "
-            "[Default: None, use all channels]",
+            help="Specify the audio channel to use for tokenization when the "
+            "input stream is multi-channel (0 refers to the first channel). By "
+            "default, this is set to None, meaning all channels are used, "
+            "capturing any valid audio event from any channel. Alternatively, "
+            "set this to 'mix' (or 'avg'/'average') to combine all channels "
+            "into a single averaged channel for tokenization. Regardless of the"
+            "option chosen, saved audio events will have the same number of "
+            "channels as the input stream. [Default: %(default)s, use all "
+            "channels].",
             metavar="INT/STRING",
         )
 
         group = parser.add_argument_group(
-            "Tokenization options", "Set tokenizer options."
+            "Tokenization options:",
+            "Set audio events' duration and set the threshold for detection.",
         )
         group.add_argument(
             "-a",
@@ -174,8 +176,8 @@ def main(argv=None):
             dest="analysis_window",
             default=0.01,
             type=float,
-            help="Size of analysis window in seconds [default: %(default)s "
-            "(10ms)]",
+            help="Specify the size of the analysis window in seconds. "
+            "[Default: %(default)s (10ms)].",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -184,8 +186,8 @@ def main(argv=None):
             dest="min_duration",
             type=float,
             default=0.2,
-            help="Min duration of a valid audio event in seconds "
-            "[default: %(default)s]",
+            help="Minimum duration of a valid audio event in seconds. "
+            "[Default: %(default)s].",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -194,8 +196,8 @@ def main(argv=None):
             dest="max_duration",
             type=float,
             default=5,
-            help="Max duration of a valid audio event in seconds "
-            "[default: %(default)s]",
+            help="Maximum duration of a valid audio event in seconds. "
+            "[Default: %(default)s].",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -204,8 +206,8 @@ def main(argv=None):
             dest="max_silence",
             type=float,
             default=0.3,
-            help="Max duration of a consecutive silence within a valid audio "
-            "event in seconds [default: %(default)s]",
+            help="Maximum duration of consecutive silence allowed within a "
+            "valid audio event in seconds. [Default: %(default)s]",
             metavar="FLOAT",
         )
         group.add_argument(
@@ -214,8 +216,8 @@ def main(argv=None):
             dest="drop_trailing_silence",
             action="store_true",
             default=False,
-            help="Drop trailing silence from a detection [default: keep "
-            "trailing silence]",
+            help="Remove trailing silence from a detection. [Default: trailing "
+            "silence is retained].",
         )
         group.add_argument(
             "-R",
@@ -223,9 +225,9 @@ def main(argv=None):
             dest="strict_min_duration",
             action="store_true",
             default=False,
-            help="Reject an event shorter than --min-duration even if it's "
-            "adjacent to the latest valid event that reached max-duration "
-            "[default: keep such events]",
+            help="Reject events shorter than --min-duration, even if adjacent "
+            "to the most recent valid event that reached max-duration. "
+            "[Default: retain such events].",
         )
         group.add_argument(
             "-e",
@@ -233,15 +235,15 @@ def main(argv=None):
             dest="energy_threshold",
             type=float,
             default=50,
-            help="Log energy threshold for detection [default: %(default)s]",
+            help="Set the log energy threshold for detection. "
+            "[Default: %(default)s]",
             metavar="FLOAT",
         )
 
         group = parser.add_argument_group(
-            "Audio parameters",
-            "Define audio parameters if data is read from a "
-            "headerless file (raw or stdin) or you want to use "
-            "different microphone parameters.",
+            "Audio parameters:",
+            "Set audio parameters when reading from a headerless file "
+            "(raw or stdin) or when using custom microphone settings.",
         )
         group.add_argument(
             "-r",
@@ -249,7 +251,7 @@ def main(argv=None):
             dest="sampling_rate",
             type=int,
             default=16000,
-            help="Sampling rate of audio data [default: %(default)s]",
+            help="Sampling rate of audio data [Default: %(default)s].",
             metavar="INT",
         )
         group.add_argument(
@@ -258,7 +260,7 @@ def main(argv=None):
             dest="channels",
             type=int,
             default=1,
-            help="Number of channels of audio data [default: %(default)s]",
+            help="Number of channels of audio data [Default: %(default)s].",
             metavar="INT",
         )
         group.add_argument(
@@ -267,23 +269,24 @@ def main(argv=None):
             dest="sample_width",
             type=int,
             default=2,
-            help="Number of bytes per audio sample [default: %(default)s]",
+            help="Number of bytes per audio sample [Default: %(default)s].",
             metavar="INT",
         )
 
         group = parser.add_argument_group(
-            "Do something with audio events",
-            "Use these options to print, play back or plot detections.",
+            "Use audio events:",
+            "Use these options to print, play, or plot detected audio events.",
         )
         group.add_argument(
             "-C",
             "--command",
             dest="command",
             type=str,
-            help="Command to call when an audio detection occurs. Use '{file}' "
-            "as a placeholder for the temporary wav file that will contain "
-            "event's data (e.g., \"-C 'du -h {file}'\" to print out file size "
-            " or \"-C 'play -q {file}'\" to play audio with sox)",
+            help="Provide a command to execute when an audio event is detected."
+            " Use '{file}' as a placeholder for the temporary WAV file "
+            "containing the event data (e.g., `-C 'du -h {file}'` to "
+            "display the file size or `-C 'play -q {file}'` to play audio "
+            "with sox).",
             metavar="STRING",
         )
         group.add_argument(
@@ -292,7 +295,7 @@ def main(argv=None):
             dest="echo",
             action="store_true",
             default=False,
-            help="Play back each detection immediately using pyaudio",
+            help="Immediately play back a detected audio event using pyaudio.",
         )
         group.add_argument(
             "-B",
@@ -300,7 +303,7 @@ def main(argv=None):
             dest="progress_bar",
             action="store_true",
             default=False,
-            help="Show a progress bar when playing audio",
+            help="Show a progress bar when playing audio.",
         )
         group.add_argument(
             "-p",
@@ -308,15 +311,15 @@ def main(argv=None):
             dest="plot",
             action="store_true",
             default=False,
-            help="Plot and show audio signal and detections (requires "
-            "matplotlib)",
+            help="Plot and displays the audio signal along with detections "
+            "(requires matplotlib).",
         )
         group.add_argument(
             "--save-image",
             dest="save_image",
             type=str,
-            help="Save plotted audio signal and detections as a picture or a "
-            "PDF file (requires matplotlib)",
+            help="Save the plotted audio signal and detections as a picture "
+            "or a PDF file (requires matplotlib).",
             metavar="FILE",
         )
         group.add_argument(
@@ -324,14 +327,14 @@ def main(argv=None):
             dest="printf",
             type=str,
             default="{id} {start} {end}",
-            help="Print audio events information, one per line, using this "
-            "format. Format can contain text with the following placeholders: "
-            "{id} (sequential, starts from 1), {start}, {end}, {duration} and "
-            "{timestamp}. The first 3 time placeholders are in seconds and "
-            "their format can be set using --time-format argument. "
-            "{timestamp} is the system timestamp (date and time) of the event "
-            "and can be set using --timestamp-format argument.\n"
-            "Example: '[{id}]: {start} -> {end} -- {timestamp}'",
+            help="Prints information about each audio event on a new line "
+            "using the specified format. The format can include text and "
+            "placeholders: {id} (sequential, starting from 1), {start}, "
+            "{end}, {duration}, and {timestamp}. The first three time "
+            "placeholders are in seconds, with formatting controlled by the "
+            "--time-format argument. {timestamp} represents the system date "
+            "and time of the event, configurable with the --timestamp-format "
+            "argument. Example: '[{id}]: {start} -> {end} -- {timestamp}'.",
             metavar="STRING",
         )
         group.add_argument(
@@ -339,14 +342,15 @@ def main(argv=None):
             dest="time_format",
             type=str,
             default="%S",
-            help="Format used to print {start}, {end} and {duration} "
-            "placeholders used with --printf [default= %(default)s]. The "
-            "following formats are accepted:\n"
-            "%%S: absolute time in seconds. %%I: absolute time in ms. If at "
-            "least one of (%%h, %%m, %%s, %%i) is used, convert time into "
-            "hours, minutes, seconds and millis (e.g. %%h:%%m:%%s.%%i). Only "
-            "supplied fields are printed. Note that %%S and %%I can only be "
-            "used alone",
+            help="Specify the format for printing {start}, {end}, and "
+            "{duration} placeholders with --printf. [Default: %(default)s]. "
+            "Accepted formats are\n:"
+            " - %%S: absolute time in seconds\n"
+            " - %%I: absolute time in milliseconds\n"
+            " - %%h, %%m, %%s, %%i: converts time into hours, minutes, seconds,"
+            " and milliseconds (e.g., %%h:%%m:%%s.%%i) and only displays "
+            "provided fields.\nNote that %%S and %%I can only be used "
+            "independently.",
             metavar="STRING",
         )
         group.add_argument(
@@ -354,9 +358,9 @@ def main(argv=None):
             dest="timestamp_format",
             type=str,
             default="%Y/%m/%d %H:%M:%S",
-            help="Format used to print {timestamp}. Should be a format "
-            "accepted by 'datetime' standard module. Default: "
-            "'%%Y/%%m/%%d %%H:%%M:%%S'",
+            help="Specify the format used for printing {timestamp}. Should be "
+            "a format accepted by the 'datetime' standard module. [Default: "
+            "'%%Y/%%m/%%d %%H:%%M:%%S'].",
         )
         parser.add_argument(
             "-q",
@@ -364,8 +368,7 @@ def main(argv=None):
             dest="quiet",
             action="store_true",
             default=False,
-            help="Do not print any information about detections [default: "
-            "print 'id', 'start' and 'end' of each detection]",
+            help="Quiet mode: Do not display any information on the screen.",
         )
         parser.add_argument(
             "-D",
@@ -373,14 +376,14 @@ def main(argv=None):
             dest="debug",
             action="store_true",
             default=False,
-            help="Print processing operations to STDOUT",
+            help="Debug mode: output processing operations to STDOUT.",
         )
         parser.add_argument(
             "--debug-file",
             dest="debug_file",
             type=str,
             default=None,
-            help="Print processing operations to FILE",
+            help="Save processing operations to the specified file.",
             metavar="FILE",
         )
 
