@@ -271,7 +271,7 @@ of from the mirophone. With the following code press ``Ctrl-C`` to stop recordin
          pass
 
     rec.rewind()
-    full_audio = load(rec.data, sr=sr, sw=sw, ch=ch)
+    full_audio = auditok.load(rec.data, sr=sr, sw=sw, ch=ch)
     # alternatively you can use
     full_audio = auditok.AudioRegion(rec.data, sr, sw, ch)
     full_audio.play(progress_bar=True)
