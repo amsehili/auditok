@@ -1,6 +1,5 @@
 import os
 import subprocess
-import sys
 import wave
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple

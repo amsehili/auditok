@@ -11,7 +11,6 @@ Module for high-level audio input-output operations.
     make_channel_selector
 """
 
-import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 
@@ -19,14 +18,7 @@ import numpy as np
 
 from . import signal
 from .exceptions import TimeFormatError, TooSmallBlockDuration
-from .io import (
-    AudioIOError,
-    AudioSource,
-    BufferAudioSource,
-    PyAudioSource,
-    from_file,
-    get_audio_source,
-)
+from .io import AudioIOError, AudioSource, BufferAudioSource, get_audio_source
 
 __all__ = [
     "make_duration_formatter",

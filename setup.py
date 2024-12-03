@@ -1,6 +1,5 @@
 import ast
 import re
-import sys
 
 from setuptools import setup
 
