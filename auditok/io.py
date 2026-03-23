@@ -44,6 +44,35 @@ except ImportError:
     _WITH_TQDM = False
 
 
+def _suppress_stderr():
+    """Redirect C-level stderr to /dev/null during a block.
+
+    PortAudio (used by PyAudio) probes every audio backend on init, printing
+    ALSA/JACK/OSS warnings to the C stderr fd. Python's contextlib won't
+    catch those because they bypass sys.stderr entirely, so we dup/redirect
+    the underlying file descriptor.
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        devnull = None
+        old_fd = None
+        try:
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            old_fd = os.dup(2)
+            os.dup2(devnull, 2)
+            yield
+        finally:
+            if old_fd is not None:
+                os.dup2(old_fd, 2)
+                os.close(old_fd)
+            if devnull is not None:
+                os.close(devnull)
+
+    return _ctx()
+
+
 __all__ = [
     "AudioSource",
     "Rewindable",
@@ -661,7 +690,8 @@ class PyAudioSource(AudioSource):
 
         import pyaudio
 
-        self._pyaudio_object = pyaudio.PyAudio()
+        with _suppress_stderr():
+            self._pyaudio_object = pyaudio.PyAudio()
         self._pyaudio_format = self._pyaudio_object.get_format_from_width(
             self.sample_width
         )
@@ -786,7 +816,8 @@ class PyAudioPlayer:
 
         import pyaudio
 
-        self._p = pyaudio.PyAudio()
+        with _suppress_stderr():
+            self._p = pyaudio.PyAudio()
         self.stream = self._p.open(
             format=self._p.get_format_from_width(self.sample_width),
             channels=self.channels,
