@@ -17,6 +17,8 @@ Module for low-level audio input-output operations.
 """
 
 import os
+import shutil
+import subprocess
 import sys
 import wave
 from abc import ABC, abstractmethod
@@ -48,6 +50,7 @@ __all__ = [
     "BufferAudioSource",
     "RawAudioSource",
     "WaveAudioSource",
+    "FFmpegAudioSource",
     "PyAudioSource",
     "StdinAudioSource",
     "PyAudioPlayer",
@@ -525,6 +528,102 @@ class WaveAudioSource(FileAudioSource):
         return self._audio_stream.readframes(size)
 
 
+def _find_ffmpeg():
+    """Return the path to the ffmpeg binary, or None if not found."""
+    return shutil.which("ffmpeg")
+
+
+class FFmpegAudioSource(AudioSource):
+    """An `AudioSource` that reads audio data by streaming from an ffmpeg
+    subprocess.
+
+    ffmpeg decodes the input file and pipes WAV-formatted data to stdout.
+    On construction, the ffmpeg process is started and the WAV header is
+    parsed to determine the sampling rate, sample width, and number of
+    channels. Subsequent :meth:`read` calls return raw PCM data directly
+    from the pipe without any intermediate file.
+
+    Parameters
+    ----------
+    filename : str or Path
+        Path to the audio or video file.
+    """
+
+    def __init__(self, filename):
+        print("Using FFmpegAudioSource")
+        self._filename = str(filename)
+        ffmpeg_path = _find_ffmpeg()
+        if ffmpeg_path is None:
+            raise AudioIOError("ffmpeg not found on PATH")
+        cmd = [
+            ffmpeg_path,
+            "-loglevel",
+            "fatal",
+            "-nostdin",
+            "-i",
+            self._filename,
+            "-f",
+            "wav",
+            "pipe:1",
+        ]
+        print(f"cmd: {' '.join(cmd)}")
+        try:
+            self._process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except OSError as exc:
+            raise AudioIOError(f"Failed to start ffmpeg: {exc}") from exc
+        try:
+            wfp = wave.open(self._process.stdout, "rb")
+            sr = wfp.getframerate()
+            sw = wfp.getsampwidth()
+            ch = wfp.getnchannels()
+        except Exception as exc:
+            stderr = b""
+            if self._process is not None and self._process.stderr is not None:
+                stderr = self._process.stderr.read()
+            self._close_process()
+            err_msg = f"Failed to read audio from {filename!r}"
+            if stderr:
+                err_msg += f": {stderr.decode(errors='replace').strip()}"
+            raise AudioIOError(err_msg) from exc
+        super().__init__(sr, sw, ch)
+        self._sample_size = sw * ch
+
+    def is_open(self):
+        return self._process is not None
+
+    def open(self):
+        pass
+
+    def close(self):
+        self._close_process()
+
+    def _close_process(self):
+        if self._process is not None:
+            self._process.stdout.close()
+            self._process.stderr.close()
+            self._process.wait()
+            self._process = None
+
+    def read(self, size):
+        if self._process is None:
+            raise AudioIOError("Audio stream is not open")
+        if size is None or size < 0:
+            data = self._process.stdout.read()
+        else:
+            bytes_to_read = size * self._sample_size
+            data = self._process.stdout.read(bytes_to_read)
+        if data:
+            return data
+        return None
+
+    def __del__(self):
+        self._close_process()
+
+
 class PyAudioSource(AudioSource):
     """An `AudioSource` class for reading data from a built-in microphone using
     PyAudio.
@@ -914,48 +1013,13 @@ def _load_wave(filename, large_file=False):
     )
 
 
-def _load_with_pydub(filename, audio_format=None):
-    """
-    Load audio from a compressed audio or video file using `pydub`.
-
-    This function uses `pydub` to load compressed audio files. If a video file
-    is specified, the audio track(s) are extracted and loaded.
-
-    Parameters
-    ----------
-    filename : str or Path
-        The path to the audio file.
-    audio_format : str, optional, default=None
-        The audio file format, if known (e.g., raw, webm, wav, ogg).
-
-    Returns
-    -------
-    BufferAudioSource
-        An `AudioSource` that reads data from the specified file.
-    """
-
-    func_dict = {
-        "mp3": AudioSegment.from_mp3,
-        "ogg": AudioSegment.from_ogg,
-        "flv": AudioSegment.from_flv,
-    }
-    open_function = func_dict.get(audio_format, AudioSegment.from_file)
-    segment = open_function(filename)
-    return BufferAudioSource(
-        data=segment.raw_data,
-        sampling_rate=segment.frame_rate,
-        sample_width=segment.sample_width,
-        channels=segment.channels,
-    )
-
-
 def from_file(filename, audio_format=None, large_file=False, **kwargs):
     """Read audio data from `filename` and return an `AudioSource` object.
 
     If `audio_format` is None, the appropriate `AudioSource` class is inferred
     from the file extension. The `filename` can refer to a compressed audio or
     video file; if a video file is provided, its audio track(s) are extracted.
-    This functionality requires `pydub` (https://github.com/jiaaro/pydub).
+    This functionality requires either ``ffmpeg``.
 
     By default, all audio data is loaded into memory to create a
     `BufferAudioSource` object, suitable for most cases. For very large files,
@@ -1015,12 +1079,11 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
     if large_file:
         err_msg = "if 'large_file` is True file format should be raw or wav"
         raise AudioIOError(err_msg)
-    if _WITH_PYDUB:
-        return _load_with_pydub(filename, audio_format=audio_format)
-    else:
+    if _find_ffmpeg() is None:
         raise AudioIOError(
-            "pydub is required for audio formats other than raw or wav"
+            "ffmpeg is required for format {!r}".format(audio_format)
         )
+    return FFmpegAudioSource(str(filename))
 
 
 def _save_raw(data, file):

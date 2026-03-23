@@ -3,6 +3,8 @@
 """
 
 from array import array
+from shutil import which
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -11,10 +13,16 @@ from auditok.io import (
     AudioIOError,
     AudioParameterError,
     BufferAudioSource,
+    FFmpegAudioSource,
     RawAudioSource,
     WaveAudioSource,
+    from_file,
 )
 from auditok.signal import SAMPLE_WIDTH_TO_DTYPE
+
+requires_ffmpeg = pytest.mark.skipif(
+    which("ffmpeg") is None, reason="ffmpeg not available"
+)
 
 
 def _sample_generator(*data_buffers):
@@ -26,7 +34,7 @@ def _sample_generator(*data_buffers):
     >>> list(gen)
     ["a", "A", "b", "B", "c", "C", "d", "D"]
     """
-    frame_gen = zip(*data_buffers)
+    frame_gen = zip(*data_buffers, strict=True)
     return (sample for frame in frame_gen for sample in frame)
 
 
@@ -179,6 +187,67 @@ def test_WaveAudioSource(file_suffix, frequencies):
     data_read_all = audio_source.read(-10)
     audio_source.close()
     assert data_read_all == expected
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize(
+    "filename, sr, ch",
+    [
+        ("DTMF_tones_44.1KHZ_stereo.flac", 44100, 2),
+        ("DTMF_tones_44.1KHZ_stereo.ogg", 44100, 2),
+        ("DTMF_tones_44.1KHZ_stereo.mp3", 44100, 2),
+        ("DTMF_tones_16KHZ_mono.flac", 16000, 1),
+        ("DTMF_tones_16KHZ_mono.ogg", 16000, 1),
+        ("DTMF_tones_16KHZ_mono.mp3", 16000, 1),
+    ],
+    ids=[
+        "stereo_44.1KHZ_flac",
+        "stereo_44.1KHZ_ogg",
+        "stereo_44.1KHZ_mp3",
+        "mono_16KHZ_flac",
+        "mono_16KHZ_ogg",
+        "mono_16KHZ_mp3",
+    ],
+)
+def test_FFmpegAudioSource(filename, sr, ch):
+    test_file = "tests/data/{}".format(filename)
+    audio_source = FFmpegAudioSource(test_file)
+    assert audio_source.sr == sr
+    assert audio_source.sw == 2
+    assert audio_source.ch == ch
+
+    # read all with None
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = sr * 2 * ch  # 1s * sw * ch
+    assert len(data) == expected_length
+
+    # read incrementally
+    audio_source = FFmpegAudioSource(test_file)
+    data_incremental = b"".join(audio_source_read_all_gen(audio_source))
+    audio_source.close()
+    assert data_incremental == data
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_24bit_flac_outputs_16bit():
+    test_file = "tests/data/DTMF_tones_44.1KHZ_stereo_24bit.flac"
+    audio_source = FFmpegAudioSource(test_file)
+    assert audio_source.sr == 44100
+    assert audio_source.sw == 2
+    assert audio_source.ch == 2
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = 44100 * 2 * 2  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+def test_from_file_wav_does_not_use_FFmpegAudioSource():
+    wav_file = "tests/data/DTMF_tones_44.1KHZ_mono.wav"
+    with patch("auditok.io.FFmpegAudioSource") as mock_ffmpeg:
+        source = from_file(wav_file)
+        assert not mock_ffmpeg.called
+    assert isinstance(source, BufferAudioSource)
 
 
 class TestBufferAudioSource_SR10_SW1_CH1:

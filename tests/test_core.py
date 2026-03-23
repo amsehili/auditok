@@ -412,7 +412,7 @@ def test_split_params(
     assert len(regions_ar) == len(expected), err_msg
 
     sample_width = 2
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected):
+    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
         onset, offset = exp
         exp_data = data[onset * sample_width : offset * sample_width]
         assert bytes(reg) == exp_data
@@ -545,6 +545,7 @@ def test_split_kwargs(channels, kwargs, expected):
         regions,
         regions_ar,
         expected,
+        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -970,6 +971,7 @@ def test_split_analysis_window(
         regions,
         regions_ar,
         expected,
+        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -1022,6 +1024,7 @@ def test_split_custom_validator():
         regions,
         regions_ar,
         expected,
+        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -1113,6 +1116,7 @@ def test_split_input_type(input, kwargs):
     for reg, exp in zip(
         regions,
         expected,
+        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_width * 2 : offset * sample_width * 2]
@@ -2178,6 +2182,7 @@ def test_truediv(data):
     for data_i, region in zip(
         data,
         sub_regions,
+        strict=True,
     ):
         assert len(data_i) == len(bytes(region))
 

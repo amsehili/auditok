@@ -250,7 +250,10 @@ class TestAudioReaderWithFileAudioSource:
 
         reader_data = _read_all_data(reader)
         total_read = len(reader_data)
-        err_msg = f"Wrong data length read from LimiterADS, expected: {expected_read_bytes}, found: {total_read}"
+        err_msg = (
+            "Wrong data length read from LimiterADS, "
+            f"expected: {expected_read_bytes}, found: {total_read}"
+        )
         assert total_read == expected_read_bytes, err_msg
 
     def test_read_from_Recorder(self):
@@ -285,7 +288,7 @@ class TestAudioReaderWithFileAudioSource:
             input=self.audio_source, record=True, block_dur=0.02
         )
         # read 0.02 * 10 = 0.2 sec. of data
-        for i in range(10):
+        for _ in range(10):
             reader.read()
         reader.rewind()
 
@@ -306,7 +309,7 @@ class TestAudioReaderWithFileAudioSource:
     def test_Recorder_record_and_rewind(self):
         recorder = Recorder(input=self.audio_source, block_dur=0.02)
         # read 0.02 * 10 = 0.2 sec. of data
-        for i in range(10):
+        for _ in range(10):
             recorder.read()
 
         recorder.rewind()
@@ -407,9 +410,10 @@ class TestAudioReaderWithFileAudioSource:
         # audio source with a manual position setting
         for i, block in enumerate(reader_data):
             tmp = audio_source.read(len(block) // (reader.sw * reader.ch))
-            assert (
-                block == tmp
-            ), f"Unexpected data (block {i}) from reader with overlapping blocks and max_read"
+            assert block == tmp, (
+                f"Unexpected data (block {i}) from reader"
+                " with overlapping blocks and max_read"
+            )
             audio_source.position = (i + 1) * hop_size
 
         audio_source.close()
@@ -507,12 +511,14 @@ class TestAudioReaderWithFileAudioSource:
         )
         audio_source.open()
 
-        # Compare blocks read from AudioReader to those read from an BufferAudioSource with manual position setting
+        # Compare blocks read from AudioReader to those read from
+        # an BufferAudioSource with manual position setting
         for j in range(i):
             tmp = audio_source.read(block_size)
-            assert (
-                reader.read() == tmp
-            ), f"Unexpected data (block {i}) from reader with overlapping blocks and record = True"
+            assert reader.read() == tmp, (
+                f"Unexpected data (block {i}) from reader"
+                " with overlapping blocks and record = True"
+            )
             audio_source.position = (j + 1) * hop_size
 
         audio_source.close()
@@ -554,7 +560,8 @@ class TestAudioReaderWithFileAudioSource:
         )
         audio_source.open()
 
-        # Compare all blocks read from AudioReader to those read from BufferAudioSource with a manual position setting
+        # Compare all blocks read from AudioReader to those read
+        # from BufferAudioSource with a manual position setting
         for j in range(i):
             tmp = audio_source.read(block_size)
             assert (
@@ -604,7 +611,10 @@ class TestAudioReaderWithFileAudioSource:
             i += 1
             total_read += len(block) - cache_size
 
-        err_msg = f"Wrong data length read from AudioReader, expected: {expected_read_bytes}, found: {total_read}"
+        err_msg = (
+            "Wrong data length read from AudioReader, "
+            f"expected: {expected_read_bytes}, found: {total_read}"
+        )
         assert total_read == expected_read_bytes, err_msg
 
 
@@ -627,7 +637,7 @@ def test_AudioReader_raw_data():
 
     assert (
         reader.sampling_rate == 16
-    ), f"Wrong sampling rate, expected: 16, found: {reader.sampling_rate }"
+    ), f"Wrong sampling rate, expected: 16, found: {reader.sampling_rate}"
 
     assert (
         reader.sample_width == 2
@@ -656,7 +666,7 @@ def test_AudioReader_raw_data():
         block = reader.read()
         assert (
             block == tmp
-        ), f"Unexpected block '{block}' (N={i}) read from OverlapADS"
+        ), f"Unexpected block {block!r} (N={i}) read from OverlapADS"
         audio_source.position = (j + 1) * hop_size
     audio_source.close()
     reader.close()

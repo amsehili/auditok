@@ -70,6 +70,7 @@ def test_TokenizerWorker(audio_data_source, expected_detections):
             tokenizer.detections,
             expected_detections,
             log_lines,
+            strict=True,
         ),
         1,
     ):
@@ -109,7 +110,7 @@ def test_PlayerWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[PLAY]: Detection {id} played"
     for i, (det, exp, log_line) in enumerate(
-        zip(
+        zip(  # noqa: B905
             tokenizer.detections,
             expected_detections,
             log_lines,
@@ -167,7 +168,7 @@ def test_RegionSaverWorker(audio_data_source, expected_detections):
 
     log_fmt = "[SAVE]: Detection {id} saved as '{filename}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(
+        zip(  # noqa: B905
             tokenizer.detections,
             expected_detections,
             log_lines,
@@ -215,7 +216,7 @@ def test_CommandLineWorker(audio_data_source, expected_detections):
     assert len(tokenizer.detections) == len(expected_detections)
     log_fmt = "[COMMAND]: Detection {id} command '{command}'"
     for i, (det, exp, log_line) in enumerate(
-        zip(
+        zip(  # noqa: B905
             tokenizer.detections,
             expected_detections,
             log_lines,
@@ -261,6 +262,7 @@ def test_PrintWorker(audio_data_source, expected_detections):
     for det, exp in zip(
         tokenizer.detections,
         expected_detections,
+        strict=True,
     ):
         start, end = exp
         assert pytest.approx(det.start) == start

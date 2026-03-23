@@ -21,7 +21,6 @@ from auditok.io import (
     _guess_audio_format,
     _load_raw,
     _load_wave,
-    _load_with_pydub,
     _save_raw,
     _save_wave,
     _save_with_pydub,
@@ -92,14 +91,20 @@ def test_guess_audio_format(filename, audio_format, expected):
 
 def test_get_audio_parameters_short_params():
     expected = (8000, 2, 1)
-    params = dict(zip(("sr", "sw", "ch"), expected))
+    params = dict(zip(("sr", "sw", "ch"), expected, strict=True))
     result = _get_audio_parameters(params)
     assert result == expected
 
 
 def test_get_audio_parameters_long_params():
     expected = (8000, 2, 1)
-    params = dict(zip(("sampling_rate", "sample_width", "channels"), expected))
+    params = dict(
+        zip(
+            ("sampling_rate", "sample_width", "channels"),
+            expected,
+            strict=True,
+        )
+    )
     result = _get_audio_parameters(params)
     assert result == expected
 
@@ -110,6 +115,7 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
         zip(
             ("sampling_rate", "sample_width", "channels"),
             expected,
+            strict=True,
         )
     )
     params.update(
@@ -117,6 +123,7 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
             zip(
                 ("sr", "sw", "ch"),
                 "xxx",
+                strict=True,
             )
         )
     )
@@ -180,6 +187,7 @@ def test_get_audio_parameters_invalid(values):
         zip(
             ("sampling_rate", "sample_width", "channels"),
             values,
+            strict=True,
         )
     )
     with pytest.raises(AudioParameterError):
@@ -216,9 +224,9 @@ def test_get_audio_parameters_invalid(values):
             "_load_wave",
             None,
         ),  # format_and_extension_both_given_b
-        ("audio", None, "_load_with_pydub", None),  # no_format_nor_extension
-        ("audio.ogg", None, "_load_with_pydub", None),  # other_formats_ogg
-        ("audio", "webm", "_load_with_pydub", None),  # other_formats_webm
+        ("audio", None, "FFmpegAudioSource", None),  # no_format_nor_extension
+        ("audio.ogg", None, "FFmpegAudioSource", None),  # other_formats_ogg
+        ("audio", "webm", "FFmpegAudioSource", None),  # other_formats_webm
     ],
     ids=[
         "raw_with_audio_format",
@@ -354,53 +362,10 @@ def test_from_file_missing_audio_param(missing_param):
         from_file("audio", audio_format="raw", **params)
 
 
-def test_from_file_no_pydub():
-    with patch("auditok.io._WITH_PYDUB", False):
+def test_from_file_no_ffmpeg():
+    with patch("auditok.io._find_ffmpeg", return_value=None):
         with pytest.raises(AudioIOError):
             from_file("audio", "mp3")
-
-
-@pytest.mark.parametrize(
-    "audio_format, function",
-    [
-        ("ogg", "from_ogg"),  # ogg_first_channel
-        ("ogg", "from_ogg"),  # ogg_second_channel
-        ("ogg", "from_ogg"),  # ogg_mix
-        ("ogg", "from_ogg"),  # ogg_default
-        ("mp3", "from_mp3"),  # mp3_left_channel
-        ("mp3", "from_mp3"),  # mp3_right_channel
-        ("flac", "from_file"),  # flac_first_channel
-        ("flac", "from_file"),  # flac_second_channel
-        ("flv", "from_flv"),  # flv_left_channel
-        ("webm", "from_file"),  # webm_right_channel
-    ],
-    ids=[
-        "ogg_first_channel",
-        "ogg_second_channel",
-        "ogg_mix",
-        "ogg_default",
-        "mp3_left_channel",
-        "mp3_right_channel",
-        "flac_first_channel",
-        "flac_second_channel",
-        "flv_left_channel",
-        "webm_right_channel",
-    ],
-)
-@patch("auditok.io._WITH_PYDUB", True)
-@patch("auditok.io.BufferAudioSource")
-def test_from_file_multichannel_audio_compressed(
-    mock_buffer_audio_source, audio_format, function
-):
-    filename = "audio.{}".format(audio_format)
-    segment_mock = Mock()
-    segment_mock.sample_width = 2
-    segment_mock.channels = 2
-    segment_mock._data = b"abcd"
-    with patch("auditok.io.AudioSegment.{}".format(function)) as open_func:
-        open_func.return_value = segment_mock
-        from_file(filename)
-        assert open_func.called
 
 
 @pytest.mark.parametrize(
@@ -490,53 +455,6 @@ def test_load_wave(file_id, frequencies, large_file):
         _sample_generator(*mono_channels), dtype=dtype
     ).tobytes()
     assert data == expected
-
-
-@pytest.mark.parametrize(
-    "audio_format, channels, function",
-    [
-        ("ogg", 2, "from_ogg"),  # ogg_default_first_channel
-        ("ogg", 1, "from_ogg"),  # ogg_first_channel
-        ("ogg", 2, "from_ogg"),  # ogg_second_channel
-        ("ogg", 3, "from_ogg"),  # ogg_mix_channels
-        ("mp3", 1, "from_mp3"),  # mp3_left_channel
-        ("mp3", 2, "from_mp3"),  # mp3_right_channel
-        ("mp3", 3, "from_mp3"),  # mp3_mix_channels
-        ("flac", 2, "from_file"),  # flac_first_channel
-        ("flac", 2, "from_file"),  # flac_second_channel
-        ("flv", 1, "from_flv"),  # flv_left_channel
-        ("webm", 2, "from_file"),  # webm_right_channel
-        ("webm", 4, "from_file"),  # webm_mix_channels
-    ],
-    ids=[
-        "ogg_default_first_channel",
-        "ogg_first_channel",
-        "ogg_second_channel",
-        "ogg_mix_channels",
-        "mp3_left_channel",
-        "mp3_right_channel",
-        "mp3_mix_channels",
-        "flac_first_channel",
-        "flac_second_channel",
-        "flv_left_channel",
-        "webm_right_channel",
-        "webm_mix_channels",
-    ],
-)
-@patch("auditok.io._WITH_PYDUB", True)
-@patch("auditok.io.BufferAudioSource")
-def test_load_with_pydub(
-    mock_buffer_audio_source, audio_format, channels, function
-):
-    filename = "audio.{}".format(audio_format)
-    segment_mock = Mock()
-    segment_mock.sample_width = 2
-    segment_mock.channels = channels
-    segment_mock._data = b"abcdefgh"
-    with patch("auditok.io.AudioSegment.{}".format(function)) as open_func:
-        open_func.return_value = segment_mock
-        _load_with_pydub(filename, audio_format)
-        assert open_func.called
 
 
 @pytest.mark.parametrize(
