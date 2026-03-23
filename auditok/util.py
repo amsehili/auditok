@@ -546,6 +546,30 @@ class _OverlapAudioReader(_FixedSizeAudioReader):
         super().__init__(audio_source, block_dur)
 
         self._hop_size = int(hop_dur * self.sr)
+        if self._hop_size < 1:
+            err_msg = (
+                "'hop_dur' ({}) is too small for sampling rate ({}): "
+                "int({} * {}) = {} (must be >= 1 sample). "
+                "Use a larger 'hop_dur' or a higher sampling rate."
+            ).format(hop_dur, self.sr, hop_dur, self.sr, self._hop_size)
+            raise ValueError(err_msg)
+        if self._hop_size >= self._block_size:
+            err_msg = (
+                "hop_size (int({} * {}) = {}) >= block_size "
+                "(int({} * {}) = {}) for sampling rate ({}). "
+                "Overlap requires hop_size < block_size. "
+                "Increase the gap between 'hop_dur' and 'block_dur' "
+                "or use a higher sampling rate."
+            ).format(
+                hop_dur,
+                self.sr,
+                self._hop_size,
+                block_dur,
+                self.sr,
+                self._block_size,
+                self.sr,
+            )
+            raise ValueError(err_msg)
         self._blocks = self._iter_blocks_with_overlap()
 
     def _iter_blocks_with_overlap(self):

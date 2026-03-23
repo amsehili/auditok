@@ -224,7 +224,6 @@ def split(
 
     if isinstance(input, AudioReader):
         source = input
-        analysis_window = source.block_dur
     else:
         analysis_window = kwargs.get(
             "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
@@ -250,6 +249,7 @@ def split(
             err_msg += f"should at least be 1/{exc.sampling_rate} to cover "
             err_msg += "one data sample"
             raise ValueError(err_msg) from exc
+    analysis_window = source.block_dur
 
     validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None:

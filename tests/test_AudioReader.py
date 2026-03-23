@@ -139,6 +139,33 @@ class TestAudioReaderWithFileAudioSource:
         with pytest.raises(ValueError):
             AudioReader(self.audio_source, block_dur=0.01, hop_dur=0.015)
 
+    def test_hop_dur_same_sample_count_as_block_dur(self):
+        """Test that hop_dur and block_dur yielding the same sample count
+        after int truncation raises ValueError.
+
+        With sr=16000: int(0.00012 * 16000) = int(1.92) = 1
+                       int(0.00007 * 16000) = int(1.12) = 1
+        """
+        with pytest.raises(ValueError, match="hop_size.*>=.*block_size"):
+            AudioReader(self.audio_source, block_dur=0.00012, hop_dur=0.00007)
+
+    def test_hop_dur_zero_samples(self):
+        """Test that hop_dur too small to cover one sample raises ValueError.
+
+        With sr=16000: int(0.00005 * 16000) = int(0.8) = 0
+        """
+        with pytest.raises(ValueError, match="too small"):
+            AudioReader(self.audio_source, block_dur=0.001, hop_dur=0.00005)
+
+    def test_block_dur_zero_samples(self):
+        """Test that block_dur too small to cover one sample raises
+        TooSmallBlockDuration (a ValueError subclass).
+
+        With sr=16000: int(0.00005 * 16000) = int(0.8) = 0
+        """
+        with pytest.raises(ValueError, match="Too small block_dur"):
+            AudioReader(self.audio_source, block_dur=0.00005)
+
     @pytest.mark.parametrize(
         "block_dur, hop_dur",
         [
@@ -670,6 +697,39 @@ def test_AudioReader_raw_data():
         audio_source.position = (j + 1) * hop_size
     audio_source.close()
     reader.close()
+
+
+def test_hop_dur_same_sample_count_as_block_dur_low_sr():
+    """Test with sr=8000 where realistic durations collide.
+
+    int(0.0011 * 8000) = int(8.8) = 8
+    int(0.0010 * 8000) = int(8.0) = 8
+    """
+    data = b"\x00" * 160  # 10ms at sr=8000, sw=1, ch=1
+    source = BufferAudioSource(
+        data, sampling_rate=8000, sample_width=1, channels=1
+    )
+    source.open()
+    with pytest.raises(ValueError, match="hop_size.*>=.*block_size"):
+        AudioReader(source, block_dur=0.0011, hop_dur=0.0010)
+    source.close()
+
+
+def test_hop_dur_close_but_different_sample_count():
+    """Verify no error when hop_dur and block_dur are close but yield
+    different sample counts.
+
+    With sr=16000: int(0.00019 * 16000) = int(3.04) = 3
+                   int(0.00013 * 16000) = int(2.08) = 2
+    """
+    data = b"\x00" * 320  # some raw audio
+    source = BufferAudioSource(
+        data, sampling_rate=16000, sample_width=1, channels=1
+    )
+    source.open()
+    reader = AudioReader(source, block_dur=0.00019, hop_dur=0.00013)
+    assert isinstance(reader._audio_source, _OverlapAudioReader)
+    source.close()
 
 
 def test_AudioReader_alias_params():
