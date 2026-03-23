@@ -1,3 +1,78 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auditok"
+dynamic = ["version"]
+description = "An audio/acoustic activity detection and audio segmentation tool"
+readme = "README.rst"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+authors = [
+    { name = "Amine Sehili", email = "amine.sehili@gmail.com" },
+]
+keywords = [
+    "audio",
+    "activity detection",
+    "audio segmentation",
+    "silence detection",
+    "voice activity detection",
+    "VAD",
+    "speech detection",
+    "audio splitting",
+    "audio analysis",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib"]
+audio-export = ["pydub"]
+realtime = ["pyaudio"]
+progress = ["tqdm"]
+all = ["matplotlib", "pydub", "pyaudio", "tqdm"]
+
+[project.urls]
+Homepage = "https://github.com/amsehili/auditok/"
+Documentation = "https://auditok.readthedocs.io/"
+Changelog = "https://github.com/amsehili/auditok/blob/master/CHANGELOG"
+Issues = "https://github.com/amsehili/auditok/issues"
+
+[project.scripts]
+auditok = "auditok.cmdline:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "auditok.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["auditok*"]
+
+[tool.setuptools.package-data]
+auditok = ["data/*"]
+
 [tool.black]
 line-length = 80
 include = '\.pyi?$'
@@ -17,3 +92,6 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
