@@ -8,6 +8,7 @@ Module for low-level audio input-output operations.
     Rewindable
     BufferAudioSource
     WaveAudioSource
+    FFmpegAudioSource
     PyAudioSource
     StdinAudioSource
     PyAudioPlayer
@@ -572,15 +573,37 @@ class FFmpegAudioSource(AudioSource):
     channels. Subsequent :meth:`read` calls return raw PCM data directly
     from the pipe without any intermediate file.
 
+    When `sampling_rate`, `sample_width`, or `channels` are provided, ffmpeg
+    converts the audio to the requested format before piping. This is useful
+    for ML pipelines that expect audio in a specific format (e.g., 16 kHz,
+    mono, 16-bit).
+
     Parameters
     ----------
     filename : str or Path
         Path to the audio or video file.
+    sampling_rate : int, optional
+        Target sampling rate. If provided, ffmpeg resamples the audio.
+    sample_width : int, optional
+        Target sample width in bytes (1, 2, or 4). If provided, ffmpeg
+        encodes audio with the corresponding PCM codec (pcm_u8, pcm_s16le,
+        or pcm_s32le).
+    channels : int, optional
+        Target number of channels. If provided, ffmpeg remixes the audio
+        (e.g., stereo to mono).
     """
 
-    def __init__(self, filename):
-        print("Using FFmpegAudioSource")
+    _SW_TO_CODEC = {
+        1: "pcm_u8",
+        2: "pcm_s16le",
+        4: "pcm_s32le",
+    }
+
+    def __init__(
+        self, filename, sampling_rate=None, sample_width=None, channels=None
+    ):
         self._filename = str(filename)
+        self._process = None
         ffmpeg_path = _find_ffmpeg()
         if ffmpeg_path is None:
             raise AudioIOError("ffmpeg not found on PATH")
@@ -591,11 +614,20 @@ class FFmpegAudioSource(AudioSource):
             "-nostdin",
             "-i",
             self._filename,
-            "-f",
-            "wav",
-            "pipe:1",
         ]
-        print(f"cmd: {' '.join(cmd)}")
+        if sampling_rate is not None:
+            cmd += ["-ar", str(sampling_rate)]
+        if channels is not None:
+            cmd += ["-ac", str(channels)]
+        if sample_width is not None:
+            codec = self._SW_TO_CODEC.get(sample_width)
+            if codec is None:
+                raise AudioParameterError(
+                    "sample_width must be one of 1, 2, or 4, "
+                    "got {}".format(sample_width)
+                )
+            cmd += ["-acodec", codec]
+        cmd += ["-f", "wav", "pipe:1"]
         try:
             self._process = subprocess.Popen(
                 cmd,
@@ -1114,7 +1146,12 @@ def from_file(filename, audio_format=None, large_file=False, **kwargs):
         raise AudioIOError(
             "ffmpeg is required for format {!r}".format(audio_format)
         )
-    return FFmpegAudioSource(str(filename))
+    sr = kwargs.get("sampling_rate", kwargs.get("sr"))
+    sw = kwargs.get("sample_width", kwargs.get("sw"))
+    ch = kwargs.get("channels", kwargs.get("ch"))
+    return FFmpegAudioSource(
+        str(filename), sampling_rate=sr, sample_width=sw, channels=ch
+    )
 
 
 def _save_raw(data, file):

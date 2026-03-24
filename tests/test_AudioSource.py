@@ -2,7 +2,6 @@
 @author: Amine Sehili <amine.sehili@gmail.com>
 """
 
-from array import array
 from shutil import which
 from unittest.mock import patch
 
@@ -239,6 +238,80 @@ def test_FFmpegAudioSource_24bit_flac_outputs_16bit():
     data = audio_source.read(None)
     audio_source.close()
     expected_length = 44100 * 2 * 2  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_resample():
+    test_file = "tests/data/DTMF_tones_44.1KHZ_stereo.flac"
+    audio_source = FFmpegAudioSource(test_file, sampling_rate=16000)
+    assert audio_source.sr == 16000
+    assert audio_source.sw == 2
+    assert audio_source.ch == 2
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = 16000 * 2 * 2  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_downmix_to_mono():
+    test_file = "tests/data/DTMF_tones_44.1KHZ_stereo.flac"
+    audio_source = FFmpegAudioSource(test_file, channels=1)
+    assert audio_source.sr == 44100
+    assert audio_source.sw == 2
+    assert audio_source.ch == 1
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = 44100 * 2 * 1  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_change_sample_width():
+    test_file = "tests/data/DTMF_tones_16KHZ_mono.flac"
+    audio_source = FFmpegAudioSource(test_file, sample_width=4)
+    assert audio_source.sr == 16000
+    assert audio_source.sw == 4
+    assert audio_source.ch == 1
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = 16000 * 4 * 1  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_convert_all_params():
+    test_file = "tests/data/DTMF_tones_44.1KHZ_stereo.flac"
+    audio_source = FFmpegAudioSource(
+        test_file, sampling_rate=16000, sample_width=1, channels=1
+    )
+    assert audio_source.sr == 16000
+    assert audio_source.sw == 1
+    assert audio_source.ch == 1
+    data = audio_source.read(None)
+    audio_source.close()
+    expected_length = 16000 * 1 * 1  # 1s * sw * ch
+    assert len(data) == expected_length
+
+
+@requires_ffmpeg
+def test_FFmpegAudioSource_invalid_sample_width():
+    test_file = "tests/data/DTMF_tones_16KHZ_mono.flac"
+    with pytest.raises(AudioParameterError, match="sample_width must be"):
+        FFmpegAudioSource(test_file, sample_width=3)
+
+
+@requires_ffmpeg
+def test_from_file_with_conversion_params():
+    test_file = "tests/data/DTMF_tones_44.1KHZ_stereo.flac"
+    source = from_file(test_file, sr=16000, ch=1)
+    assert source.sr == 16000
+    assert source.sw == 2
+    assert source.ch == 1
+    data = source.read(None)
+    source.close()
+    expected_length = 16000 * 2 * 1
     assert len(data) == expected_length
 
 
