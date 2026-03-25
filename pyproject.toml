@@ -50,10 +50,9 @@ dependencies = [
 
 [project.optional-dependencies]
 plot = ["matplotlib"]
-audio-export = ["pydub"]
 realtime = ["pyaudio"]
 progress = ["tqdm"]
-all = ["matplotlib", "pydub", "pyaudio", "tqdm"]
+all = ["matplotlib", "pyaudio", "tqdm"]
 
 [project.urls]
 Homepage = "https://github.com/amsehili/auditok/"

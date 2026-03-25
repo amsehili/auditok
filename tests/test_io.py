@@ -1,7 +1,9 @@
 import filecmp
 import os
+import subprocess
 import wave
 from pathlib import Path
+from shutil import which
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from unittest.mock import Mock, patch
 
@@ -23,13 +25,17 @@ from auditok.io import (
     _load_wave,
     _save_raw,
     _save_wave,
-    _save_with_pydub,
+    _save_with_ffmpeg,
     check_audio_data,
     from_file,
     get_audio_source,
     to_file,
 )
 from auditok.signal import SAMPLE_WIDTH_TO_DTYPE
+
+requires_ffmpeg = pytest.mark.skipif(
+    which("ffmpeg") is None, reason="ffmpeg not available"
+)
 
 AUDIO_PARAMS = {"sampling_rate": 16000, "sample_width": 2, "channels": 1}
 AUDIO_PARAMS_SHORT = {"sr": 16000, "sw": 2, "ch": 1}
@@ -537,15 +543,6 @@ def test_save_wave_missing_audio_param(missing_param):
         )
 
 
-def test_save_with_pydub():
-    with patch("auditok.io.AudioSegment.export") as export:
-        tmpdir = TemporaryDirectory()
-        filename = os.path.join(tmpdir.name, "audio.ogg")
-        _save_with_pydub(b"\0\0", filename, "ogg", 16000, 2, 1)
-        assert export.called
-        tmpdir.cleanup()
-
-
 @pytest.mark.parametrize(
     "filename, audio_format",
     [
@@ -625,12 +622,13 @@ def test_to_file_missing_audio_param(missing_param):
         to_file(b"\0\0", "audio", audio_format="mp3", **params)
 
 
-def test_to_file_no_pydub():
-    with patch("auditok.io._WITH_PYDUB", False):
+def test_to_file_no_ffmpeg():
+    with patch("auditok.io._find_ffmpeg", return_value=None):
         with pytest.raises(AudioIOError):
-            to_file("audio", b"", "mp3")
+            to_file(b"\0\0", "audio.mp3", **AUDIO_PARAMS_SHORT)
 
 
+@requires_ffmpeg
 @pytest.mark.parametrize(
     "filename, audio_format",
     [
@@ -644,14 +642,13 @@ def test_to_file_no_pydub():
         "ogg_format_with_wrong_extension",
     ],
 )
-@patch("auditok.io._WITH_PYDUB", True)
 def test_to_file_compressed(filename, audio_format):
-    with patch("auditok.io.AudioSegment.export") as export:
-        tmpdir = TemporaryDirectory()
-        filename = os.path.join(tmpdir.name, filename)
-        to_file(b"\0\0", filename, audio_format, **AUDIO_PARAMS_SHORT)
-        assert export.called
-        tmpdir.cleanup()
+    tmpdir = TemporaryDirectory()
+    filename = os.path.join(tmpdir.name, filename)
+    data = PURE_TONE_DICT[400].tobytes()
+    to_file(data, filename, audio_format, **AUDIO_PARAMS_SHORT)
+    assert os.path.getsize(filename) > 0
+    tmpdir.cleanup()
 
 
 @pytest.mark.parametrize(
@@ -747,3 +744,260 @@ def test_get_audio_source_alias_prams():
         "Unexpected number of channels: audio_source.ch = "
         + f"{audio_source.ch} instead of 1"
     )
+
+
+# ---- ffmpeg export tests ----
+
+
+def _read_audio_info_ffprobe(filepath):
+    """Use ffprobe to read back audio properties from an encoded file."""
+    import json
+
+    cmd = [
+        "ffprobe",
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_streams",
+        "-select_streams",
+        "a:0",
+        str(filepath),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    info = json.loads(result.stdout)
+    stream = info["streams"][0]
+    return {
+        "sample_rate": int(stream["sample_rate"]),
+        "channels": int(stream["channels"]),
+        "codec_name": stream["codec_name"],
+    }
+
+
+@pytest.fixture
+def mono_16k_data():
+    """1 second of 400Hz tone at 16KHz mono 16-bit."""
+    return PURE_TONE_DICT[400].tobytes()
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize(
+    "audio_format, ext",
+    [
+        ("ogg", ".ogg"),
+        ("mp3", ".mp3"),
+        ("flac", ".flac"),
+    ],
+    ids=["ogg", "mp3", "flac"],
+)
+def test_save_with_ffmpeg_formats(mono_16k_data, audio_format, ext):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio" + ext)
+    _save_with_ffmpeg(mono_16k_data, filepath, audio_format, 16000, 2, 1)
+    assert os.path.getsize(filepath) > 0
+    info = _read_audio_info_ffprobe(filepath)
+    assert info["sample_rate"] == 16000
+    assert info["channels"] == 1
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_audio_bitrate(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.mp3")
+    _save_with_ffmpeg(
+        mono_16k_data,
+        filepath,
+        "mp3",
+        16000,
+        2,
+        1,
+        audio_bitrate="320k",
+    )
+    assert os.path.getsize(filepath) > 0
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_audio_quality(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.mp3")
+    _save_with_ffmpeg(
+        mono_16k_data,
+        filepath,
+        "mp3",
+        16000,
+        2,
+        1,
+        audio_quality="0",
+    )
+    assert os.path.getsize(filepath) > 0
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_audio_codec(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.ogg")
+    _save_with_ffmpeg(
+        mono_16k_data,
+        filepath,
+        "ogg",
+        16000,
+        2,
+        1,
+        audio_codec="libvorbis",
+    )
+    assert os.path.getsize(filepath) > 0
+    info = _read_audio_info_ffprobe(filepath)
+    assert info["codec_name"] == "vorbis"
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_extra_args(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.mp3")
+    _save_with_ffmpeg(
+        mono_16k_data,
+        filepath,
+        "mp3",
+        16000,
+        2,
+        1,
+        ffmpeg_extra_args=["-ar", "8000"],
+    )
+    assert os.path.getsize(filepath) > 0
+    info = _read_audio_info_ffprobe(filepath)
+    assert info["sample_rate"] == 8000
+    tmpdir.cleanup()
+
+
+def test_save_with_ffmpeg_invalid_sample_width():
+    with pytest.raises(AudioParameterError):
+        _save_with_ffmpeg(b"\0\0", "out.ogg", "ogg", 16000, 3, 1)
+
+
+def test_save_with_ffmpeg_no_ffmpeg():
+    with patch("auditok.io._find_ffmpeg", return_value=None):
+        with pytest.raises(AudioIOError):
+            _save_with_ffmpeg(b"\0\0", "out.ogg", "ogg", 16000, 2, 1)
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_bad_codec(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.ogg")
+    with pytest.raises(AudioIOError, match="ffmpeg failed to encode"):
+        _save_with_ffmpeg(
+            mono_16k_data,
+            filepath,
+            "ogg",
+            16000,
+            2,
+            1,
+            audio_codec="nonexistent_codec",
+        )
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize("sw", [1, 2, 4], ids=["sw1", "sw2", "sw4"])
+def test_save_with_ffmpeg_sample_widths(sw):
+    """Verify that all supported sample widths encode correctly."""
+    n_samples = 16000
+    if sw == 1:
+        samples = np.full(n_samples, 128, dtype=np.uint8)
+    elif sw == 2:
+        samples = np.zeros(n_samples, dtype=np.int16)
+    else:
+        samples = np.zeros(n_samples, dtype=np.int32)
+    data = samples.tobytes()
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.flac")
+    _save_with_ffmpeg(data, filepath, "flac", 16000, sw, 1)
+    assert os.path.getsize(filepath) > 0
+    tmpdir.cleanup()
+
+
+def test_to_file_compressed_uses_ffmpeg(mono_16k_data):
+    """to_file delegates to _save_with_ffmpeg for compressed formats."""
+    with patch("auditok.io._save_with_ffmpeg") as mock_ffmpeg:
+        tmpdir = TemporaryDirectory()
+        filepath = os.path.join(tmpdir.name, "audio.ogg")
+        to_file(mono_16k_data, filepath, **AUDIO_PARAMS_SHORT)
+        assert mock_ffmpeg.called
+        tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_to_file_with_audio_codec(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.ogg")
+    to_file(
+        mono_16k_data,
+        filepath,
+        audio_codec="libvorbis",
+        **AUDIO_PARAMS_SHORT,
+    )
+    info = _read_audio_info_ffprobe(filepath)
+    assert info["codec_name"] == "vorbis"
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_to_file_with_audio_bitrate(mono_16k_data):
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.mp3")
+    to_file(
+        mono_16k_data,
+        filepath,
+        audio_bitrate="128k",
+        **AUDIO_PARAMS_SHORT,
+    )
+    assert os.path.getsize(filepath) > 0
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_to_file_roundtrip_ogg(mono_16k_data):
+    """Save as OGG then read back to verify the audio is valid."""
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.ogg")
+    to_file(mono_16k_data, filepath, **AUDIO_PARAMS_SHORT)
+    source = from_file(filepath)
+    source.open()
+    readback = source.read(None)
+    source.close()
+    assert readback is not None
+    assert len(readback) > 0
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_to_file_roundtrip_mp3(mono_16k_data):
+    """Save as MP3 then read back to verify the audio is valid."""
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.mp3")
+    to_file(mono_16k_data, filepath, **AUDIO_PARAMS_SHORT)
+    source = from_file(filepath)
+    source.open()
+    readback = source.read(None)
+    source.close()
+    assert readback is not None
+    assert len(readback) > 0
+    tmpdir.cleanup()
+
+
+@requires_ffmpeg
+def test_to_file_roundtrip_flac(mono_16k_data):
+    """Save as FLAC then read back — FLAC is lossless so data should match."""
+    tmpdir = TemporaryDirectory()
+    filepath = os.path.join(tmpdir.name, "audio.flac")
+    to_file(mono_16k_data, filepath, **AUDIO_PARAMS_SHORT)
+    source = from_file(filepath)
+    source.open()
+    readback = source.read(None)
+    source.close()
+    assert readback == mono_16k_data
+    tmpdir.cleanup()

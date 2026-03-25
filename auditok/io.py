@@ -27,13 +27,6 @@ from abc import ABC, abstractmethod
 from .exceptions import AudioIOError, AudioParameterError
 
 try:
-    from pydub import AudioSegment
-
-    _WITH_PYDUB = True
-except ImportError:
-    _WITH_PYDUB = False
-
-try:
     from tqdm import tqdm as _tqdm
 
     DEFAULT_BAR_FORMAT_TQDM = "|" + "{bar}" + "|" + "[{elapsed}/{duration}]"
@@ -1213,43 +1206,107 @@ def _save_wave(data, file, sampling_rate, sample_width, channels):
         fp.writeframes(data)
 
 
-def _save_with_pydub(
-    data, file, audio_format, sampling_rate, sample_width, channels
+def _save_with_ffmpeg(
+    data,
+    file,
+    audio_format,
+    sampling_rate,
+    sample_width,
+    channels,
+    audio_codec=None,
+    audio_bitrate=None,
+    audio_quality=None,
+    ffmpeg_extra_args=None,
 ):
-    """
-    Save audio data using pydub.
+    """Save audio data to a compressed file using ffmpeg.
 
-    This function saves audio data to a file in various formats supported by
-    pydub (https://github.com/jiaaro/pydub), such as mp3, wav, ogg, etc.
+    Feeds raw PCM data to an ffmpeg subprocess via stdin, which encodes it to
+    the requested format and writes the output file.
 
     Parameters
     ----------
     data : bytes
-        The audio data to be saved.
+        Raw PCM audio data.
     file : str or Path
-        The path to the file where audio data will be saved.
+        Path to the output file.
     audio_format : str
-        The audio format to save the file in (e.g., mp3, wav, ogg).
+        Output format (e.g., "mp3", "ogg", "flac", "webm").
     sampling_rate : int
-        The sampling rate of the audio data.
+        Sampling rate of the input data.
     sample_width : int
-        The size, in bytes, of each audio sample.
+        Sample width in bytes of the input data (1, 2, or 4).
     channels : int
-        The number of audio channels.
+        Number of channels of the input data.
+    audio_codec : str, optional
+        Encoder to use (e.g., "libmp3lame", "libopus", "aac"). If None,
+        ffmpeg picks the default codec for the output format.
+    audio_bitrate : str, optional
+        Target audio bitrate (e.g., "128k", "192k", "320k").
+    audio_quality : str, optional
+        Quality level for VBR encoding. Meaning depends on the codec (e.g.,
+        "2" for libmp3lame VBR, "0" for best quality in many codecs).
+    ffmpeg_extra_args : list of str, optional
+        Additional ffmpeg output arguments (e.g., ["-cutoff", "20000"]).
+
+    Raises
+    ------
+    AudioIOError
+        If ffmpeg is not found or if encoding fails.
 
     See Also
     --------
-    to_file : A related function for saving audio data in various formats.
+    to_file : High-level function for saving audio data in various formats.
     """
-
-    segment = AudioSegment(
-        data,
-        frame_rate=sampling_rate,
-        sample_width=sample_width,
-        channels=channels,
-    )
-    with open(file, "wb") as fp:
-        segment.export(fp, format=audio_format)
+    ffmpeg_path = _find_ffmpeg()
+    if ffmpeg_path is None:
+        raise AudioIOError("ffmpeg not found on PATH")
+    codec = FFmpegAudioSource._SW_TO_CODEC.get(sample_width)
+    if codec is None:
+        raise AudioParameterError(
+            "sample_width must be one of 1, 2, or 4, "
+            "got {}".format(sample_width)
+        )
+    cmd = [
+        ffmpeg_path,
+        "-loglevel",
+        "fatal",
+        "-nostdin",
+        "-y",
+        "-f",
+        codec[4:],  # "u8", "s16le", or "s32le"
+        "-ar",
+        str(sampling_rate),
+        "-ac",
+        str(channels),
+        "-acodec",
+        codec,
+        "-i",
+        "pipe:0",
+    ]
+    if audio_codec is not None:
+        cmd += ["-acodec", str(audio_codec)]
+    if audio_bitrate is not None:
+        cmd += ["-b:a", str(audio_bitrate)]
+    if audio_quality is not None:
+        cmd += ["-q:a", str(audio_quality)]
+    if ffmpeg_extra_args:
+        cmd += list(ffmpeg_extra_args)
+    cmd += ["-f", audio_format, str(file)]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        _, stderr = proc.communicate(input=data)
+    except OSError as exc:
+        raise AudioIOError(f"Failed to start ffmpeg: {exc}") from exc
+    if proc.returncode != 0:
+        err_msg = f"ffmpeg failed to encode {file!r}"
+        if stderr:
+            err_msg += f": {stderr.decode(errors='replace').strip()}"
+        raise AudioIOError(err_msg)
 
 
 def to_file(data, filename, audio_format=None, **kwargs):
@@ -1261,6 +1318,9 @@ def to_file(data, filename, audio_format=None, **kwargs):
     extension. If `audio_format` is None and `filename` has no extension,
     the data will be saved as a raw audio file.
 
+    For compressed formats (mp3, ogg, flac, etc.), ffmpeg is used as the
+    encoding backend.
+
     Parameters
     ----------
     data : bytes-like
@@ -1270,12 +1330,19 @@ def to_file(data, filename, audio_format=None, **kwargs):
         The path to the output audio file.
     audio_format : str, optional
         The audio format to use for saving the data (e.g., raw, webm, wav, ogg).
+        If None (default), the format is inferred from the file
+        extension. If the filename has no extension, the audio is saved as
+        a raw (headerless) audio file.
     kwargs : dict, optional
-        Additional parameters required for non-raw audio formats:
+        Additional parameters:
 
         - `sampling_rate`, `sr` : int, the sampling rate of the audio data.
         - `sample_width`, `sw` : int, the size in bytes of one audio sample.
         - `channels`, `ch` : int, the number of audio channels.
+        - `audio_codec` : str, ffmpeg encoder name (e.g., "libmp3lame").
+        - `audio_bitrate` : str, target bitrate (e.g., "128k").
+        - `audio_quality` : str, VBR quality level (e.g., "2").
+        - `ffmpeg_extra_args` : list of str, additional ffmpeg output arguments.
 
     Raises
     ------
@@ -1293,11 +1360,16 @@ def to_file(data, filename, audio_format=None, **kwargs):
     sampling_rate, sample_width, channels = _get_audio_parameters(kwargs)
     if audio_format in ("wav", "wave"):
         _save_wave(data, filename, sampling_rate, sample_width, channels)
-    elif _WITH_PYDUB:
-        _save_with_pydub(
-            data, filename, audio_format, sampling_rate, sample_width, channels
-        )
     else:
-        raise AudioIOError(
-            f"cannot write file format {audio_format} (file name: {filename})"
+        _save_with_ffmpeg(
+            data,
+            filename,
+            audio_format,
+            sampling_rate,
+            sample_width,
+            channels,
+            audio_codec=kwargs.get("audio_codec"),
+            audio_bitrate=kwargs.get("audio_bitrate"),
+            audio_quality=kwargs.get("audio_quality"),
+            ffmpeg_extra_args=kwargs.get("ffmpeg_extra_args"),
         )

@@ -2,6 +2,7 @@ import math
 import os
 from pathlib import Path
 from random import random
+from shutil import which
 from tempfile import TemporaryDirectory
 from unittest import mock
 from unittest.mock import patch
@@ -26,6 +27,10 @@ from auditok.core import (
 from auditok.io import get_audio_source
 from auditok.signal import to_array
 from auditok.util import AudioReader
+
+requires_ffmpeg = pytest.mark.skipif(
+    which("ffmpeg") is None, reason="ffmpeg not available"
+)
 
 mock._magics.add("__round__")
 
@@ -1718,6 +1723,112 @@ def test_save_file_exists_exception():
 
         with pytest.raises(FileExistsError):
             region.save(Path(filename), exists_ok=False)
+
+
+def _read_audio_info_ffprobe(filepath):
+    import json
+    import subprocess
+
+    cmd = [
+        "ffprobe",
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_streams",
+        "-select_streams",
+        "a:0",
+        str(filepath),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    info = json.loads(result.stdout)
+    stream = info["streams"][0]
+    return {
+        "sample_rate": int(stream["sample_rate"]),
+        "channels": int(stream["channels"]),
+        "codec_name": stream["codec_name"],
+    }
+
+
+@requires_ffmpeg
+@pytest.mark.parametrize(
+    "ext, expected_codec",
+    [
+        (".ogg", "vorbis"),
+        (".mp3", "mp3"),
+        (".flac", "flac"),
+    ],
+    ids=["ogg", "mp3", "flac"],
+)
+def test_save_compressed_formats(ext, expected_codec):
+    region = AudioRegion(
+        b"\0" * 32000, sampling_rate=16000, sample_width=2, channels=1
+    )
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio" + ext)
+        region.save(filepath)
+        assert os.path.getsize(filepath) > 0
+        info = _read_audio_info_ffprobe(filepath)
+        assert info["sample_rate"] == 16000
+        assert info["channels"] == 1
+
+
+@requires_ffmpeg
+def test_save_with_audio_codec():
+    region = AudioRegion(
+        b"\0" * 32000, sampling_rate=16000, sample_width=2, channels=1
+    )
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio.ogg")
+        region.save(filepath, audio_codec="libvorbis")
+        info = _read_audio_info_ffprobe(filepath)
+        assert info["codec_name"] == "vorbis"
+
+
+@requires_ffmpeg
+def test_save_with_audio_bitrate():
+    region = AudioRegion(
+        b"\0" * 32000, sampling_rate=16000, sample_width=2, channels=1
+    )
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio.mp3")
+        region.save(filepath, audio_bitrate="192k")
+        assert os.path.getsize(filepath) > 0
+
+
+@requires_ffmpeg
+def test_save_with_audio_quality():
+    region = AudioRegion(
+        b"\0" * 32000, sampling_rate=16000, sample_width=2, channels=1
+    )
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio.mp3")
+        region.save(filepath, audio_quality="0")
+        assert os.path.getsize(filepath) > 0
+
+
+@requires_ffmpeg
+def test_save_with_ffmpeg_extra_args():
+    region = AudioRegion(
+        b"\0" * 32000, sampling_rate=16000, sample_width=2, channels=1
+    )
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio.mp3")
+        region.save(filepath, ffmpeg_extra_args=["-ar", "8000"])
+        info = _read_audio_info_ffprobe(filepath)
+        assert info["sample_rate"] == 8000
+
+
+@requires_ffmpeg
+def test_save_roundtrip_flac():
+    """Save as FLAC and read back — FLAC is lossless so data should match."""
+    data = b"\0" * 32000
+    region = AudioRegion(data, sampling_rate=16000, sample_width=2, channels=1)
+    with TemporaryDirectory() as tmpdir:
+        filepath = os.path.join(tmpdir, "audio.flac")
+        region.save(filepath)
+        loaded = AudioRegion.load(filepath)
+        assert bytes(loaded) == data
 
 
 @pytest.mark.parametrize(

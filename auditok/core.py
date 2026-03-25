@@ -131,8 +131,8 @@ def split(
         `sample_width`, `channels`).
 
         For string inputs, audio format is inferred from the file extension, or
-        specify explicitly via `audio_format` or `fmt`. Otherwise, the backend
-        (currently only `pydub`) handles loading data.
+        specify explicitly via `audio_format` or `fmt`. For compressed formats,
+        ffmpeg is used to decode the audio.
 
     min_dur : float, default=0.2
         Minimum duration in seconds of a detected audio event. Higher values
@@ -783,22 +783,41 @@ class AudioRegion(object):
         """
         Save the audio region to a file.
 
+        For raw and wav formats, the region's audio parameters are used as-is.
+        For compressed formats (mp3, ogg, flac, etc.), ffmpeg is used as the
+        encoding backend.
+
+        When ``audio_codec``, ``audio_bitrate``, ``audio_quality``, or
+        ``ffmpeg_extra_args`` are provided, they are forwarded to ffmpeg to
+        control the encoding.
+
         Parameters
         ----------
         filename : str or Path
-            Path to the output audio file. If a string, it may include `{start}`,
-            `{end}`, and `{duration}` placeholders. Regions created by `split`
-            contain `start` and `end` attributes that can be used to format the
-            filename, as shown in the example.
+            Path to the output audio file. If a string, it may include
+            ``{start}``, ``{end}``, and ``{duration}`` placeholders. Regions
+            created by :meth:`split` contain ``start`` and ``end`` attributes
+            that can be used to format the filename, as shown in the example.
         audio_format : str, optional, default=None
-            Format used to save the audio data. If None (default), the format is
-            inferred from the file extension. If the filename has no extension,
-            the audio is saved as a raw (headerless) audio file.
+            Format used to save the audio data (e.g., "wav", "mp3", "ogg",
+            "flac"). If None (default), the format is inferred from the file
+            extension. If the filename has no extension, the audio is saved as
+            a raw (headerless) audio file.
         exists_ok : bool, optional, default=True
-            If True, overwrite the file if it already exists. If False, raise an
-            `IOError` if the file exists.
-        audio_parameters : dict, optional
-            Additional keyword arguments to pass to the audio-saving backend.
+            If True, overwrite the file if it already exists. If False, raise
+            an `IOError` if the file exists.
+        audio_codec : str, optional
+            ffmpeg encoder to use (e.g., ``"libmp3lame"``, ``"libopus"``,
+            ``"aac"``). If not provided, ffmpeg picks the default codec for the
+            output format.
+        audio_bitrate : str, optional
+            Target audio bitrate (e.g., ``"128k"``, ``"192k"``, ``"320k"``).
+        audio_quality : str, optional
+            Quality level for VBR encoding. Interpretation depends on the codec
+            (e.g., ``"2"`` for libmp3lame VBR, ``"0"`` for best quality).
+        ffmpeg_extra_args : list of str, optional
+            Additional ffmpeg output arguments passed directly to the ffmpeg
+            command line (e.g., ``["-cutoff", "20000"]``).
 
         Returns
         -------
@@ -827,6 +846,14 @@ class AudioRegion(object):
         >>> assert region.save('audio_{start}-{end}.wav') == "audio_2.25-3.75.wav"
         >>> filename = region.save('audio_{start:.3f}-{end:.3f}_{duration:.3f}.wav')
         >>> assert filename == "audio_2.250-3.750_1.500.wav"
+
+        Save as MP3 with a specific bitrate:
+
+        >>> region.save("output.mp3", audio_bitrate="192k")
+
+        Save as OGG with a specific codec:
+
+        >>> region.save("output.ogg", audio_codec="libopus", audio_bitrate="64k")
         """
 
         if isinstance(filename, Path):
@@ -852,7 +879,7 @@ class AudioRegion(object):
             sr=self.sr,
             sw=self.sw,
             ch=self.ch,
-            audio_parameters=audio_parameters,
+            **audio_parameters,
         )
         return filename
 

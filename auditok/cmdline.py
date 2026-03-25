@@ -79,7 +79,7 @@ def main(argv=None):
             help="Specify the input audio file format. If not provided, the "
             "format is inferred from the file extension. If the output file "
             "name lacks an extension, the format is guessed from the file "
-            "header (requires pydub). If neither condition is met, an error "
+            "header (requires ffmpeg). If neither condition is met, an error "
             "is raised.",
             metavar="STRING",
         )
