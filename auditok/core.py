@@ -1077,6 +1077,52 @@ class AudioRegion(object):
     def __repr__(self):
         return "<{}>".format(str(self))
 
+    def _repr_html_(self):
+        """Rich HTML representation for Jupyter notebooks.
+
+        Returns an HTML5 audio player with the audio data embedded as a
+        base64-encoded WAV, letting users play detected audio events directly
+        in the browser.
+        """
+        import base64
+        import io
+        import wave
+
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            wf.setframerate(self.sr)
+            wf.setsampwidth(self.sw)
+            wf.setnchannels(self.ch)
+            wf.writeframes(self.data)
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        src = f"data:audio/wav;base64,{b64}"
+
+        if self.start is not None:
+            time_info = " | {:.3f}s — {:.3f}s".format(self.start, self.end)
+        else:
+            time_info = ""
+        label = (
+            "<small>"
+            "<b>AudioRegion</b> "
+            "{:.3f}s{} "
+            "({} Hz, {}‑bit, {} ch)"
+            "</small>".format(
+                self.duration,
+                time_info,
+                self.sr,
+                self.sw * 8,
+                self.ch,
+            )
+        )
+        return (
+            '<div style="margin:4px 0">'
+            "{label}<br>"
+            '<audio controls preload="auto" style="margin-top:2px">'
+            '<source src="{src}" type="audio/wav">'
+            "</audio>"
+            "</div>"
+        ).format(label=label, src=src)
+
     def __add__(self, other):
         """
         Concatenate this audio region with `other`, returning a new region.

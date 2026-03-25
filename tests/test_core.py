@@ -1577,6 +1577,48 @@ def test_creation_invalid_data_exception():
     )
 
 
+def test_repr_html():
+    """_repr_html_ returns an HTML audio player for Jupyter notebooks."""
+    import base64
+    import io
+    import wave
+
+    data = b"\x00\x01" * 160  # 10ms at 16kHz, 16-bit mono
+    region = AudioRegion(data, sampling_rate=16000, sample_width=2, channels=1)
+    html = region._repr_html_()
+
+    assert "<audio controls" in html
+    assert "AudioRegion" in html
+    assert "0.010s" in html
+    assert "16000 Hz" in html
+    assert "16‑bit" in html
+    assert "1 ch" in html
+    assert 'type="audio/wav"' in html
+
+    # Extract base64 data and verify it's a valid WAV
+    prefix = "data:audio/wav;base64,"
+    start = html.index(prefix) + len(prefix)
+    end = html.index('"', start)
+    wav_bytes = base64.b64decode(html[start:end])
+    buf = io.BytesIO(wav_bytes)
+    with wave.open(buf, "rb") as wf:
+        assert wf.getframerate() == 16000
+        assert wf.getsampwidth() == 2
+        assert wf.getnchannels() == 1
+        assert wf.readframes(160) == data
+
+
+def test_repr_html_with_start_and_end():
+    """_repr_html_ shows start and end times when start is set."""
+    data = b"\x00\x01" * 16000  # 1s at 16kHz, 16-bit mono
+    region = AudioRegion(
+        data, sampling_rate=16000, sample_width=2, channels=1, start=2.5
+    )
+    html = region._repr_html_()
+    assert "2.500s" in html  # start
+    assert "3.500s" in html  # end = 2.5 + 1.0
+
+
 @pytest.mark.parametrize(
     "skip, max_read, channels",
     [
