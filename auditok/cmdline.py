@@ -45,7 +45,7 @@ def main(argv=None):
         group.add_argument(
             dest="input",
             help="Input audio or video file. Use '-' for stdin "
-            "[Default: read from a microphone using PyAudio].",
+            "[Default: read from a microphone using sounddevice].",
             metavar="input",
             nargs="?",
             default=None,
@@ -55,7 +55,7 @@ def main(argv=None):
             "--input-device-index",
             dest="input_device_index",
             help="Audio device index [Default: %(default)s]. "
-            "Optional and only effective when using PyAudio.",
+            "Optional and only effective when reading from a microphone.",
             type=int,
             default=None,
             metavar="INT",
@@ -65,7 +65,7 @@ def main(argv=None):
             "--audio-frame-per-buffer",
             dest="frame_per_buffer",
             help="Audio frame per buffer [Default: %(default)s]. "
-            "Optional and only effective when using PyAudio.",
+            "Optional and only effective when reading from a microphone.",
             type=int,
             default=1024,
             metavar="INT",
@@ -295,7 +295,7 @@ def main(argv=None):
             dest="echo",
             action="store_true",
             default=False,
-            help="Immediately play back a detected audio event using pyaudio.",
+            help="Immediately play back a detected audio event using sounddevice.",
         )
         group.add_argument(
             "-B",

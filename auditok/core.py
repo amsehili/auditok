@@ -55,7 +55,7 @@ def load(input, skip=0, max_read=None, **kwargs):
         should specify the path to a valid audio file. If `bytes`, it is
         treated as raw audio data. If set to "-", raw data will be read from
         standard input (stdin). If `None`, audio data is read from the
-        microphone using PyAudio. For `bytes` data or a raw audio file path,
+        microphone using sounddevice. For `bytes` data or a raw audio file path,
         `sampling_rate`, `sample_width`, and `channels` parameters (or their
         aliases) must be specified. If an :class:`AudioSource` object is
         provided, it is used directly to read data.

@@ -9,9 +9,9 @@ Module for low-level audio input-output operations.
     BufferAudioSource
     WaveAudioSource
     FFmpegAudioSource
-    PyAudioSource
+    AudioDeviceSource
     StdinAudioSource
-    PyAudioPlayer
+    AudioDevicePlayer
     from_file
     to_file
     player_for
@@ -41,10 +41,10 @@ except ImportError:
 def _suppress_stderr():
     """Redirect C-level stderr to /dev/null during a block.
 
-    PortAudio (used by PyAudio) probes every audio backend on init, printing
-    ALSA/JACK/OSS warnings to the C stderr fd. Python's contextlib won't
-    catch those because they bypass sys.stderr entirely, so we dup/redirect
-    the underlying file descriptor.
+    PortAudio probes every audio backend on init, printing ALSA/JACK/OSS
+    warnings to the C stderr fd. Python's contextlib won't catch those because
+    they bypass sys.stderr entirely, so we dup/redirect the underlying file
+    descriptor.
     """
     from contextlib import contextmanager
 
@@ -74,8 +74,10 @@ __all__ = [
     "RawAudioSource",
     "WaveAudioSource",
     "FFmpegAudioSource",
+    "AudioDeviceSource",
     "PyAudioSource",
     "StdinAudioSource",
+    "AudioDevicePlayer",
     "PyAudioPlayer",
     "from_file",
     "to_file",
@@ -678,12 +680,12 @@ class FFmpegAudioSource(AudioSource):
         self._close_process()
 
 
-class PyAudioSource(AudioSource):
-    """An `AudioSource` class for reading data from a built-in microphone using
-    PyAudio.
+_SW_TO_DTYPE = {1: "int8", 2: "int16", 4: "int32"}
 
-    This class leverages PyAudio (https://people.csail.mit.edu/hubert/pyaudio/)
-    to capture audio data directly from a microphone.
+
+class AudioDeviceSource(AudioSource):
+    """An `AudioSource` class for reading data from a built-in microphone using
+    sounddevice.
 
     Parameters
     ----------
@@ -694,10 +696,10 @@ class PyAudioSource(AudioSource):
     channels : int, optional, default=1
         The number of audio channels.
     frames_per_buffer : int, optional, default=1024
-        The number of frames per buffer, as specified by PyAudio.
+        The number of frames per buffer.
     input_device_index : int or None, optional, default=None
-        The PyAudio index of the audio device to read from. If None, the default
-        audio device is used.
+        The sounddevice index of the audio device to read from. If None, the
+        default audio device is used.
     """
 
     def __init__(
@@ -708,49 +710,50 @@ class PyAudioSource(AudioSource):
         frames_per_buffer=1024,
         input_device_index=None,
     ):
-
         super().__init__(sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer
         self.input_device_index = input_device_index
-
-        import pyaudio
-
-        with _suppress_stderr():
-            self._pyaudio_object = pyaudio.PyAudio()
-        self._pyaudio_format = self._pyaudio_object.get_format_from_width(
-            self.sample_width
-        )
+        dtype = _SW_TO_DTYPE.get(sample_width)
+        if dtype is None:
+            raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
+        self._dtype = dtype
         self._audio_stream = None
 
     def is_open(self):
         return self._audio_stream is not None
 
     def open(self):
-        self._audio_stream = self._pyaudio_object.open(
-            format=self._pyaudio_format,
-            channels=self.channels,
-            rate=self.sampling_rate,
-            input=True,
-            output=False,
-            input_device_index=self.input_device_index,
-            frames_per_buffer=self._chunk_size,
-        )
+        import sounddevice as sd
+
+        with _suppress_stderr():
+            self._audio_stream = sd.RawInputStream(
+                samplerate=self.sampling_rate,
+                channels=self.channels,
+                dtype=self._dtype,
+                blocksize=self._chunk_size,
+                device=self.input_device_index,
+            )
+        self._audio_stream.start()
 
     def close(self):
         if self._audio_stream is not None:
-            self._audio_stream.stop_stream()
+            self._audio_stream.stop()
             self._audio_stream.close()
             self._audio_stream = None
 
     def read(self, size):
         if self._audio_stream is None:
             raise IOError("Stream is not open")
-        if self._audio_stream.is_active():
-            data = self._audio_stream.read(size)
-            if data is None or len(data) < 1:
+        if self._audio_stream.active:
+            data, overflowed = self._audio_stream.read(size)
+            data = bytes(data)
+            if len(data) < 1:
                 return None
             return data
         return None
+
+
+PyAudioSource = AudioDeviceSource
 
 
 class StdinAudioSource(FileAudioSource):
@@ -810,11 +813,8 @@ def _make_tqdm_progress_bar(iterable, total, duration, **tqdm_kwargs):
     return _tqdm(iterable, total=total, **tqdm_kwargs)
 
 
-class PyAudioPlayer:
-    """A class for audio playback using PyAudio.
-
-    This class facilitates audio playback through the PyAudio library
-    (https://people.csail.mit.edu/hubert/pyaudio/).
+class AudioDevicePlayer:
+    """A class for audio playback using sounddevice.
 
     Parameters
     ----------
@@ -832,26 +832,19 @@ class PyAudioPlayer:
         sample_width=2,
         channels=1,
     ):
-        if sample_width not in (1, 2, 4):
+        dtype = _SW_TO_DTYPE.get(sample_width)
+        if dtype is None:
             raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
 
         self.sampling_rate = sampling_rate
         self.sample_width = sample_width
         self.channels = channels
-
-        import pyaudio
-
-        with _suppress_stderr():
-            self._p = pyaudio.PyAudio()
-        self.stream = self._p.open(
-            format=self._p.get_format_from_width(self.sample_width),
-            channels=self.channels,
-            rate=self.sampling_rate,
-            input=False,
-            output=True,
-        )
+        self._dtype = dtype
+        self._stream = None
 
     def play(self, data, progress_bar=False, **progress_bar_kwargs):
+        import sounddevice as sd
+
         chunk_gen, nb_chunks = self._chunk_data(data)
         if progress_bar and _WITH_TQDM:
             duration = len(data) / (
@@ -863,20 +856,25 @@ class PyAudioPlayer:
                 duration=duration,
                 **progress_bar_kwargs,
             )
-        if self.stream.is_stopped():
-            self.stream.start_stream()
+        with _suppress_stderr():
+            self._stream = sd.RawOutputStream(
+                samplerate=self.sampling_rate,
+                channels=self.channels,
+                dtype=self._dtype,
+            )
+        self._stream.start()
         try:
             for chunk in chunk_gen:
-                self.stream.write(chunk)
+                self._stream.write(chunk)
         except KeyboardInterrupt:
             pass
-        self.stream.stop_stream()
+        self._stream.stop()
 
     def stop(self):
-        if not self.stream.is_stopped():
-            self.stream.stop_stream()
-        self.stream.close()
-        self._p.terminate()
+        if self._stream is not None:
+            self._stream.stop()
+            self._stream.close()
+            self._stream = None
 
     def _chunk_data(self, data):
         # make audio chunks of 100 ms to allow interruption (like ctrl+c)
@@ -893,14 +891,16 @@ class PyAudioPlayer:
         return chunk_gen, nb_chunks
 
 
+PyAudioPlayer = AudioDevicePlayer
+
+
 def player_for(source):
     """
     Return an `AudioPlayer` compatible with the specified `source`.
 
-    This function creates an `AudioPlayer` instance (currently only
-    `PyAudioPlayer` is implemented) that matches the audio properties of the
-    provided `source`, ensuring compatibility in terms of sampling rate, sample
-    width, and number of channels.
+    This function creates an `AudioDevicePlayer` instance that matches the audio
+    properties of the provided `source`, ensuring compatibility in terms of
+    sampling rate, sample width, and number of channels.
 
     Parameters
     ----------
@@ -910,12 +910,12 @@ def player_for(source):
 
     Returns
     -------
-    PyAudioPlayer
+    AudioDevicePlayer
         An audio player with the same sampling rate, sample width, and number
         of channels as `source`.
     """
 
-    return PyAudioPlayer(
+    return AudioDevicePlayer(
         source.sampling_rate, source.sample_width, source.channels
     )
 
@@ -926,7 +926,7 @@ def get_audio_source(input=None, **kwargs):
 
     This function generates an `AudioSource` instance from various input types,
     allowing flexibility for audio data sources such as file paths, raw data,
-    standard input, or microphone input via PyAudio.
+    standard input, or microphone input via sounddevice.
 
     Parameters
     ----------
@@ -935,7 +935,7 @@ def get_audio_source(input=None, **kwargs):
         - `str`: Path to a valid audio file.
         - `bytes`: Raw audio data.
         - "-": Read raw data from standard input.
-        - None (default): Read audio data from the microphone using PyAudio.
+        - None (default): Read audio data from the microphone using sounddevice.
     kwargs : dict, optional
         Additional audio parameters used to construct the `AudioSource` object.
         Depending on the `input` type, these may be optional (e.g., for common
@@ -963,11 +963,11 @@ def get_audio_source(input=None, **kwargs):
     if input is not None:
         return from_file(filename=input, **kwargs)
 
-    # read data from microphone via pyaudio
+    # read data from microphone via sounddevice
     else:
         frames_per_buffer = kwargs.get("frames_per_buffer", 1024)
         input_device_index = kwargs.get("input_device_index")
-        return PyAudioSource(
+        return AudioDeviceSource(
             *_get_audio_parameters(kwargs),
             frames_per_buffer=frames_per_buffer,
             input_device_index=input_device_index,

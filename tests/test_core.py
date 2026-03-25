@@ -1622,7 +1622,7 @@ def test_load_AudioRegion(skip, max_read, channels):
 
 
 def test_load_from_microphone():
-    with patch("auditok.io.PyAudioSource") as patch_pyaudio_source:
+    with patch("auditok.io.AudioDeviceSource") as patch_audio_source:
         with patch("auditok.core.AudioReader.read") as patch_reader:
             patch_reader.return_value = None
             with patch(
@@ -1630,7 +1630,7 @@ def test_load_from_microphone():
             ) as patch_AudioRegion:
                 patch_AudioRegion.return_value = None
                 AudioRegion.load(None, skip=0, max_read=5, sr=16000, sw=2, ch=1)
-    assert patch_pyaudio_source.called
+    assert patch_audio_source.called
     assert patch_reader.called
     assert patch_AudioRegion.called
 
