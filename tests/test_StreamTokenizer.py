@@ -679,3 +679,82 @@ def test_callback(tokenizer_callback):
     assert (
         len(tokens) == 2
     ), "wrong number of tokens, expected: 2, found: {}".format(len(tokens))
+
+
+def test_max_length_inf_single_token(validator):
+    """With max_length=inf, the entire valid sequence is one token."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=float("inf"),
+        max_continuous_silence=3,
+    )
+    data_source = StringDataSource("aAAAaaAAAAAAAAAaaAAa")
+    #                                ^                 ^
+    #                                1                 18
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    data = "".join(tokens[0][0])
+    assert data == "AAAaaAAAAAAAAAaaAAa"
+    assert tokens[0][1] == 1
+    assert tokens[0][2] == 19
+
+
+def test_max_length_inf_splits_on_silence(validator):
+    """With max_length=inf, tokens still split on max_continuous_silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=float("inf"),
+        max_continuous_silence=2,
+    )
+    data_source = StringDataSource("AAAAAaaaAAAAA")
+    #                               ^   ^   ^   ^
+    #                               0   4   8   12
+    # silence gap of 3 ('aaa') > max_continuous_silence (2) -> two tokens
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+    assert "".join(tokens[0][0]) == "AAAAAaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 6
+    assert "".join(tokens[1][0]) == "AAAAA"
+    assert tokens[1][1] == 8
+    assert tokens[1][2] == 12
+
+
+def test_max_length_inf_respects_min_length(validator):
+    """With max_length=inf, min_length is still enforced."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=5,
+        max_length=float("inf"),
+        max_continuous_silence=1,
+        mode=StreamTokenizer.STRICT_MIN_LENGTH,
+    )
+    data_source = StringDataSource("AAaaAAAAAAAA")
+    #                                   ^^^^^^^^
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAAAA"
+    assert tokens[0][1] == 4
+    assert tokens[0][2] == 11
+
+
+def test_max_length_inf_with_drop_trailing_silence(validator):
+    """With max_length=inf and DROP_TRAILING_SILENCE, trailing silence
+    is removed."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=float("inf"),
+        max_continuous_silence=3,
+        mode=StreamTokenizer.DROP_TRAILING_SILENCE,
+    )
+    data_source = StringDataSource("AAAAAaaa")
+    #                               ^   ^
+    #                               0   4
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAA"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 4

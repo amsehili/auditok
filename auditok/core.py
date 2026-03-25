@@ -139,11 +139,12 @@ def split(
         can exclude very short utterances (e.g., single words like "yes" or
         "no"). Lower values may increase the number of short audio events.
 
-    max_dur : float, default=5
+    max_dur : float or None, default=5
         Maximum duration in seconds for an audio event. Events longer than this
         are truncated. If the remainder of a truncated event is shorter than
         `min_dur`, it is included as a valid event if `strict_min_dur` is False;
-        otherwise, it is rejected.
+        otherwise, it is rejected. Use None to disable the maximum duration
+        limit (i.e., events can be of arbitrary length).
 
     max_silence : float, default=0.3
         Maximum duration of continuous silence allowed within an audio event.
@@ -217,7 +218,9 @@ def split(
 
     if min_dur <= 0:
         raise ValueError(f"'min_dur' ({min_dur}) must be > 0")
-    if max_dur <= 0:
+    if max_dur is None or max_dur == float("inf"):
+        max_dur = float("inf")
+    elif max_dur <= 0:
         raise ValueError(f"'max_dur' ({max_dur}) must be > 0")
     if max_silence < 0:
         raise ValueError(f"'max_silence' ({max_silence}) must be >= 0")
@@ -264,16 +267,20 @@ def split(
     if strict_min_dur:
         mode |= StreamTokenizer.STRICT_MIN_LENGTH
     min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
-    max_length = _duration_to_nb_windows(
-        max_dur, analysis_window, math.floor, _EPSILON
-    )
+    if max_dur == float("inf"):
+        max_length = float("inf")
+    else:
+        max_length = _duration_to_nb_windows(
+            max_dur, analysis_window, math.floor, _EPSILON
+        )
     max_continuous_silence = _duration_to_nb_windows(
         max_silence, analysis_window, math.floor, _EPSILON
     )
 
     err_msg = "({0} sec.) results in {1} analysis window(s) "
     err_msg += "({1} == {6}({0} / {2})) which is {5} the number "
-    err_msg += "of analysis window(s) for 'max_dur' ({3} == floor({4} / {2}))"
+    err_msg += "of analysis window(s) for 'max_dur' "
+    err_msg += "({3} == floor({4} / {2}))"
     if min_length > max_length:
         err_msg = "'min_dur' " + err_msg
         raise ValueError(
@@ -1156,9 +1163,9 @@ class StreamTokenizer:
         Minimum number of frames in a valid token, including any tolerated
         non-valid frames within the token.
 
-    max_length : int
+    max_length : int or float("inf")
         Maximum number of frames in a valid token, including all tolerated
-        non-valid frames within the token.
+        non-valid frames within the token. Use float("inf") for no limit.
 
     max_continuous_silence : int
         Maximum number of consecutive non-valid frames within a token. Each

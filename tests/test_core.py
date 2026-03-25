@@ -388,7 +388,7 @@ def test_split_params(
         sr=10,
         sw=2,
         ch=1,
-        **kwargs
+        **kwargs,
     )
 
     region = AudioRegion(data, 10, 2, 1)
@@ -399,7 +399,7 @@ def test_split_params(
         drop_trailing_silence,
         strict_min_dur,
         analysis_window=0.1,
-        **kwargs
+        **kwargs,
     )
 
     regions = list(regions)
@@ -510,7 +510,7 @@ def test_split_kwargs(channels, kwargs, expected):
         sr=10,
         sw=2,
         ch=channels,
-        **kwargs
+        **kwargs,
     )
 
     region = AudioRegion(data, 10, 2, channels)
@@ -527,7 +527,7 @@ def test_split_kwargs(channels, kwargs, expected):
         drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
-        **kwargs
+        **kwargs,
     )
 
     regions = list(regions)
@@ -942,7 +942,7 @@ def test_split_analysis_window(
         sw=2,
         ch=channels,
         eth=49.99,
-        **kwargs
+        **kwargs,
     )
 
     region = AudioRegion(data, 10, 2, channels)
@@ -953,7 +953,7 @@ def test_split_analysis_window(
         drop_trailing_silence=False,
         strict_min_dur=False,
         eth=49.99,
-        **kwargs
+        **kwargs,
     )
 
     regions = list(regions)
@@ -1105,7 +1105,7 @@ def test_split_input_type(input, kwargs):
         drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
-        **kwargs
+        **kwargs,
     )
     regions = list(regions)
     expected = [(2, 32), (34, 76)]
@@ -1244,6 +1244,76 @@ def test_split_negative_temporal_params(wrong_param):
         name, value, "=" if name == "max_silence" else ""
     )
     assert err_msg == str(val_err.value)
+
+
+@pytest.mark.parametrize(
+    "max_dur",
+    [None, float("inf")],
+    ids=["None", "inf"],
+)
+def test_split_max_dur_unlimited(max_dur):
+    """With max_dur=None or inf, no truncation occurs."""
+    with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+        data = fp.read()
+
+    # With max_dur=2 and max_silence=0.2, the "short_max_dur" case gives
+    # 5 regions due to truncation:
+    #   [(2,16), (17,31), (34,54), (54,74), (74,76)]
+    # The third region (34,76) with duration 4.2s is truncated at max_dur=2.
+    # With unlimited max_dur, no truncation happens so we get 3 regions:
+    #   [(2,16), (17,31), (34,76)]
+    regions = list(
+        split(
+            data,
+            min_dur=0.3,
+            max_dur=max_dur,
+            max_silence=0.2,
+            analysis_window=0.1,
+            sr=10,
+            sw=2,
+            ch=1,
+            eth=50,
+        )
+    )
+    expected = [(2, 16), (17, 31), (34, 76)]
+    assert len(regions) == len(expected)
+    sample_width = 2
+    for reg, (onset, offset) in zip(regions, expected, strict=True):
+        exp_data = data[onset * sample_width : offset * sample_width]
+        assert bytes(reg) == exp_data
+
+
+def test_split_max_dur_none_via_audio_region():
+    """AudioRegion.split also accepts max_dur=None."""
+    with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+        data = fp.read()
+
+    region = AudioRegion(data, 10, 2, 1)
+    regions = list(
+        region.split(
+            min_dur=0.2,
+            max_dur=None,
+            max_silence=0.2,
+            analysis_window=0.1,
+            eth=50,
+        )
+    )
+    regions_from_split = list(
+        split(
+            data,
+            min_dur=0.2,
+            max_dur=None,
+            max_silence=0.2,
+            analysis_window=0.1,
+            sr=10,
+            sw=2,
+            ch=1,
+            eth=50,
+        )
+    )
+    assert len(regions) == len(regions_from_split)
+    for r1, r2 in zip(regions, regions_from_split, strict=True):
+        assert r1 == r2
 
 
 def test_split_too_small_analysis_window():
