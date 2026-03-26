@@ -1365,11 +1365,9 @@ def test_split_and_plot_interactive_in_notebook():
     with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
         data = fp.read()
     region = AudioRegion(data, 10, 2, 1)
-    with (
-        patch("auditok.widget._in_notebook", return_value=True),
-        patch("auditok.widget.display_interactive") as mock_display,
-        patch("auditok.core.plot") as mock_plot,
-    ):
+    with patch("auditok.widget._in_notebook", return_value=True), patch(
+        "auditok.widget.display_interactive"
+    ) as mock_display, patch("auditok.core.plot") as mock_plot:
         regions = region.split_and_plot(
             min_dur=0.2,
             max_dur=5,
@@ -1391,11 +1389,9 @@ def test_split_and_plot_interactive_not_in_notebook():
     with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
         data = fp.read()
     region = AudioRegion(data, 10, 2, 1)
-    with (
-        patch("auditok.widget._in_notebook", return_value=False),
-        patch("auditok.widget.display_interactive") as mock_display,
-        patch("auditok.core.plot") as mock_plot,
-    ):
+    with patch("auditok.widget._in_notebook", return_value=False), patch(
+        "auditok.widget.display_interactive"
+    ) as mock_display, patch("auditok.core.plot") as mock_plot:
         regions = region.split_and_plot(
             min_dur=0.2,
             max_dur=5,
