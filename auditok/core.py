@@ -1016,7 +1016,7 @@ class AudioRegion(object):
                 )
                 return regions
 
-        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
+        detections = ((reg.start, reg.end) for reg in regions)
         plot(
             self,
             scale_signal=scale_signal,

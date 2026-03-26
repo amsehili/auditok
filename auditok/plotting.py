@@ -75,6 +75,9 @@ def plot(
         detections = [
             (start, end - (1 / sampling_rate)) for (start, end) in detections
         ]
+    if figsize is None:
+        figsize = (14, 2.5 * nb_subplots)
+
     if theme == "auditok":
         theme = AUDITOK_PLOT_THEME
 
@@ -119,14 +122,16 @@ def plot(
                 label="Detection threshold",
             )
             if sid == 1:
-                legend = plt.legend(
+                leg = plt.legend(
                     ["Detection threshold"],
-                    facecolor=fig_fc,
-                    framealpha=0.1,
-                    bbox_to_anchor=(0.0, 1.15, 1.0, 0.102),
-                    loc=2,
+                    facecolor=plot_fc,
+                    framealpha=1.0,
+                    edgecolor="#555555",
+                    loc="upper right",
+                    fontsize=8,
                 )
-                legend = plt.gca().add_artist(legend)
+                for text in leg.get_texts():
+                    text.set_color("#cccccc")
 
         signal_theme = theme.get("signal", {})
         _plot_line(
