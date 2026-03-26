@@ -8,20 +8,25 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        os: [ubuntu-latest]
+        include:
+          - python-version: "3.8"
+            os: ubuntu-24.04
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
 
     - name: Set up PYTHONPATH
       run: echo "PYTHONPATH=$PYTHONPATH:${{ github.workspace }}" >> $GITHUB_ENV
@@ -29,14 +34,10 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update --fix-missing
-        pip install pytest-cov pytest numpy pydub matplotlib
-
-    - name: Install specific package for Python 3.13 only
-      if: matrix.python-version == '3.13'
-      run: pip install audioop-lts
+        pip install pytest-cov pytest numpy matplotlib
 
     - name: Run tests
-      run: pytest -s  -p no:warnings --cov --cov-report=xml tests
+      run: pytest -s -p no:warnings --cov --cov-report=xml tests
 
     - name: Upload results to Codecov
       uses: codecov/codecov-action@v4
