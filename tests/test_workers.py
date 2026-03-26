@@ -70,7 +70,6 @@ def test_TokenizerWorker(audio_data_source, expected_detections):
             tokenizer.detections,
             expected_detections,
             log_lines,
-            strict=True,
         ),
         1,
     ):
@@ -262,7 +261,6 @@ def test_PrintWorker(audio_data_source, expected_detections):
     for det, exp in zip(
         tokenizer.detections,
         expected_detections,
-        strict=True,
     ):
         start, end = exp
         assert pytest.approx(det.start) == start

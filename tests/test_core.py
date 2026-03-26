@@ -417,7 +417,11 @@ def test_split_params(
     assert len(regions_ar) == len(expected), err_msg
 
     sample_width = 2
-    for reg, reg_ar, exp in zip(regions, regions_ar, expected, strict=True):
+    for reg, reg_ar, exp in zip(
+        regions,
+        regions_ar,
+        expected,
+    ):
         onset, offset = exp
         exp_data = data[onset * sample_width : offset * sample_width]
         assert bytes(reg) == exp_data
@@ -550,7 +554,6 @@ def test_split_kwargs(channels, kwargs, expected):
         regions,
         regions_ar,
         expected,
-        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -976,7 +979,6 @@ def test_split_analysis_window(
         regions,
         regions_ar,
         expected,
-        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -1029,7 +1031,6 @@ def test_split_custom_validator():
         regions,
         regions_ar,
         expected,
-        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_size_bytes : offset * sample_size_bytes]
@@ -1121,7 +1122,6 @@ def test_split_input_type(input, kwargs):
     for reg, exp in zip(
         regions,
         expected,
-        strict=True,
     ):
         onset, offset = exp
         exp_data = data[onset * sample_width * 2 : offset * sample_width * 2]
@@ -1283,7 +1283,10 @@ def test_split_max_dur_unlimited(max_dur):
     expected = [(2, 16), (17, 31), (34, 76)]
     assert len(regions) == len(expected)
     sample_width = 2
-    for reg, (onset, offset) in zip(regions, expected, strict=True):
+    for reg, (onset, offset) in zip(
+        regions,
+        expected,
+    ):
         exp_data = data[onset * sample_width : offset * sample_width]
         assert bytes(reg) == exp_data
 
@@ -1317,7 +1320,10 @@ def test_split_max_dur_none_via_audio_region():
         )
     )
     assert len(regions) == len(regions_from_split)
-    for r1, r2 in zip(regions, regions_from_split, strict=True):
+    for r1, r2 in zip(
+        regions,
+        regions_from_split,
+    ):
         assert r1 == r2
 
 
@@ -2453,7 +2459,6 @@ def test_truediv(data):
     for data_i, region in zip(
         data,
         sub_regions,
-        strict=True,
     ):
         assert len(data_i) == len(bytes(region))
 

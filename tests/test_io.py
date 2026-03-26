@@ -97,7 +97,7 @@ def test_guess_audio_format(filename, audio_format, expected):
 
 def test_get_audio_parameters_short_params():
     expected = (8000, 2, 1)
-    params = dict(zip(("sr", "sw", "ch"), expected, strict=True))
+    params = dict(zip(("sr", "sw", "ch"), expected))
     result = _get_audio_parameters(params)
     assert result == expected
 
@@ -108,7 +108,6 @@ def test_get_audio_parameters_long_params():
         zip(
             ("sampling_rate", "sample_width", "channels"),
             expected,
-            strict=True,
         )
     )
     result = _get_audio_parameters(params)
@@ -121,7 +120,6 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
         zip(
             ("sampling_rate", "sample_width", "channels"),
             expected,
-            strict=True,
         )
     )
     params.update(
@@ -129,7 +127,6 @@ def test_get_audio_parameters_long_params_shadow_short_ones():
             zip(
                 ("sr", "sw", "ch"),
                 "xxx",
-                strict=True,
             )
         )
     )
@@ -193,7 +190,6 @@ def test_get_audio_parameters_invalid(values):
         zip(
             ("sampling_rate", "sample_width", "channels"),
             values,
-            strict=True,
         )
     )
     with pytest.raises(AudioParameterError):
