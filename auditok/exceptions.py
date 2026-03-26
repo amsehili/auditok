@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class ArgumentError(Exception):
     """Raised when command line arguments have invalid values."""
 
@@ -5,7 +8,9 @@ class ArgumentError(Exception):
 class TooSmallBlockDuration(ValueError):
     """Raised when block_dur results in a block_size smaller than one sample."""
 
-    def __init__(self, message, block_dur, sampling_rate):
+    def __init__(
+        self, message: str, block_dur: float, sampling_rate: int
+    ) -> None:
         self.block_dur = block_dur
         self.sampling_rate = sampling_rate
         super().__init__(message)

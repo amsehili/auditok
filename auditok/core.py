@@ -12,19 +12,30 @@ Module for main data structures and tokenization algorithms.
     StreamTokenizer
 """
 
+from __future__ import annotations
+
 import math
 import os
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Callable, Generator, Iterable
+
+import numpy as np
 
 from .exceptions import AudioParameterError, TooSmallBlockDuration
-from .io import check_audio_data, get_audio_source, player_for, to_file
+from .io import (
+    AudioSource,
+    check_audio_data,
+    get_audio_source,
+    player_for,
+    to_file,
+)
 from .plotting import plot
-from .util import AudioEnergyValidator, AudioReader, DataValidator
+from .util import AudioEnergyValidator, AudioReader, DataSource, DataValidator
 
 try:
-    from . import signal_numpy as signal
+    from . import signal_numpy as signal  # type: ignore[attr-defined]
 except ImportError:
     from . import signal
 
@@ -43,7 +54,12 @@ DEFAULT_ENERGY_THRESHOLD = 50
 _EPSILON = 1e-10
 
 
-def load(input, skip=0, max_read=None, **kwargs):
+def load(
+    input: str | Path | bytes | AudioSource | None,
+    skip: float = 0,
+    max_read: float | None = None,
+    **kwargs: Any,
+) -> AudioRegion:
     """
     Load audio data from a specified source and return it as an
     :class:`AudioRegion`.
@@ -107,14 +123,14 @@ def load(input, skip=0, max_read=None, **kwargs):
 
 
 def split(
-    input,
-    min_dur=0.2,
-    max_dur=5,
-    max_silence=0.3,
-    drop_trailing_silence=False,
-    strict_min_dur=False,
-    **kwargs,
-):
+    input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    min_dur: float = 0.2,
+    max_dur: float | None = 5,
+    max_silence: float = 0.3,
+    drop_trailing_silence: bool = False,
+    strict_min_dur: bool = False,
+    **kwargs: Any,
+) -> Generator[AudioRegion, None, None]:
     """
     Split audio data and return a generator of :class:`AudioRegion`s.
 
@@ -328,7 +344,12 @@ def split(
     return region_gen
 
 
-def make_silence(duration, sampling_rate=16000, sample_width=2, channels=1):
+def make_silence(
+    duration: float,
+    sampling_rate: int = 16000,
+    sample_width: int = 2,
+    channels: int = 1,
+) -> AudioRegion:
     """
     Generate a silence of specified duration.
 
@@ -354,7 +375,11 @@ def make_silence(duration, sampling_rate=16000, sample_width=2, channels=1):
     return region
 
 
-def split_and_join_with_silence(input, silence_duration, **kwargs):
+def split_and_join_with_silence(
+    input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    silence_duration: float,
+    **kwargs: Any,
+) -> AudioRegion | None:
     """
     Split input audio and join (glue) the resulting regions with a specified
     silence duration between them. This can be used to adjust the length of
@@ -658,9 +683,9 @@ class AudioRegion(object):
     sampling_rate: int
     sample_width: int
     channels: int
-    start: float = field(default=None, repr=None)
+    start: float | None = field(default=None, repr=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
         check_audio_data(self.data, self.sample_width, self.channels)
         object.__setattr__(self, "splitp", self.split_and_plot)
@@ -689,7 +714,13 @@ class AudioRegion(object):
         object.__setattr__(self, "ms", self.millis)
 
     @classmethod
-    def load(cls, input, skip=0, max_read=None, **kwargs):
+    def load(
+        cls,
+        input: str | Path | bytes | AudioSource | None,
+        skip: float = 0,
+        max_read: float | None = None,
+        **kwargs: Any,
+    ) -> AudioRegion:
         """
         Create an :class:`AudioRegion` by loading data from `input`.
 
@@ -728,7 +759,7 @@ class AudioRegion(object):
         return cls(data, sampling_rate, sample_width, channels)
 
     @property
-    def seconds(self):
+    def seconds(self) -> _SecondsView:
         """
         A view to slice audio region by seconds using
         ``region.seconds[start:end]``.
@@ -736,27 +767,32 @@ class AudioRegion(object):
         return self._seconds_view
 
     @property
-    def millis(self):
+    def millis(self) -> _MillisView:
         """A view to slice audio region by milliseconds using
         ``region.millis[start:end]``."""
         return self._millis_view
 
     @property
-    def sr(self):
+    def sr(self) -> int:
         """Sampling rate of audio data, alias for `sampling_rate`."""
         return self.sampling_rate
 
     @property
-    def sw(self):
+    def sw(self) -> int:
         """Number of bytes per sample, alias for `sample_width`."""
         return self.sample_width
 
     @property
-    def ch(self):
+    def ch(self) -> int:
         """Number of channels of audio data, alias for `channels`."""
         return self.channels
 
-    def play(self, progress_bar=False, player=None, **progress_bar_kwargs):
+    def play(
+        self,
+        progress_bar: bool = False,
+        player: Any = None,
+        **progress_bar_kwargs: Any,
+    ) -> None:
         """
         Play the audio region.
 
@@ -778,8 +814,12 @@ class AudioRegion(object):
         player.play(self.data, progress_bar=progress_bar, **progress_bar_kwargs)
 
     def save(
-        self, filename, audio_format=None, exists_ok=True, **audio_parameters
-    ):
+        self,
+        filename: str | Path,
+        audio_format: str | None = None,
+        exists_ok: bool = True,
+        **audio_parameters: Any,
+    ) -> str | Path:
         """
         Save the audio region to a file.
 
@@ -885,13 +925,13 @@ class AudioRegion(object):
 
     def split(
         self,
-        min_dur=0.2,
-        max_dur=5,
-        max_silence=0.3,
-        drop_trailing_silence=False,
-        strict_min_dur=False,
-        **kwargs,
-    ):
+        min_dur: float = 0.2,
+        max_dur: float | None = 5,
+        max_silence: float = 0.3,
+        drop_trailing_silence: bool = False,
+        strict_min_dur: bool = False,
+        **kwargs: Any,
+    ) -> Generator[AudioRegion, None, None]:
         """
         Split audio region. See :func:`auditok.split` for a comprehensive
         description of split parameters.
@@ -914,13 +954,13 @@ class AudioRegion(object):
 
     def plot(
         self,
-        scale_signal=True,
-        show=True,
-        figsize=None,
-        save_as=None,
-        dpi=120,
-        theme="auditok",
-    ):
+        scale_signal: bool = True,
+        show: bool = True,
+        figsize: tuple[float, float] | None = None,
+        save_as: str | None = None,
+        dpi: int = 120,
+        theme: str | dict[str, Any] = "auditok",
+    ) -> None:
         """
         Plot the audio region with one subplot per channel.
 
@@ -955,20 +995,20 @@ class AudioRegion(object):
 
     def split_and_plot(
         self,
-        min_dur=0.2,
-        max_dur=5,
-        max_silence=0.3,
-        drop_trailing_silence=False,
-        strict_min_dur=False,
-        scale_signal=True,
-        show=True,
-        figsize=None,
-        save_as=None,
-        dpi=120,
-        theme="auditok",
-        interactive=False,
-        **kwargs,
-    ):
+        min_dur: float = 0.2,
+        max_dur: float | None = 5,
+        max_silence: float = 0.3,
+        drop_trailing_silence: bool = False,
+        strict_min_dur: bool = False,
+        scale_signal: bool = True,
+        show: bool = True,
+        figsize: tuple[float, float] | None = None,
+        save_as: str | None = None,
+        dpi: int = 120,
+        theme: str | dict[str, Any] = "auditok",
+        interactive: bool = False,
+        **kwargs: Any,
+    ) -> list[AudioRegion]:
         """
         Split the audio region, then plot the signal and detected regions.
 
@@ -992,15 +1032,16 @@ class AudioRegion(object):
         Refer to :func:`auditok.split()` for a detailed description of split
         parameters, and to :meth:`plot` for plot-specific parameters.
         """
-        regions = self.split(
-            min_dur=min_dur,
-            max_dur=max_dur,
-            max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
-            strict_min_dur=strict_min_dur,
-            **kwargs,
+        regions: list[AudioRegion] = list(
+            self.split(
+                min_dur=min_dur,
+                max_dur=max_dur,
+                max_silence=max_silence,
+                drop_trailing_silence=drop_trailing_silence,
+                strict_min_dur=strict_min_dur,
+                **kwargs,
+            )
         )
-        regions = list(regions)
         eth = kwargs.get(
             "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
         )
@@ -1052,7 +1093,7 @@ class AudioRegion(object):
             self._check_other_parameters(other)
             yield other
 
-    def join(self, others):
+    def join(self, others: Iterable[AudioRegion]) -> AudioRegion:
         data = self.data.join(
             other.data for other in self._check_iter_others(others)
         )
@@ -1071,28 +1112,28 @@ class AudioRegion(object):
     def __array__(self):
         return self.numpy()
 
-    def numpy(self):
+    def numpy(self) -> np.ndarray:
         """Audio region a 2D numpy array of shape (n_channels, n_samples)."""
         return signal.to_array(self.data, self.sample_width, self.channels)
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Return region length in number of samples.
         """
         return len(self.data) // (self.sample_width * self.channels)
 
     @property
-    def len(self):
+    def len(self) -> int:
         """
         Return the length of the audio region in number of samples.
         """
 
         return len(self)
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
         return self.data
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             "AudioRegion(duration={:.3f}, "
             "sampling_rate={}, sample_width={}, channels={})".format(
@@ -1100,10 +1141,10 @@ class AudioRegion(object):
             )
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<{}>".format(str(self))
 
-    def _repr_html_(self):
+    def _repr_html_(self) -> str:
         """Rich HTML representation for Jupyter notebooks.
 
         Returns an HTML5 audio player with the audio data embedded as a
@@ -1149,7 +1190,7 @@ class AudioRegion(object):
             "</div>"
         ).format(label=label, src=src)
 
-    def __add__(self, other):
+    def __add__(self, other: AudioRegion) -> AudioRegion:
         """
         Concatenate this audio region with `other`, returning a new region.
 
@@ -1166,7 +1207,7 @@ class AudioRegion(object):
         data = self.data + other.data
         return AudioRegion(data, self.sr, self.sw, self.ch)
 
-    def __radd__(self, other):
+    def __radd__(self, other: AudioRegion | int) -> AudioRegion:
         """
         Concatenate `other` with this audio region.
 
@@ -1185,17 +1226,17 @@ class AudioRegion(object):
             return self
         return other.add(self)
 
-    def __mul__(self, n):
+    def __mul__(self, n: int) -> AudioRegion:
         if not isinstance(n, int):
             err_msg = "Can't multiply AudioRegion by a non-int of type '{}'"
             raise TypeError(err_msg.format(type(n)))
         data = self.data * n
         return AudioRegion(data, self.sr, self.sw, self.ch)
 
-    def __rmul__(self, n):
+    def __rmul__(self, n: int) -> AudioRegion:
         return self * n
 
-    def __truediv__(self, n):
+    def __truediv__(self, n: int) -> list[AudioRegion]:
         if not isinstance(n, int) or n <= 0:
             raise TypeError("AudioRegion can only be divided by a positive int")
         samples_per_sub_region, rest = divmod(len(self), n)
@@ -1211,7 +1252,7 @@ class AudioRegion(object):
             onset = offset
         return sub_regions
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if other is self:
             return True
         if not isinstance(other, AudioRegion):
@@ -1223,7 +1264,7 @@ class AudioRegion(object):
             and (self.ch == other.ch)
         )
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: slice) -> AudioRegion:
         err_msg = "Slicing AudioRegion by samples requires indices of type "
         err_msg += "'int' without a step (e.g. region.sec[1600:3200])"
         start_sample, stop_sample = _check_convert_index(index, (int), err_msg)
@@ -1365,14 +1406,14 @@ class StreamTokenizer:
 
     def __init__(
         self,
-        validator,
-        min_length,
-        max_length,
-        max_continuous_silence,
-        init_min=0,
-        init_max_silence=0,
-        mode=0,
-    ):
+        validator: DataValidator | Callable[[Any], bool],
+        min_length: int,
+        max_length: int | float,
+        max_continuous_silence: int,
+        init_min: int = 0,
+        init_max_silence: int = 0,
+        mode: int = 0,
+    ) -> None:
         if callable(validator):
             self._is_valid = validator
         elif isinstance(validator, DataValidator):
@@ -1443,7 +1484,12 @@ class StreamTokenizer:
         self._current_frame = -1
         self._deliver = self._append_token
 
-    def tokenize(self, data_source, callback=None, generator=False):
+    def tokenize(
+        self,
+        data_source: DataSource,
+        callback: Callable[..., Any] | None = None,
+        generator: bool = False,
+    ) -> list[tuple[list[Any], int, int]] | Generator | None:
         """
         Read data from `data_source` one frame at a time and process each frame
         to detect sequences that form valid tokens.
@@ -1484,7 +1530,7 @@ class StreamTokenizer:
         if callback:
             for token in token_gen:
                 callback(*token)
-            return
+            return None
         if generator:
             return token_gen
         return list(token_gen)

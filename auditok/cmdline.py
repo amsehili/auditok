@@ -24,7 +24,7 @@ from auditok import AudioRegion, __version__
 from .cmdline_util import initialize_workers, make_kwargs, make_logger
 from .exceptions import ArgumentError, EndOfProcessing
 
-__all__ = []
+__all__ = []  # type: ignore[var-annotated]
 __date__ = "2015-11-23"
 __updated__ = "2024-10-30"
 

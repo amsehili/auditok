@@ -70,7 +70,7 @@ version = { attr = "auditok.__version__" }
 include = ["auditok*"]
 
 [tool.setuptools.package-data]
-auditok = ["data/*"]
+auditok = ["data/*", "py.typed"]
 
 [tool.black]
 line-length = 80
@@ -91,6 +91,15 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+python_version = "3.8"
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+warn_return_any = false
+disable_error_code = ["attr-defined", "assignment", "union-attr", "call-overload", "no-any-return"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

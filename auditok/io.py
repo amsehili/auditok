@@ -17,12 +17,16 @@ Module for low-level audio input-output operations.
     player_for
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
 import sys
 import wave
 from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Generator
 
 from .exceptions import AudioIOError, AudioParameterError
 
@@ -201,10 +205,10 @@ class AudioSource(ABC):
 
     def __init__(
         self,
-        sampling_rate,
-        sample_width,
-        channels,
-    ):
+        sampling_rate: int,
+        sample_width: int,
+        channels: int,
+    ) -> None:
 
         if sample_width not in (1, 2, 4):
             raise AudioParameterError(
@@ -216,19 +220,19 @@ class AudioSource(ABC):
         self._channels = channels
 
     @abstractmethod
-    def is_open(self):
+    def is_open(self) -> bool:
         """Return True if audio source is open, False otherwise."""
 
     @abstractmethod
-    def open(self):
+    def open(self) -> None:
         """Open audio source."""
 
     @abstractmethod
-    def close(self):
+    def close(self) -> None:
         """Close audio source."""
 
     @abstractmethod
-    def read(self, size):
+    def read(self, size: int) -> bytes | None:
         """Read and return up to `size` audio samples.
 
         This abstract method reads audio data and returns it as a bytes object,
@@ -252,41 +256,41 @@ class AudioSource(ABC):
         """
 
     @property
-    def sampling_rate(self):
+    def sampling_rate(self) -> int:
         """Number of samples per second of audio stream."""
         return self._sampling_rate
 
     @property
-    def sr(self):
+    def sr(self) -> int:
         """Number of samples per second of audio stream (alias for
         `sampling_rate)`."""
         return self._sampling_rate
 
     @property
-    def sample_width(self):
+    def sample_width(self) -> int:
         """Number of bytes used to represent one audio sample."""
         return self._sample_width
 
     @property
-    def sw(self):
+    def sw(self) -> int:
         """Number of bytes used to represent one audio sample (alias for
         `sample_width`)."""
         return self._sample_width
 
     @property
-    def channels(self):
+    def channels(self) -> int:
         """Number of channels in audio stream."""
         return self._channels
 
     @property
-    def ch(self):
+    def ch(self) -> int:
         """Number of channels in audio stream (alias for `channels`)."""
         return self.channels
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__}(sampling_rate={self.sr}, sampling_rate={self.sw}, channels={self.ch})"  # noqa: B950
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<{self.__class__.__name__}("
             f"sampling_rate={self.sampling_rate!r}, "
@@ -305,36 +309,36 @@ class Rewindable(AudioSource):
     """
 
     @abstractmethod
-    def rewind(self):
+    def rewind(self) -> None:
         """Go back to the beginning of audio stream."""
 
     @property
     @abstractmethod
-    def position(self):
+    def position(self) -> int:
         """Return stream position in number of samples."""
 
     @position.setter
     @abstractmethod
-    def position(self, position):
+    def position(self, position: int) -> None:
         """Set stream position in number of samples."""
 
     @property
-    def position_s(self):
+    def position_s(self) -> float:
         """Return stream position in seconds."""
         return self.position / self.sampling_rate
 
     @position_s.setter
-    def position_s(self, position_s):
+    def position_s(self, position_s: float) -> None:
         """Set stream position in seconds."""
         self.position = int(self.sampling_rate * position_s)
 
     @property
-    def position_ms(self):
+    def position_ms(self) -> int:
         """Return stream position in milliseconds."""
         return (self.position * 1000) // self.sampling_rate
 
     @position_ms.setter
-    def position_ms(self, position_ms):
+    def position_ms(self, position_ms: int) -> None:
         """Set stream position in milliseconds."""
         if not isinstance(position_ms, int):
             raise ValueError("position_ms should be an int")
@@ -362,11 +366,11 @@ class BufferAudioSource(Rewindable):
 
     def __init__(
         self,
-        data,
-        sampling_rate=16000,
-        sample_width=2,
-        channels=1,
-    ):
+        data: bytes,
+        sampling_rate: int = 16000,
+        sample_width: int = 2,
+        channels: int = 1,
+    ) -> None:
         super().__init__(sampling_rate, sample_width, channels)
         check_audio_data(data, sample_width, channels)
         self._data = data
@@ -374,17 +378,17 @@ class BufferAudioSource(Rewindable):
         self._current_position_bytes = 0
         self._is_open = False
 
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._is_open
 
-    def open(self):
+    def open(self) -> None:
         self._is_open = True
 
-    def close(self):
+    def close(self) -> None:
         self._is_open = False
         self.rewind()
 
-    def read(self, size):
+    def read(self, size: int) -> bytes | None:
         if not self._is_open:
             raise AudioIOError("Stream is not open")
         if size is None or size < 0:
@@ -399,20 +403,20 @@ class BufferAudioSource(Rewindable):
         return None
 
     @property
-    def data(self):
+    def data(self) -> bytes:
         """Get raw audio data as a `bytes` object."""
         return self._data
 
-    def rewind(self):
+    def rewind(self) -> None:
         self.position = 0
 
     @property
-    def position(self):
+    def position(self) -> int:
         """Get stream position in number of samples"""
         return self._current_position_bytes // self._sample_size_all_channels
 
     @position.setter
-    def position(self, position):
+    def position(self, position: int) -> None:
         """Set stream position in number of samples."""
         position *= self._sample_size_all_channels
         if position < 0:
@@ -422,14 +426,14 @@ class BufferAudioSource(Rewindable):
         self._current_position_bytes = position
 
     @property
-    def position_ms(self):
+    def position_ms(self) -> int:
         """Get stream position in milliseconds."""
         return (self._current_position_bytes * 1000) // (
             self._sample_size_all_channels * self.sampling_rate
         )
 
     @position_ms.setter
-    def position_ms(self, position_ms):
+    def position_ms(self, position_ms: int) -> None:
         """Set stream position in milliseconds."""
         if not isinstance(position_ms, int):
             raise ValueError("position_ms should be an int")
@@ -452,18 +456,20 @@ class FileAudioSource(AudioSource):
         The number of audio channels.
     """
 
-    def __init__(self, sampling_rate, sample_width, channels):
+    def __init__(
+        self, sampling_rate: int, sample_width: int, channels: int
+    ) -> None:
         super().__init__(sampling_rate, sample_width, channels)
         self._audio_stream = None
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self.is_open():
             self.close()
 
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._audio_stream is not None
 
-    def close(self):
+    def close(self) -> None:
         if self._audio_stream is not None:
             self._audio_stream.close()
             self._audio_stream = None
@@ -472,7 +478,7 @@ class FileAudioSource(AudioSource):
     def _read_from_stream(self, size):
         """Read data from stream"""
 
-    def read(self, size):
+    def read(self, size: int) -> bytes | None:
         if not self.is_open():
             raise AudioIOError("Audio stream is not open")
         data = self._read_from_stream(size)
@@ -500,13 +506,19 @@ class RawAudioSource(FileAudioSource):
         The number of audio channels.
     """
 
-    def __init__(self, filename, sampling_rate, sample_width, channels):
+    def __init__(
+        self,
+        filename: str,
+        sampling_rate: int,
+        sample_width: int,
+        channels: int,
+    ) -> None:
         super().__init__(sampling_rate, sample_width, channels)
         self._filename = filename
         self._audio_stream = None
         self._sample_size = sample_width * channels
 
-    def open(self):
+    def open(self) -> None:
         if self._audio_stream is None:
             self._audio_stream = open(self._filename, "rb")
 
@@ -532,7 +544,7 @@ class WaveAudioSource(FileAudioSource):
         The path to a valid wave file.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename: str) -> None:
         self._filename = str(filename)  # wave requires an str filename
         self._audio_stream = None
         stream = wave.open(self._filename, "rb")
@@ -543,7 +555,7 @@ class WaveAudioSource(FileAudioSource):
         )
         stream.close()
 
-    def open(self):
+    def open(self) -> None:
         if self._audio_stream is None:
             self._audio_stream = wave.open(self._filename)
 
@@ -595,8 +607,12 @@ class FFmpegAudioSource(AudioSource):
     }
 
     def __init__(
-        self, filename, sampling_rate=None, sample_width=None, channels=None
-    ):
+        self,
+        filename: str,
+        sampling_rate: int | None = None,
+        sample_width: int | None = None,
+        channels: int | None = None,
+    ) -> None:
         self._filename = str(filename)
         self._process = None
         ffmpeg_path = _find_ffmpeg()
@@ -632,7 +648,7 @@ class FFmpegAudioSource(AudioSource):
         except OSError as exc:
             raise AudioIOError(f"Failed to start ffmpeg: {exc}") from exc
         try:
-            wfp = wave.open(self._process.stdout, "rb")
+            wfp = wave.open(self._process.stdout, "rb")  # type: ignore[arg-type]
             sr = wfp.getframerate()
             sw = wfp.getsampwidth()
             ch = wfp.getnchannels()
@@ -648,13 +664,13 @@ class FFmpegAudioSource(AudioSource):
         super().__init__(sr, sw, ch)
         self._sample_size = sw * ch
 
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._process is not None
 
-    def open(self):
+    def open(self) -> None:
         pass
 
-    def close(self):
+    def close(self) -> None:
         self._close_process()
 
     def _close_process(self):
@@ -664,7 +680,7 @@ class FFmpegAudioSource(AudioSource):
             self._process.wait()
             self._process = None
 
-    def read(self, size):
+    def read(self, size: int) -> bytes | None:
         if self._process is None:
             raise AudioIOError("Audio stream is not open")
         if size is None or size < 0:
@@ -676,7 +692,7 @@ class FFmpegAudioSource(AudioSource):
             return data
         return None
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._close_process()
 
 
@@ -704,12 +720,12 @@ class AudioDeviceSource(AudioSource):
 
     def __init__(
         self,
-        sampling_rate=16000,
-        sample_width=2,
-        channels=1,
-        frames_per_buffer=1024,
-        input_device_index=None,
-    ):
+        sampling_rate: int = 16000,
+        sample_width: int = 2,
+        channels: int = 1,
+        frames_per_buffer: int = 1024,
+        input_device_index: int | None = None,
+    ) -> None:
         super().__init__(sampling_rate, sample_width, channels)
         self._chunk_size = frames_per_buffer
         self.input_device_index = input_device_index
@@ -719,10 +735,10 @@ class AudioDeviceSource(AudioSource):
         self._dtype = dtype
         self._audio_stream = None
 
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._audio_stream is not None
 
-    def open(self):
+    def open(self) -> None:
         import sounddevice as sd
 
         with _suppress_stderr():
@@ -735,13 +751,13 @@ class AudioDeviceSource(AudioSource):
             )
         self._audio_stream.start()
 
-    def close(self):
+    def close(self) -> None:
         if self._audio_stream is not None:
             self._audio_stream.stop()
             self._audio_stream.close()
             self._audio_stream = None
 
-    def read(self, size):
+    def read(self, size: int) -> bytes | None:
         if self._audio_stream is None:
             raise IOError("Stream is not open")
         if self._audio_stream.active:
@@ -775,22 +791,22 @@ class StdinAudioSource(FileAudioSource):
 
     def __init__(
         self,
-        sampling_rate=16000,
-        sample_width=2,
-        channels=1,
-    ):
+        sampling_rate: int = 16000,
+        sample_width: int = 2,
+        channels: int = 1,
+    ) -> None:
         super().__init__(sampling_rate, sample_width, channels)
         self._is_open = False
         self._sample_size = sample_width * channels
         self._stream = sys.stdin.buffer
 
-    def is_open(self):
+    def is_open(self) -> bool:
         return self._is_open
 
-    def open(self):
+    def open(self) -> None:
         self._is_open = True
 
-    def close(self):
+    def close(self) -> None:
         self._is_open = False
 
     def _read_from_stream(self, size):
@@ -828,10 +844,10 @@ class AudioDevicePlayer:
 
     def __init__(
         self,
-        sampling_rate=16000,
-        sample_width=2,
-        channels=1,
-    ):
+        sampling_rate: int = 16000,
+        sample_width: int = 2,
+        channels: int = 1,
+    ) -> None:
         dtype = _SW_TO_DTYPE.get(sample_width)
         if dtype is None:
             raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
@@ -842,7 +858,12 @@ class AudioDevicePlayer:
         self._dtype = dtype
         self._stream = None
 
-    def play(self, data, progress_bar=False, **progress_bar_kwargs):
+    def play(
+        self,
+        data: bytes,
+        progress_bar: bool = False,
+        **progress_bar_kwargs: Any,
+    ) -> None:
         import sounddevice as sd
 
         chunk_gen, nb_chunks = self._chunk_data(data)
@@ -870,7 +891,7 @@ class AudioDevicePlayer:
             pass
         self._stream.stop()
 
-    def stop(self):
+    def stop(self) -> None:
         if self._stream is not None:
             self._stream.stop()
             self._stream.close()
@@ -894,7 +915,7 @@ class AudioDevicePlayer:
 PyAudioPlayer = AudioDevicePlayer
 
 
-def player_for(source):
+def player_for(source: Any) -> AudioDevicePlayer:
     """
     Return an `AudioPlayer` compatible with the specified `source`.
 
@@ -920,7 +941,9 @@ def player_for(source):
     )
 
 
-def get_audio_source(input=None, **kwargs):
+def get_audio_source(
+    input: str | bytes | None = None, **kwargs: Any
+) -> AudioSource:
     """
     Create and return an `AudioSource` based on the specified input.
 
@@ -967,7 +990,7 @@ def get_audio_source(input=None, **kwargs):
     else:
         frames_per_buffer = kwargs.get("frames_per_buffer", 1024)
         input_device_index = kwargs.get("input_device_index")
-        return AudioDeviceSource(
+        return AudioDeviceSource(  # type: ignore[misc]
             *_get_audio_parameters(kwargs),
             frames_per_buffer=frames_per_buffer,
             input_device_index=input_device_index,
@@ -1069,7 +1092,12 @@ def _load_wave(filename, large_file=False):
     )
 
 
-def from_file(filename, audio_format=None, large_file=False, **kwargs):
+def from_file(
+    filename: str | Path,
+    audio_format: str | None = None,
+    large_file: bool = False,
+    **kwargs: Any,
+) -> AudioSource:
     """Read audio data from `filename` and return an `AudioSource` object.
 
     If `audio_format` is None, the appropriate `AudioSource` class is inferred
@@ -1309,7 +1337,12 @@ def _save_with_ffmpeg(
         raise AudioIOError(err_msg)
 
 
-def to_file(data, filename, audio_format=None, **kwargs):
+def to_file(
+    data: bytes,
+    filename: str | Path,
+    audio_format: str | None = None,
+    **kwargs: Any,
+) -> None:
     """
     Write audio data to a file.
 

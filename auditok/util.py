@@ -11,8 +11,11 @@ Module for high-level audio input-output operations.
     make_channel_selector
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import Any, Callable
 
 import numpy as np
 
@@ -32,7 +35,7 @@ __all__ = [
 ]
 
 
-def make_duration_formatter(fmt):
+def make_duration_formatter(fmt: str) -> Callable[[float], str]:
     """
     Create and return a function to format durations in seconds using a
     specified format. Accepted format directives are:
@@ -130,7 +133,9 @@ def make_duration_formatter(fmt):
     return formatter
 
 
-def make_channel_selector(sample_width, channels, selected=None):
+def make_channel_selector(
+    sample_width: int, channels: int, selected: int | str | None = None
+) -> Callable[[bytes], Any]:
     """
     Create and return a callable for selecting a specific audio channel. The
     returned `selector` function can be used as `selector(audio_data)` and
@@ -207,7 +212,7 @@ class DataSource(ABC):
     """
 
     @abstractmethod
-    def read(self):
+    def read(self) -> Any:
         """
         Read a block (or window) of data from this source.
 
@@ -229,7 +234,7 @@ class DataValidator(ABC):
     """
 
     @abstractmethod
-    def is_valid(self, data):
+    def is_valid(self, data: Any) -> bool:
         """
         Determine whether the provided `data` meets validity criteria.
 
@@ -281,8 +286,12 @@ class AudioEnergyValidator(DataValidator):
     """
 
     def __init__(
-        self, energy_threshold, sample_width, channels, use_channel=None
-    ):
+        self,
+        energy_threshold: float,
+        sample_width: int,
+        channels: int,
+        use_channel: int | str | None = None,
+    ) -> None:
         self._energy_threshold = energy_threshold
         self._sample_width = sample_width
         self._selector = make_channel_selector(
@@ -290,7 +299,7 @@ class AudioEnergyValidator(DataValidator):
         )
         self._energy_agg_fn = np.max if use_channel in (None, "any") else None
 
-    def is_valid(self, data):
+    def is_valid(self, data: bytes) -> bool:
         """
         Determine if the audio data meets the energy threshold.
 
@@ -326,13 +335,13 @@ class StringDataSource(DataSource):
         The string data to be used as the source.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: str) -> None:
 
-        self._data = None
+        self._data: str = ""
         self._current = 0
         self.set_data(data)
 
-    def read(self):
+    def read(self) -> str | None:
         """
         Read one character from buffer.
 
@@ -347,7 +356,7 @@ class StringDataSource(DataSource):
         self._current += 1
         return self._data[self._current - 1]
 
-    def set_data(self, data):
+    def set_data(self, data: str) -> None:
         """
         Set a new data buffer.
 
@@ -693,13 +702,13 @@ class AudioReader(DataSource):
 
     def __init__(
         self,
-        input,
-        block_dur=0.01,
-        hop_dur=None,
-        record=False,
-        max_read=None,
-        **kwargs,
-    ):
+        input: Any,
+        block_dur: float = 0.01,
+        hop_dur: float | None = None,
+        record: bool = False,
+        max_read: float | None = None,
+        **kwargs: Any,
+    ) -> None:
         if not isinstance(input, AudioSource):
             input = get_audio_source(input, **kwargs)
         self._record = record
@@ -715,7 +724,7 @@ class AudioReader(DataSource):
 
         self._audio_source = input
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         block_dur, hop_dur, max_read = None, None, None
         if self.block_dur is not None:
             block_dur = "{:.3f}".format(self.block_dur)
@@ -736,34 +745,34 @@ class AudioReader(DataSource):
         )
 
     @property
-    def rewindable(self):
+    def rewindable(self) -> bool:
         return self._record
 
     @property
-    def block_dur(self):
+    def block_dur(self) -> float:
         return self._audio_source.block_size / self._audio_source.sr
 
     @property
-    def hop_dur(self):
+    def hop_dur(self) -> float:
         if hasattr(self._audio_source, "hop_dur"):
             return self._audio_source.hop_size / self._audio_source.sr
         return self.block_dur
 
     @property
-    def hop_size(self):
+    def hop_size(self) -> int:
         if hasattr(self._audio_source, "hop_size"):
             return self._audio_source.hop_size
         return self.block_size
 
     @property
-    def max_read(self):
+    def max_read(self) -> float | None:
         try:
             return self._audio_source.max_read
         except AttributeError:
             return None
 
-    def read(self):
-        return self._audio_source.read()
+    def read(self) -> bytes | None:
+        return self._audio_source.read()  # type: ignore[call-arg]
 
     def __getattr__(self, name):
         if name in ("data", "rewind") and not self.rewindable:
@@ -792,8 +801,13 @@ class Recorder(AudioReader):
     """
 
     def __init__(
-        self, input, block_dur=0.01, hop_dur=None, max_read=None, **kwargs
-    ):
+        self,
+        input: Any,
+        block_dur: float = 0.01,
+        hop_dur: float | None = None,
+        max_read: float | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(
             input,
             block_dur=block_dur,
