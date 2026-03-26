@@ -1285,15 +1285,15 @@ def _save_with_ffmpeg(
     --------
     to_file : High-level function for saving audio data in various formats.
     """
-    ffmpeg_path = _find_ffmpeg()
-    if ffmpeg_path is None:
-        raise AudioIOError("ffmpeg not found on PATH")
     codec = FFmpegAudioSource._SW_TO_CODEC.get(sample_width)
     if codec is None:
         raise AudioParameterError(
             "sample_width must be one of 1, 2, or 4, "
             "got {}".format(sample_width)
         )
+    ffmpeg_path = _find_ffmpeg()
+    if ffmpeg_path is None:
+        raise AudioIOError("ffmpeg not found on PATH")
     cmd = [
         ffmpeg_path,
         "-loglevel",
