@@ -203,48 +203,79 @@ def test_get_audio_parameters_invalid(values):
 @pytest.mark.parametrize(
     "filename, audio_format, funtion_name, kwargs",
     [
-        (
+        pytest.param(
             "audio",
             "raw",
             "_load_raw",
             AUDIO_PARAMS_SHORT,
-        ),  # raw_with_audio_format
-        (
+            id="raw_with_audio_format",
+        ),
+        pytest.param(
             "audio.raw",
             None,
             "_load_raw",
             AUDIO_PARAMS_SHORT,
-        ),  # raw_with_extension
-        ("audio", "wave", "_load_wave", None),  # wave_with_audio_format
-        ("audio", "wave", "_load_wave", None),  # wav_with_audio_format
-        ("audio.wav", None, "_load_wave", None),  # wav_with_extension
-        (
+            id="raw_with_extension",
+        ),
+        pytest.param(
+            "audio",
+            "wave",
+            "_load_wave",
+            None,
+            id="wave_with_audio_format",
+        ),
+        pytest.param(
+            "audio",
+            "wave",
+            "_load_wave",
+            None,
+            id="wav_with_audio_format",
+        ),
+        pytest.param(
+            "audio.wav",
+            None,
+            "_load_wave",
+            None,
+            id="wav_with_extension",
+        ),
+        pytest.param(
             "audio.dat",
             "wav",
             "_load_wave",
             None,
-        ),  # format_and_extension_both_given_a
-        (
+            id="format_and_extension_both_given_a",
+        ),
+        pytest.param(
             "audio.raw",
             "wave",
             "_load_wave",
             None,
-        ),  # format_and_extension_both_given_b
-        ("audio", None, "FFmpegAudioSource", None),  # no_format_nor_extension
-        ("audio.ogg", None, "FFmpegAudioSource", None),  # other_formats_ogg
-        ("audio", "webm", "FFmpegAudioSource", None),  # other_formats_webm
-    ],
-    ids=[
-        "raw_with_audio_format",
-        "raw_with_extension",
-        "wave_with_audio_format",
-        "wav_with_audio_format",
-        "wav_with_extension",
-        "format_and_extension_both_given_a",
-        "format_and_extension_both_given_b",
-        "no_format_nor_extension",
-        "other_formats_ogg",
-        "other_formats_webm",
+            id="format_and_extension_both_given_b",
+        ),
+        pytest.param(
+            "audio",
+            None,
+            "FFmpegAudioSource",
+            None,
+            id="no_format_nor_extension",
+            marks=requires_ffmpeg,
+        ),
+        pytest.param(
+            "audio.ogg",
+            None,
+            "FFmpegAudioSource",
+            None,
+            id="other_formats_ogg",
+            marks=requires_ffmpeg,
+        ),
+        pytest.param(
+            "audio",
+            "webm",
+            "FFmpegAudioSource",
+            None,
+            id="other_formats_webm",
+            marks=requires_ffmpeg,
+        ),
     ],
 )
 def test_from_file(filename, audio_format, funtion_name, kwargs):
