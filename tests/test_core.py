@@ -1611,8 +1611,8 @@ def test_creation(
     assert region.sw == sample_width
     assert region.channels == channels
     assert region.ch == channels
-    assert region.meta.start == start
-    assert region.meta.end == expected_end
+    assert region.start == start
+    assert region.end == expected_end
     assert region.duration == expected_duration_s
     assert len(region.ms) == expected_duration_ms
     assert bytes(region) == data
@@ -1760,30 +1760,30 @@ def test_load_from_microphone_with_nonzero_skip_exception():
     "format, start, expected",
     [
         ("output.wav", 1.230, "output.wav"),  # simple
-        ("output_{meta.start:g}.wav", 1.230, "output_1.23.wav"),  # start
-        ("output_{meta.start}.wav", 1.233712, "output_1.233712.wav"),  # start_2
+        ("output_{start:g}.wav", 1.230, "output_1.23.wav"),  # start
+        ("output_{start}.wav", 1.233712, "output_1.233712.wav"),  # start_2
         (
-            "output_{meta.start:.2f}.wav",
+            "output_{start:.2f}.wav",
             1.2300001,
             "output_1.23.wav",
         ),  # start_3
         (
-            "output_{meta.start:.3f}.wav",
+            "output_{start:.3f}.wav",
             1.233712,
             "output_1.234.wav",
         ),  # start_4
         (
-            "output_{meta.start:.8f}.wav",
+            "output_{start:.8f}.wav",
             1.233712,
             "output_1.23371200.wav",
         ),  # start_5
         (
-            "output_{meta.start}_{meta.end}_{duration}.wav",
+            "output_{start}_{end}_{duration}.wav",
             1.455,
             "output_1.455_2.455_1.0.wav",
         ),  # start_end_duration
         (
-            "output_{meta.start}_{meta.end}_{duration}.wav",
+            "output_{start}_{end}_{duration}.wav",
             1.455321,
             "output_1.455321_2.455321_1.0.wav",
         ),  # start_end_duration_2
@@ -2481,6 +2481,5 @@ def test_samples(data, sample_width, channels, expected):
 
     region = AudioRegion(data, 10, sample_width, channels)
     expected = np.array(expected)
-    assert (region.samples == expected).all()
     assert (region.numpy() == expected).all()
     assert (np.array(region) == expected).all()

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import math
 import os
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Generator, Iterable
@@ -630,33 +629,6 @@ class _MillisView(_SecondsView):
         return len(self)
 
 
-class _AudioRegionMetadata(dict):
-    """A class to store :class:`AudioRegion`'s metadata."""
-
-    def __getattr__(self, name):
-        warnings.warn(
-            "`AudioRegion.meta` is deprecated and will be removed in future "
-            "versions. For the 'start' and 'end' fields, please use "
-            "`AudioRegion.start` and `AudioRegion.end`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if name in self:
-            return self[name]
-        else:
-            err_msg = "AudioRegion metadata has no entry '{}'"
-            raise AttributeError(err_msg.format(name))
-
-    def __setattr__(self, name, value):
-        self[name] = value
-
-    def __str__(self):
-        return "\n".join("{}: {}".format(k, v) for k, v in self.items())
-
-    def __repr__(self):
-        return str(self)
-
-
 @dataclass(frozen=True)
 class AudioRegion(object):
     """
@@ -696,14 +668,8 @@ class AudioRegion(object):
 
         if self.start is not None:
             object.__setattr__(self, "end", self.start + self.duration)
-            object.__setattr__(
-                self,
-                "meta",
-                _AudioRegionMetadata({"start": self.start, "end": self.end}),
-            )
         else:
             object.__setattr__(self, "end", None)
-            object.__setattr__(self, "meta", None)
 
         # `seconds` and `millis` are defined below as @property with docstring
         object.__setattr__(self, "_seconds_view", _SecondsView(self))
@@ -904,7 +870,6 @@ class AudioRegion(object):
         if isinstance(filename, str):
             filename = filename.format(
                 duration=self.duration,
-                meta=self.meta,
                 start=self.start,
                 end=self.end,
             )
@@ -1099,18 +1064,13 @@ class AudioRegion(object):
         )
         return AudioRegion(data, self.sr, self.sw, self.ch)
 
-    @property
-    def samples(self):
-        warnings.warn(
-            "`AudioRegion.samples` is deprecated and will be removed in future "
-            "versions. Please use `AudioRegion.numpy()`.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.numpy()
-
-    def __array__(self):
-        return self.numpy()
+    def __array__(self, dtype=None, copy=None):
+        arr = self.numpy()
+        if dtype is not None:
+            arr = arr.astype(dtype, copy=False)
+        if copy:
+            arr = arr.copy()
+        return arr
 
     def numpy(self) -> np.ndarray:
         """Audio region a 2D numpy array of shape (n_channels, n_samples)."""

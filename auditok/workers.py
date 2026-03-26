@@ -112,13 +112,13 @@ class TokenizerWorker(Worker, AudioReader):
         start_processing_timestamp = datetime.now()
         for _id, audio_region in enumerate(self._audio_region_gen, start=1):
             timestamp = start_processing_timestamp + timedelta(
-                seconds=audio_region.meta.start
+                seconds=audio_region.start
             )
-            audio_region.meta.timestamp = timestamp
+            object.__setattr__(audio_region, "timestamp", timestamp)
             detection = _Detection(
                 _id,
-                audio_region.meta.start,
-                audio_region.meta.end,
+                audio_region.start,
+                audio_region.end,
                 audio_region.duration,
             )
             self._detections.append(detection)
@@ -464,8 +464,8 @@ class RegionSaverWorker(Worker):
         _id, audio_region = message
         filename = self._filename_format.format(
             id=_id,
-            start=audio_region.meta.start,
-            end=audio_region.meta.end,
+            start=audio_region.start,
+            end=audio_region.end,
             duration=audio_region.duration,
         )
         filename = audio_region.save(
@@ -510,12 +510,12 @@ class PrintWorker(Worker):
 
     def _process_message(self, message):
         _id, audio_region = message
-        timestamp = audio_region.meta.timestamp
+        timestamp = audio_region.timestamp
         timestamp = timestamp.strftime(self._timestamp_format)
         text = self._print_format.format(
             id=_id,
-            start=self._format_time(audio_region.meta.start),
-            end=self._format_time(audio_region.meta.end),
+            start=self._format_time(audio_region.start),
+            end=self._format_time(audio_region.end),
             duration=self._format_time(audio_region.duration),
             timestamp=timestamp,
         )
