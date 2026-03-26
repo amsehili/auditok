@@ -1360,6 +1360,58 @@ def test_split_and_plot():
     assert regions == expected_regions
 
 
+def test_split_and_plot_interactive_in_notebook():
+    """interactive=True in a notebook calls display_interactive, not plot."""
+    with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+        data = fp.read()
+    region = AudioRegion(data, 10, 2, 1)
+    with (
+        patch("auditok.widget._in_notebook", return_value=True),
+        patch("auditok.widget.display_interactive") as mock_display,
+        patch("auditok.core.plot") as mock_plot,
+    ):
+        regions = region.split_and_plot(
+            min_dur=0.2,
+            max_dur=5,
+            max_silence=0.2,
+            analysis_window=0.1,
+            interactive=True,
+            sr=10,
+            sw=2,
+            ch=1,
+            eth=50,
+        )
+    assert mock_display.called
+    assert not mock_plot.called
+    assert len(regions) == 3
+
+
+def test_split_and_plot_interactive_not_in_notebook():
+    """interactive=True outside a notebook falls back to matplotlib plot."""
+    with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
+        data = fp.read()
+    region = AudioRegion(data, 10, 2, 1)
+    with (
+        patch("auditok.widget._in_notebook", return_value=False),
+        patch("auditok.widget.display_interactive") as mock_display,
+        patch("auditok.core.plot") as mock_plot,
+    ):
+        regions = region.split_and_plot(
+            min_dur=0.2,
+            max_dur=5,
+            max_silence=0.2,
+            analysis_window=0.1,
+            interactive=True,
+            sr=10,
+            sw=2,
+            ch=1,
+            eth=50,
+        )
+    assert not mock_display.called
+    assert mock_plot.called
+    assert len(regions) == 3
+
+
 def test_split_exception():
     with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
         data = fp.read()

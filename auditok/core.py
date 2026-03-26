@@ -966,14 +966,28 @@ class AudioRegion(object):
         save_as=None,
         dpi=120,
         theme="auditok",
+        interactive=False,
         **kwargs,
     ):
         """
         Split the audio region, then plot the signal and detected regions.
 
+        When ``interactive=True`` and running inside a Jupyter notebook, an
+        HTML5 widget with a Canvas waveform is displayed instead of a
+        matplotlib figure.  Clicking on a highlighted detection plays that
+        event in the browser via the Web Audio API.  If not running in a
+        notebook, the matplotlib plot is used as a fallback.
+
         Alias
         -----
         :meth:`splitp`
+
+        Parameters
+        ----------
+        interactive : bool, optional, default=False
+            If True and running inside a Jupyter notebook, display an
+            interactive HTML/Canvas/WebAudio widget instead of a matplotlib
+            plot.  Falls back to matplotlib when not in a notebook.
 
         Refer to :func:`auditok.split()` for a detailed description of split
         parameters, and to :meth:`plot` for plot-specific parameters.
@@ -987,10 +1001,22 @@ class AudioRegion(object):
             **kwargs,
         )
         regions = list(regions)
-        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
         eth = kwargs.get(
             "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
         )
+
+        if interactive:
+            from .widget import _in_notebook, display_interactive
+
+            if _in_notebook():
+                display_interactive(
+                    self,
+                    regions,
+                    energy_threshold=eth,
+                )
+                return regions
+
+        detections = ((reg.meta.start, reg.meta.end) for reg in regions)
         plot(
             self,
             scale_signal=scale_signal,
