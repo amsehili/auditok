@@ -41,6 +41,7 @@ except ImportError:
 __all__ = [
     "load",
     "split",
+    "trim",
     "make_silence",
     "split_and_join_with_silence",
     "AudioRegion",
@@ -405,6 +406,108 @@ def split_and_join_with_silence(
     return None
 
 
+def trim(
+    input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    min_dur: float = 0.2,
+    max_dur: float | None = 5,
+    max_silence: float = 0.3,
+    drop_trailing_silence: bool = False,
+    strict_min_dur: bool = False,
+    **kwargs: Any,
+) -> AudioRegion:
+    """
+    Detect audio activity in `input` and return the audio between the start
+    of the first detection and the end of the last, removing leading and
+    trailing silence.
+
+    For non-AudioRegion inputs (files, microphone, stdin), data is recorded
+    as :func:`split` consumes it, so the stream is only read once. This
+    makes ``trim`` efficient for live sources where a second pass is
+    impossible or expensive.
+
+    Parameters
+    ----------
+    input : str, Path, bytes, AudioSource, AudioReader, AudioRegion, or None
+        Audio input (see :func:`split` for details).
+    min_dur : float, default=0.2
+        Minimum duration of a detected audio event (see :func:`split`).
+    max_dur : float or None, default=5
+        Maximum duration of a detected audio event (see :func:`split`).
+    max_silence : float, default=0.3
+        Maximum tolerated silence within an event (see :func:`split`).
+    drop_trailing_silence : bool, default=False
+        Whether to drop trailing silence from events (see :func:`split`).
+    strict_min_dur : bool, default=False
+        Whether to strictly enforce `min_dur` (see :func:`split`).
+    **kwargs
+        Additional parameters forwarded to :func:`split` and
+        :class:`AudioReader` (e.g., ``energy_threshold``,
+        ``analysis_window``, ``sampling_rate``, ``sample_width``,
+        ``channels``, ``audio_format``).
+
+    Returns
+    -------
+    AudioRegion
+        The trimmed audio region. Returns an empty AudioRegion (zero
+        duration) if no audio activity is detected.
+
+    See Also
+    --------
+    AudioRegion.trim : Trim an in-memory AudioRegion.
+    split : Split audio into individual activity regions.
+    """
+    if isinstance(input, AudioRegion):
+        return input.trim(
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=drop_trailing_silence,
+            strict_min_dur=strict_min_dur,
+            **kwargs,
+        )
+
+    # Wrap input in a recording AudioReader so data is cached as split()
+    # consumes it block by block. This avoids a second pass over the source
+    # (critical for microphone / stdin where data can't be re-read).
+    if not isinstance(input, AudioReader):
+        analysis_window = kwargs.get(
+            "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
+        )
+        reader = AudioReader(
+            input, block_dur=analysis_window, record=True, **kwargs
+        )
+    elif input.rewindable:
+        reader = input
+    else:
+        # Non-rewindable AudioReader: re-wrap with record=True so data
+        # is cached during the single streaming pass through split().
+        reader = AudioReader(input, block_dur=input.block_dur, record=True)
+
+    first = None
+    last = None
+    for region in split(
+        reader,
+        min_dur=min_dur,
+        max_dur=max_dur,
+        max_silence=max_silence,
+        drop_trailing_silence=drop_trailing_silence,
+        strict_min_dur=strict_min_dur,
+        **kwargs,
+    ):
+        if first is None:
+            first = region
+        last = region
+
+    if first is None:
+        reader.close()
+        return AudioRegion(b"", reader.sr, reader.sw, reader.ch)
+
+    reader.rewind()
+    full_region = AudioRegion(reader.data, reader.sr, reader.sw, reader.ch)
+    reader.close()
+    return full_region.sec[first.start : last.end]  # type: ignore[misc]
+
+
 def _duration_to_nb_windows(
     duration, analysis_window, round_fn=round, epsilon=0
 ):
@@ -579,10 +682,10 @@ class _SecondsView:
     with time-based indices in seconds.
     """
 
-    def __init__(self, region):
+    def __init__(self, region: AudioRegion) -> None:
         self._region = region
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: slice) -> AudioRegion:
         err_msg = "Slicing AudioRegion by seconds requires indices of type "
         err_msg += "'int' or 'float' without a step (e.g. region.sec[7.5:10])"
         start_s, stop_s = _check_convert_index(index, (int, float), err_msg)
@@ -916,6 +1019,68 @@ class AudioRegion(object):
             strict_min_dur=strict_min_dur,
             **kwargs,
         )
+
+    def trim(
+        self,
+        min_dur: float = 0.2,
+        max_dur: float | None = 5,
+        max_silence: float = 0.3,
+        drop_trailing_silence: bool = False,
+        strict_min_dur: bool = False,
+        **kwargs: Any,
+    ) -> AudioRegion:
+        """
+        Remove leading and trailing silence from this audio region.
+
+        Detects audio activity using :meth:`split`, then returns the slice
+        from the start of the first detection to the end of the last
+        detection. All audio between detections (including internal silence)
+        is preserved.
+
+        Parameters
+        ----------
+        min_dur : float, default=0.2
+            Minimum duration of a detected audio event (see :func:`split`).
+        max_dur : float or None, default=5
+            Maximum duration of a detected audio event (see :func:`split`).
+        max_silence : float, default=0.3
+            Maximum tolerated silence within an event (see :func:`split`).
+        drop_trailing_silence : bool, default=False
+            Whether to drop trailing silence from events (see :func:`split`).
+        strict_min_dur : bool, default=False
+            Whether to strictly enforce `min_dur` (see :func:`split`).
+        **kwargs
+            Additional parameters forwarded to :func:`split` (e.g.,
+            ``energy_threshold``, ``analysis_window``, ``use_channel``).
+
+        Returns
+        -------
+        AudioRegion
+            A new AudioRegion with leading and trailing silence removed.
+            Returns an empty AudioRegion (zero duration) if no audio activity
+            is detected, so the result can always be used for joining,
+            concatenation, etc.
+
+        See Also
+        --------
+        split : Split audio into individual activity regions.
+        """
+        first = None
+        last = None
+        for region in self.split(
+            min_dur=min_dur,
+            max_dur=max_dur,
+            max_silence=max_silence,
+            drop_trailing_silence=drop_trailing_silence,
+            strict_min_dur=strict_min_dur,
+            **kwargs,
+        ):
+            if first is None:
+                first = region
+            last = region
+        if first is None:
+            return AudioRegion(b"", self.sr, self.sw, self.ch)
+        return self.sec[first.start : last.end]  # type: ignore[misc]
 
     def plot(
         self,

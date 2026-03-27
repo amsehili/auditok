@@ -700,6 +700,8 @@ class AudioReader(DataSource):
         available memory.
     """
 
+    _audio_source: Any
+
     def __init__(
         self,
         input: Any,
@@ -709,6 +711,14 @@ class AudioReader(DataSource):
         max_read: float | None = None,
         **kwargs: Any,
     ) -> None:
+        if isinstance(input, AudioReader):
+            # Unwrap to the base AudioSource so the proxy chain
+            # (_Recorder, _Limiter, _FixedSizeAudioReader) is rebuilt
+            # cleanly with the new parameters.
+            source: Any = input._audio_source
+            while isinstance(source, _AudioReadingProxy):
+                source = source._audio_source
+            input = source
         if not isinstance(input, AudioSource):
             input = get_audio_source(input, **kwargs)
         self._record = record
