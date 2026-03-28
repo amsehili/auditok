@@ -8,7 +8,7 @@ from queue import Empty, Queue
 from tempfile import NamedTemporaryFile
 from threading import Thread
 
-from .core import make_silence, split
+from .audio import make_silence, split
 from .exceptions import AudioEncodingError, AudioEncodingWarning
 from .io import _guess_audio_format
 from .util import AudioReader, make_duration_formatter

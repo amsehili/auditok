@@ -8,7 +8,7 @@ import pytest
 matplotlib.use("AGG")
 import matplotlib.pyplot as plt  # noqa E402
 
-from auditok.core import AudioRegion  # noqa E402
+from auditok.audio import AudioRegion  # noqa E402
 
 SAVE_NEW_IMAGES = False
 if SAVE_NEW_IMAGES:

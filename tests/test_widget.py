@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from auditok.core import AudioRegion
+from auditok.audio import AudioRegion
 from auditok.widget import (
     _audio_to_wav_b64,
     _downsample_peaks,

@@ -70,7 +70,7 @@ version = { attr = "auditok.__version__" }
 include = ["auditok*"]
 
 [tool.setuptools.package-data]
-auditok = ["data/*", "py.typed"]
+auditok = ["py.typed"]
 
 [tool.black]
 line-length = 80

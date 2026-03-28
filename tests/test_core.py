@@ -18,7 +18,7 @@ from auditok import (
     split,
     split_and_join_with_silence,
 )
-from auditok.core import (
+from auditok.audio import (
     _duration_to_nb_windows,
     _make_audio_region,
     _read_chunks_online,
@@ -1332,7 +1332,7 @@ def test_split_and_plot():
         data = fp.read()
 
     region = AudioRegion(data, 10, 2, 1)
-    with patch("auditok.core.plot") as patch_fn:
+    with patch("auditok.audio.plot") as patch_fn:
         regions = region.split_and_plot(
             min_dur=0.2,
             max_dur=5,
@@ -1362,7 +1362,7 @@ def test_split_and_plot_interactive_in_notebook():
     region = AudioRegion(data, 10, 2, 1)
     with patch("auditok.widget._in_notebook", return_value=True), patch(
         "auditok.widget.display_interactive"
-    ) as mock_display, patch("auditok.core.plot") as mock_plot:
+    ) as mock_display, patch("auditok.audio.plot") as mock_plot:
         regions = region.split_and_plot(
             min_dur=0.2,
             max_dur=5,
@@ -1386,7 +1386,7 @@ def test_split_and_plot_interactive_not_in_notebook():
     region = AudioRegion(data, 10, 2, 1)
     with patch("auditok.widget._in_notebook", return_value=False), patch(
         "auditok.widget.display_interactive"
-    ) as mock_display, patch("auditok.core.plot") as mock_plot:
+    ) as mock_display, patch("auditok.audio.plot") as mock_plot:
         regions = region.split_and_plot(
             min_dur=0.2,
             max_dur=5,
@@ -1708,10 +1708,10 @@ def test_load_AudioRegion(skip, max_read, channels):
 
 def test_load_from_microphone():
     with patch("auditok.io.AudioDeviceSource") as patch_audio_source:
-        with patch("auditok.core.AudioReader.read") as patch_reader:
+        with patch("auditok.audio.AudioReader.read") as patch_reader:
             patch_reader.return_value = None
             with patch(
-                "auditok.core.AudioRegion.__init__"
+                "auditok.audio.AudioRegion.__init__"
             ) as patch_AudioRegion:
                 patch_AudioRegion.return_value = None
                 AudioRegion.load(None, skip=0, max_read=5, sr=16000, sw=2, ch=1)

@@ -4,14 +4,10 @@ from functools import partial
 
 import pytest
 
-from auditok import (
-    AudioReader,
-    BufferAudioSource,
-    Recorder,
-    WaveAudioSource,
-    dataset,
-)
+from auditok import AudioReader, BufferAudioSource, Recorder, WaveAudioSource
 from auditok.util import _Limiter, _OverlapAudioReader
+
+AUDIO_FILE_ONE_TO_SIX = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
 
 
 def _read_all_data(reader):
@@ -27,9 +23,7 @@ def _read_all_data(reader):
 class TestAudioReaderWithFileAudioSource:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
-        self.audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        self.audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         self.audio_source.open()
         yield
         self.audio_source.close()
@@ -217,9 +211,7 @@ class TestAudioReaderWithFileAudioSource:
     def test_read(self):
         reader = AudioReader(input=self.audio_source, block_dur=0.02)
         reader_data = reader.read()
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         audio_source_data = audio_source.read(320)
         audio_source.close()
@@ -233,9 +225,7 @@ class TestAudioReaderWithFileAudioSource:
         )
         _ = reader.read()  # first block
         reader_data = reader.read()  # second block with 0.01 S overlap
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         _ = audio_source.read(160)
         audio_source_data = audio_source.read(320)
@@ -250,9 +240,7 @@ class TestAudioReaderWithFileAudioSource:
         assert isinstance(reader._audio_source._audio_source, _Limiter)
         reader_data = _read_all_data(reader)
 
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         audio_source_data = audio_source.read(int(16000 * 0.75))
         audio_source.close()
@@ -293,9 +281,7 @@ class TestAudioReaderWithFileAudioSource:
             reader_data.append(block)
         reader_data = b"".join(reader_data)
 
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         audio_source_data = audio_source.read(400 * 10)
         audio_source.close()
@@ -322,9 +308,7 @@ class TestAudioReaderWithFileAudioSource:
         # read all available data after rewind
         reader_data = _read_all_data(reader)
 
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         audio_source_data = audio_source.read(320 * 10)  # read 0.2 sec. of data
         audio_source.close()
@@ -345,9 +329,7 @@ class TestAudioReaderWithFileAudioSource:
         recorder_data = []
         recorder_data = _read_all_data(recorder)
 
-        audio_source = WaveAudioSource(
-            filename=dataset.one_to_six_arabic_16000_mono_bc_noise
-        )
+        audio_source = WaveAudioSource(filename=AUDIO_FILE_ONE_TO_SIX)
         audio_source.open()
         audio_source_data = audio_source.read(320 * 10)  # read 0.2 sec. of data
         audio_source.close()
@@ -378,7 +360,7 @@ class TestAudioReaderWithFileAudioSource:
             reader_data.append(block)
 
         # Read all data from file and build a BufferAudioSource
-        fp = wave.open(dataset.one_to_six_arabic_16000_mono_bc_noise, "r")
+        fp = wave.open(AUDIO_FILE_ONE_TO_SIX, "r")
         wave_data = fp.readframes(fp.getnframes())
         fp.close()
         audio_source = BufferAudioSource(
@@ -422,7 +404,7 @@ class TestAudioReaderWithFileAudioSource:
             reader_data.append(block)
 
         # Read all data from file and build a BufferAudioSource
-        fp = wave.open(dataset.one_to_six_arabic_16000_mono_bc_noise, "r")
+        fp = wave.open(AUDIO_FILE_ONE_TO_SIX, "r")
         wave_data = fp.readframes(fp.getnframes())
         fp.close()
         audio_source = BufferAudioSource(
@@ -527,7 +509,7 @@ class TestAudioReaderWithFileAudioSource:
         reader.rewind()
 
         # Read all data from file and build a BufferAudioSource
-        fp = wave.open(dataset.one_to_six_arabic_16000_mono_bc_noise, "r")
+        fp = wave.open(AUDIO_FILE_ONE_TO_SIX, "r")
         wave_data = fp.readframes(fp.getnframes())
         fp.close()
         audio_source = BufferAudioSource(
@@ -576,7 +558,7 @@ class TestAudioReaderWithFileAudioSource:
         reader.rewind()
 
         # Read all data from file and build a BufferAudioSource
-        fp = wave.open(dataset.one_to_six_arabic_16000_mono_bc_noise, "r")
+        fp = wave.open(AUDIO_FILE_ONE_TO_SIX, "r")
         wave_data = fp.readframes(fp.getnframes())
         fp.close()
         audio_source = BufferAudioSource(

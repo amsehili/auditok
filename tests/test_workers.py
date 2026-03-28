@@ -137,7 +137,7 @@ def test_RegionSaverWorker(audio_data_source, expected_detections):
             strict_min_dur=False,
             eth=50,
         )
-        with patch("auditok.core.AudioRegion.save") as patched_save:
+        with patch("auditok.audio.AudioRegion.save") as patched_save:
             tokenizer.start_all()
             tokenizer.join()
             tokenizer._observers[0].join()
