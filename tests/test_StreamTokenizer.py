@@ -758,3 +758,249 @@ def test_max_length_inf_with_drop_trailing_silence(validator):
     assert "".join(tokens[0][0]) == "AAAAA"
     assert tokens[0][1] == 0
     assert tokens[0][2] == 4
+
+
+# ── max_leading_silence tests ──
+
+
+def test_max_leading_silence_basic(validator):
+    """Leading silence frames are prepended to the token."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        max_leading_silence=2,
+    )
+    data_source = StringDataSource("aaaAAAAAa")
+    #                               012345678
+    # buffer fills with frames 1,2 (maxlen=2), token starts at 1
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aaAAAAAa"
+    assert tokens[0][1] == 1
+    assert tokens[0][2] == 8
+
+
+def test_max_leading_silence_less_silence_than_requested(validator):
+    """When fewer silent frames exist than max_leading_silence, use what's
+    available."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        max_leading_silence=5,
+    )
+    data_source = StringDataSource("aAAAAAa")
+    #                               0123456
+    # only 1 silent frame available before first A
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aAAAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 6
+
+
+def test_max_leading_silence_no_silence_before_token(validator):
+    """Token at start of stream with no preceding silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        max_leading_silence=3,
+    )
+    data_source = StringDataSource("AAAAAaaa")
+    #                               01234567
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 5
+
+
+def test_max_leading_silence_two_tokens_no_overlap(validator):
+    """Two tokens with leading silence; starts never overlap previous ends."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        max_leading_silence=2,
+    )
+    data_source = StringDataSource("aaAAAAAaaaAAAAAaa")
+    #                               01234567890123456
+    # Token 1: buffer=[a,a] from frames 0,1 → start=0
+    # Token 2: buffer=[a] from frame 9 (1 frame in SILENCE after frame 8
+    #          was consumed) → start=9
+
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "aaAAAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 7
+
+    assert "".join(tokens[1][0]) == "aAAAAAa"
+    assert tokens[1][1] == 9
+    assert tokens[1][2] == 15
+
+    # verify no overlap
+    assert tokens[1][1] > tokens[0][2]
+
+
+def test_max_leading_silence_wide_gap_between_tokens(validator):
+    """With a wide silence gap, buffer captures the last N frames."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        max_leading_silence=2,
+    )
+    data_source = StringDataSource("aAAAaaaaaaAAAa")
+    #                               01234567890123
+    # Token 1: buffer=[a] from frame 0 → start=0
+    # After token 1, SILENCE entered. buffer starts collecting.
+    #   Frame 5 was consumed at the POSSIBLE_SILENCE→SILENCE transition.
+    #   Frame 6: buffer=[a]
+    #   Frame 7: buffer=[a,a]
+    #   Frame 8: buffer=[a,a] (evicts 6, keeps 7,8)
+    #   Frame 9: buffer=[a,a] (evicts 7, keeps 8,9)
+    # Frame 10 (A): leading=[a,a] from frames 8,9 → start=10-2=8
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "aAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 4
+
+    assert "".join(tokens[1][0]) == "aaAAAa"
+    assert tokens[1][1] == 8
+    assert tokens[1][2] == 13
+
+    assert tokens[1][1] > tokens[0][2]
+
+
+def test_max_leading_silence_with_drop_trailing_silence(validator):
+    """Leading silence is kept even when trailing silence is dropped."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=2,
+        max_leading_silence=2,
+        mode=StreamTokenizer.DROP_TRAILING_SILENCE,
+    )
+    data_source = StringDataSource("aaaAAAAAaaa")
+    #                               01234567890
+    # buffer=[a,a] from frames 1,2. Token starts at 1.
+    # DROP_TRAILING removes the trailing 'aa' (silence_length=2 from
+    # frames 8,9; frame 10 triggers SILENCE)
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aaAAAAA"
+    assert tokens[0][1] == 1
+    assert tokens[0][2] == 7
+
+
+def test_max_leading_silence_with_init_min_rejected_then_accepted(validator):
+    """init_min rejects first attempt; leading silence is discarded and
+    recollected for the successful detection."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        init_min=3,
+        init_max_silence=0,
+        max_leading_silence=2,
+    )
+    data_source = StringDataSource("aaAaaAAAAAa")
+    #                               01234567890
+    # Frame 0,1: SILENCE, buffer=[a,a]
+    # Frame 2 (A): prepend buffer → data=[a,a,A], start=0. init_count=1 < 3
+    #              → POSSIBLE_NOISE. buffer cleared.
+    # Frame 3 (a): POSSIBLE_NOISE, sl=1 > init_max_silent=0 → SILENCE.
+    #              data=[]. buffer is empty.
+    # Frame 4 (a): SILENCE, buffer=[a]
+    # Frame 5 (A): prepend buffer=[a] → data=[a,A], start=4. init_count=1 < 3
+    #              → POSSIBLE_NOISE. buffer cleared.
+    # Frame 6 (A): POSSIBLE_NOISE, valid. init_count=2.
+    # Frame 7 (A): POSSIBLE_NOISE, valid. init_count=3 >= 3 → NOISE.
+    # Frame 8 (A): NOISE.
+    # Frame 9 (A): NOISE. data=[a,A,A,A,A,A]
+    # Frame 10(a): POSSIBLE_SILENCE. sl=1>=mcs(1) would need another frame...
+    #   Actually mcs=1, so sl=1 is OK. data=[a,A,A,A,A,A,a]
+    #   Wait, this needs a second silent frame to trigger SILENCE.
+    #   End of data → _post_process → deliver.
+    # Token: data=[a,A,A,A,A,A,a], start=4, end=4+7-1=10
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aAAAAAa"
+    assert tokens[0][1] == 4
+    assert tokens[0][2] == 10
+
+
+def test_max_leading_silence_with_init_min_accepted(validator):
+    """init_min and max_leading_silence compose: leading silence is kept
+    when init_min is satisfied."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=1,
+        init_min=3,
+        init_max_silence=1,
+        max_leading_silence=2,
+    )
+    data_source = StringDataSource("aaaAaAAAa")
+    #                               012345678
+    # Frame 0,1: SILENCE, buffer=[a,a]
+    # Frame 2 (a): SILENCE, buffer=[a,a] (evicts 0, keeps 1,2)
+    # Frame 3 (A): prepend [a,a] → data=[a,a,A], start=1. init=1 < 3
+    #              → POSSIBLE_NOISE. buffer cleared.
+    # Frame 4 (a): POSSIBLE_NOISE, sl=1 <= init_max_silent(1). data=[a,a,A,a]
+    # Frame 5 (A): POSSIBLE_NOISE, valid. sl=0. init=2 < 3. data=[a,a,A,a,A]
+    # Frame 6 (A): POSSIBLE_NOISE, valid. init=3 >= 3 → NOISE. data=[a,a,A,a,A,A]
+    # Frame 7 (A): NOISE. data=[a,a,A,a,A,A,A]
+    # Frame 8 (a): POSSIBLE_SILENCE. sl=1>=mcs(1)... no wait, sl=1 and mcs=1.
+    #   Actually: sl is set to 1. 1 >= 1 is checked on the NEXT silent frame.
+    #   End of data → _post_process. state=POSSIBLE_SILENCE, len(data)=8 > sl=1.
+    #   → deliver.
+    # Token: data=[a,a,A,a,A,A,A,a], start=1, end=1+8-1=8
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aaAaAAAa"
+    assert tokens[0][1] == 1
+    assert tokens[0][2] == 8
+
+
+def test_max_leading_silence_0_is_backward_compatible(validator):
+    """max_leading_silence=0 produces identical results to omitting it."""
+    tokenizer_default = StreamTokenizer(
+        validator,
+        min_length=5,
+        max_length=20,
+        max_continuous_silence=4,
+        init_min=3,
+        init_max_silence=2,
+    )
+    tokenizer_explicit = StreamTokenizer(
+        validator,
+        min_length=5,
+        max_length=20,
+        max_continuous_silence=4,
+        init_min=3,
+        init_max_silence=2,
+        max_leading_silence=0,
+    )
+    data = "aAaaaAaAaaAaAaaaaaaAAAAAAAAAaaaaaaaAAAAA"
+    tokens_default = tokenizer_default.tokenize(StringDataSource(data))
+    tokens_explicit = tokenizer_explicit.tokenize(StringDataSource(data))
+    assert len(tokens_default) == len(tokens_explicit)
+    for t1, t2 in zip(tokens_default, tokens_explicit):
+        assert "".join(t1[0]) == "".join(t2[0])
+        assert t1[1] == t2[1]
+        assert t1[2] == t2[2]

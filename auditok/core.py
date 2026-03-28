@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 import os
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Generator, Iterable
@@ -129,6 +130,7 @@ def split(
     max_silence: float = 0.3,
     drop_trailing_silence: bool = False,
     strict_min_dur: bool = False,
+    max_leading_silence: float = 0,
     **kwargs: Any,
 ) -> Generator[AudioRegion, None, None]:
     """
@@ -176,6 +178,23 @@ def split(
     strict_min_dur : bool, default=False
         Whether to strictly enforce `min_dur` for all events, rejecting any
         event shorter than `min_dur`, even if contiguous with a valid event.
+
+    max_leading_silence : float, default=0
+        Maximum duration in seconds of non-valid audio (silence) to retain
+        immediately before each detected event. When an audio event is
+        detected, up to `max_leading_silence` seconds of the preceding
+        silence are prepended to the event, and its start time is adjusted
+        backward accordingly.
+
+        This is useful for audio events where the onset energy rises
+        gradually — for example, speech utterances whose initial frames
+        fall below the energy threshold. Without leading silence, those
+        frames are cut, producing an abrupt start that can sound
+        uncomfortable. Including a small amount of leading context (e.g.,
+        0.1-0.3 seconds) preserves the natural attack of the sound.
+
+        When set to 0 (default), events start at the first valid frame,
+        preserving backward-compatible behavior.
 
     Other Parameters
     ----------------
@@ -292,6 +311,9 @@ def split(
     max_continuous_silence = _duration_to_nb_windows(
         max_silence, analysis_window, math.floor, _EPSILON
     )
+    max_leading_silence_frames = _duration_to_nb_windows(
+        max_leading_silence, analysis_window, math.floor, _EPSILON
+    )
 
     err_msg = "({0} sec.) results in {1} analysis window(s) "
     err_msg += "({1} == {6}({0} / {2})) which is {5} the number "
@@ -326,7 +348,12 @@ def split(
         )
 
     tokenizer = StreamTokenizer(
-        validator, min_length, max_length, max_continuous_silence, mode=mode
+        validator,
+        min_length,
+        max_length,
+        max_continuous_silence,
+        mode=mode,
+        max_leading_silence=max_leading_silence_frames,
     )
     source.open()
     token_gen = tokenizer.tokenize(source, generator=True)
@@ -387,8 +414,16 @@ def split_and_join_with_silence(
 
     Parameters
     ----------
+    input : str, Path, bytes, AudioSource, AudioReader, AudioRegion, or None
+        Audio input (see :func:`split` for details).
     silence_duration : float
         Duration of silence in seconds between audio events.
+
+    **kwargs
+        Additional parameters forwarded to :func:`split` and
+        :class:`AudioReader` (e.g., ``energy_threshold``,
+        ``analysis_window``, ``sampling_rate``, ``sample_width``,
+        ``channels``, ``audio_format``).
 
     Returns
     -------
@@ -998,6 +1033,7 @@ class AudioRegion(object):
         max_silence: float = 0.3,
         drop_trailing_silence: bool = False,
         strict_min_dur: bool = False,
+        max_leading_silence: float = 0,
         **kwargs: Any,
     ) -> Generator[AudioRegion, None, None]:
         """
@@ -1017,6 +1053,7 @@ class AudioRegion(object):
             max_silence=max_silence,
             drop_trailing_silence=drop_trailing_silence,
             strict_min_dur=strict_min_dur,
+            max_leading_silence=max_leading_silence,
             **kwargs,
         )
 
@@ -1027,6 +1064,7 @@ class AudioRegion(object):
         max_silence: float = 0.3,
         drop_trailing_silence: bool = False,
         strict_min_dur: bool = False,
+        max_leading_silence: float = 0,
         **kwargs: Any,
     ) -> AudioRegion:
         """
@@ -1049,6 +1087,9 @@ class AudioRegion(object):
             Whether to drop trailing silence from events (see :func:`split`).
         strict_min_dur : bool, default=False
             Whether to strictly enforce `min_dur` (see :func:`split`).
+        max_leading_silence : float, default=0
+            Maximum leading silence to retain before each event (see
+            :func:`split`).
         **kwargs
             Additional parameters forwarded to :func:`split` (e.g.,
             ``energy_threshold``, ``analysis_window``, ``use_channel``).
@@ -1073,6 +1114,7 @@ class AudioRegion(object):
             max_silence=max_silence,
             drop_trailing_silence=drop_trailing_silence,
             strict_min_dur=strict_min_dur,
+            max_leading_silence=max_leading_silence,
             **kwargs,
         ):
             if first is None:
@@ -1130,6 +1172,7 @@ class AudioRegion(object):
         max_silence: float = 0.3,
         drop_trailing_silence: bool = False,
         strict_min_dur: bool = False,
+        max_leading_silence: float = 0,
         scale_signal: bool = True,
         show: bool = True,
         figsize: tuple[float, float] | None = None,
@@ -1169,6 +1212,7 @@ class AudioRegion(object):
                 max_silence=max_silence,
                 drop_trailing_silence=drop_trailing_silence,
                 strict_min_dur=strict_min_dur,
+                max_leading_silence=max_leading_silence,
                 **kwargs,
             )
         )
@@ -1436,14 +1480,41 @@ class StreamTokenizer:
         Maximum number of consecutive non-valid frames within a token. Each
         silent region may contain up to `max_continuous_silence` frames.
 
+    max_leading_silence : int, default=0
+        Maximum number of non-valid frames to retain immediately before
+        the first valid frame of each token. These frames are prepended to
+        the token data, and the token's start position is adjusted backward
+        accordingly.
+
+        This is useful for audio events where the onset energy rises
+        gradually (e.g., speech utterances whose first few frames fall below
+        the energy threshold). Without leading silence, those frames are
+        cut, producing an abrupt, perceptually uncomfortable start.
+        Including a small amount of leading context (e.g., 3-6 analysis
+        windows, ~150-300 ms) preserves the natural attack of the sound.
+
+        When set to 0 (default), no leading silence is kept — the token
+        starts at the first valid frame, preserving backward-compatible
+        behavior.
+
     init_min : int, default=0
         Minimum number of consecutive valid frames required before
         tolerating any non-valid frames. Helps discard non-valid tokens
         early if needed.
 
+        .. note::
+            This parameter has never been exposed in the high-level
+            :func:`split` API. For most use cases, validator already
+            filters spurious frames, making ``init_min`` redundant.
+            Consider using ``max_leading_silence`` instead, which addresses
+            the more common need of preserving natural sound onsets.
+
     init_max_silence : int, default=0
         Maximum number of tolerated consecutive non-valid frames before
         reaching `init_min`. Used if `init_min` is specified.
+
+        .. note::
+            See ``init_min`` note above.
 
     mode : int
         Defines the tokenizer behavior with the following options:
@@ -1538,6 +1609,7 @@ class StreamTokenizer:
         init_min: int = 0,
         init_max_silence: int = 0,
         mode: int = 0,
+        max_leading_silence: int = 0,
     ) -> None:
         if callable(validator):
             self._is_valid = validator
@@ -1576,6 +1648,7 @@ class StreamTokenizer:
         self.max_continuous_silence = max_continuous_silence
         self.init_min = init_min
         self.init_max_silent = init_max_silence
+        self.max_leading_silence = max_leading_silence
         self._set_mode(mode)
         self._deliver = None
         self._tokens = None
@@ -1586,6 +1659,7 @@ class StreamTokenizer:
         self._silence_length = 0
         self._start_frame = 0
         self._current_frame = 0
+        self._leading_buffer: deque[Any] = deque(maxlen=max_leading_silence)
 
     def _set_mode(self, mode):
         strict_min_and_drop_trailing = StreamTokenizer.STRICT_MIN_LENGTH
@@ -1608,6 +1682,7 @@ class StreamTokenizer:
         self._state = self.SILENCE
         self._current_frame = -1
         self._deliver = self._append_token
+        self._leading_buffer.clear()
 
     def tokenize(
         self,
@@ -1682,10 +1757,12 @@ class StreamTokenizer:
 
             if frame_is_valid:
                 # seems we got a valid frame after a silence
+                leading = list(self._leading_buffer)
+                self._leading_buffer.clear()
                 self._init_count = 1
                 self._silence_length = 0
-                self._start_frame = self._current_frame
-                self._data.append(frame)
+                self._start_frame = self._current_frame - len(leading)
+                self._data = leading + [frame]
 
                 if self._init_count >= self.init_min:
                     self._state = self.NOISE
@@ -1693,6 +1770,8 @@ class StreamTokenizer:
                         return self._process_end_of_detection(True)
                 else:
                     self._state = self.POSSIBLE_NOISE
+            else:
+                self._leading_buffer.append(frame)
 
         elif self._state == self.POSSIBLE_NOISE:
 
