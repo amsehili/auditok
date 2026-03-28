@@ -143,7 +143,6 @@ def test_split_and_join_with_silence(duration):
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         sr=sampling_rate,
@@ -165,7 +164,6 @@ def test_split_and_join_with_silence(duration):
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         sr=sampling_rate,
@@ -268,7 +266,7 @@ def test_read_offline(channels, skip, max_read):
 
 @pytest.mark.parametrize(
     (
-        "min_dur, max_dur, max_silence, drop_trailing_silence, "
+        "min_dur, max_dur, max_silence, max_trailing_silence, "
         + "strict_min_dur, kwargs, expected"
     ),
     [
@@ -276,7 +274,7 @@ def test_read_offline(channels, skip, max_read):
             0.2,
             5,
             0.2,
-            False,
+            None,
             False,
             {"eth": 50},
             [(2, 16), (17, 31), (34, 76)],
@@ -285,18 +283,18 @@ def test_read_offline(channels, skip, max_read):
             0.3,
             2,
             0.2,
-            False,
+            None,
             False,
             {"eth": 50},
             [(2, 16), (17, 31), (34, 54), (54, 74), (74, 76)],
         ),  # short_max_dur
-        (3, 5, 0.2, False, False, {"eth": 50}, [(34, 76)]),  # long_min_dur
-        (0.2, 80, 10, False, False, {"eth": 50}, [(2, 76)]),  # long_max_silence
+        (3, 5, 0.2, None, False, {"eth": 50}, [(34, 76)]),  # long_min_dur
+        (0.2, 80, 10, None, False, {"eth": 50}, [(2, 76)]),  # long_max_silence
         (
             0.2,
             5,
             0.0,
-            False,
+            None,
             False,
             {"eth": 50},
             [(2, 14), (17, 24), (26, 29), (34, 76)],
@@ -305,7 +303,7 @@ def test_read_offline(channels, skip, max_read):
             0.2,
             5,
             0.2,
-            False,
+            None,
             False,
             {"energy_threshold": 40},
             [(0, 50), (50, 76)],
@@ -314,7 +312,7 @@ def test_read_offline(channels, skip, max_read):
             0.2,
             5,
             0.2,
-            False,
+            None,
             False,
             {"energy_threshold": 60},
             [],
@@ -323,7 +321,7 @@ def test_read_offline(channels, skip, max_read):
             0.2,
             10,
             0.5,
-            True,
+            0,
             False,
             {"eth": 50},
             [(2, 76)],
@@ -332,7 +330,7 @@ def test_read_offline(channels, skip, max_read):
             0.2,
             5,
             0.2,
-            True,
+            0,
             False,
             {"eth": 50},
             [(2, 14), (17, 29), (34, 76)],
@@ -341,7 +339,7 @@ def test_read_offline(channels, skip, max_read):
             1.5,
             5,
             0.2,
-            True,
+            0,
             False,
             {"eth": 50},
             [(34, 76)],
@@ -350,7 +348,7 @@ def test_read_offline(channels, skip, max_read):
             0.3,
             2,
             0.2,
-            False,
+            None,
             True,
             {"eth": 50},
             [(2, 16), (17, 31), (34, 54), (54, 74)],
@@ -374,7 +372,7 @@ def test_split_params(
     min_dur,
     max_dur,
     max_silence,
-    drop_trailing_silence,
+    max_trailing_silence,
     strict_min_dur,
     kwargs,
     expected,
@@ -382,29 +380,28 @@ def test_split_params(
     with open("tests/data/test_split_10HZ_mono.raw", "rb") as fp:
         data = fp.read()
 
+    split_kwargs = dict(
+        min_dur=min_dur,
+        max_dur=max_dur,
+        max_silence=max_silence,
+        strict_min_dur=strict_min_dur,
+        analysis_window=0.1,
+        **kwargs,
+    )
+    if max_trailing_silence is not None:
+        split_kwargs["max_trailing_silence"] = max_trailing_silence
+
     regions = split(
         data,
-        min_dur,
-        max_dur,
-        max_silence,
-        drop_trailing_silence,
-        strict_min_dur,
-        analysis_window=0.1,
         sr=10,
         sw=2,
         ch=1,
-        **kwargs,
+        **split_kwargs,
     )
 
     region = AudioRegion(data, 10, 2, 1)
     regions_ar = region.split(
-        min_dur,
-        max_dur,
-        max_silence,
-        drop_trailing_silence,
-        strict_min_dur,
-        analysis_window=0.1,
-        **kwargs,
+        **split_kwargs,
     )
 
     regions = list(regions)
@@ -513,7 +510,6 @@ def test_split_kwargs(channels, kwargs, expected):
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         sr=10,
@@ -533,7 +529,6 @@ def test_split_kwargs(channels, kwargs, expected):
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         **kwargs,
@@ -944,7 +939,6 @@ def test_split_analysis_window(
         min_dur=min_dur,
         max_dur=max_dur,
         max_silence=max_silence,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         sr=10,
         sw=2,
@@ -958,7 +952,6 @@ def test_split_analysis_window(
         min_dur=min_dur,
         max_dur=max_dur,
         max_silence=max_silence,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         eth=49.99,
         **kwargs,
@@ -996,7 +989,6 @@ def test_split_custom_validator():
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         sr=10,
         sw=2,
@@ -1010,7 +1002,6 @@ def test_split_custom_validator():
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         validator=lambda x: to_array(x, sample_width=2, channels=1)[0] >= 320,
@@ -1108,7 +1099,6 @@ def test_split_input_type(input, kwargs):
         min_dur=0.2,
         max_dur=5,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         analysis_window=0.1,
         **kwargs,
@@ -1347,7 +1337,6 @@ def test_split_and_plot():
             min_dur=0.2,
             max_dur=5,
             max_silence=0.2,
-            drop_trailing_silence=False,
             strict_min_dur=False,
             analysis_window=0.1,
             sr=10,

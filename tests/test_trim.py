@@ -10,7 +10,6 @@ SPLIT_KWARGS_10HZ = {
     "min_dur": 0.2,
     "max_dur": 5,
     "max_silence": 0.2,
-    "drop_trailing_silence": False,
     "strict_min_dur": False,
     "analysis_window": 0.1,
     "eth": 50,
@@ -112,14 +111,14 @@ class TestAudioRegionTrim:
         assert trimmed.duration > detection_dur
 
     @pytest.mark.parametrize(
-        "min_dur, max_dur, max_silence, drop_trailing_silence, "
+        "min_dur, max_dur, max_silence, max_trailing_silence, "
         "strict_min_dur, kwargs, expected_onset, expected_offset",
         [
-            (0.2, 5, 0.2, False, False, {"eth": 50}, 2, 76),
-            (3, 5, 0.2, False, False, {"eth": 50}, 34, 76),
-            (0.2, 80, 10, False, False, {"eth": 50}, 2, 76),
-            (0.2, 5, 0.2, True, False, {"eth": 50}, 2, 76),
-            (0.2, 5, 0.2, False, False, {"energy_threshold": 40}, 0, 76),
+            (0.2, 5, 0.2, None, False, {"eth": 50}, 2, 76),
+            (3, 5, 0.2, None, False, {"eth": 50}, 34, 76),
+            (0.2, 80, 10, None, False, {"eth": 50}, 2, 76),
+            (0.2, 5, 0.2, 0, False, {"eth": 50}, 2, 76),
+            (0.2, 5, 0.2, None, False, {"energy_threshold": 40}, 0, 76),
         ],
         ids=[
             "default",
@@ -134,7 +133,7 @@ class TestAudioRegionTrim:
         min_dur,
         max_dur,
         max_silence,
-        drop_trailing_silence,
+        max_trailing_silence,
         strict_min_dur,
         kwargs,
         expected_onset,
@@ -143,15 +142,17 @@ class TestAudioRegionTrim:
         """Trim boundaries should match first/last split region boundaries."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        trimmed = region.trim(
+        trim_kwargs = dict(
             min_dur=min_dur,
             max_dur=max_dur,
             max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
             strict_min_dur=strict_min_dur,
             analysis_window=0.1,
             **kwargs,
         )
+        if max_trailing_silence is not None:
+            trim_kwargs["max_trailing_silence"] = max_trailing_silence
+        trimmed = region.trim(**trim_kwargs)
         expected = _expected_trimmed(data, 1, expected_onset, expected_offset)
         assert bytes(trimmed) == expected
 

@@ -1004,3 +1004,131 @@ def test_max_leading_silence_0_is_backward_compatible(validator):
         assert "".join(t1[0]) == "".join(t2[0])
         assert t1[1] == t2[1]
         assert t1[2] == t2[2]
+
+
+# ── max_trailing_silence tests ──
+
+
+def test_max_trailing_silence_none_keeps_all(validator):
+    """max_trailing_silence=None (default) keeps all trailing silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+    )
+    data_source = StringDataSource("AAAAAaaaa")
+    #                               012345678
+    # mcs=3: frames 5,6,7 tolerated, frame 8 triggers SILENCE
+    # Token includes trailing aaa (3 frames)
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 7
+
+
+def test_max_trailing_silence_0_drops_all(validator):
+    """max_trailing_silence=0 drops all trailing silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+        max_trailing_silence=0,
+    )
+    data_source = StringDataSource("AAAAAaaaa")
+    #                               012345678
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAA"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 4
+
+
+def test_max_trailing_silence_partial(validator):
+    """max_trailing_silence=1 keeps only 1 frame of trailing silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+        max_trailing_silence=1,
+    )
+    data_source = StringDataSource("AAAAAaaaa")
+    #                               012345678
+    # 3 trailing frames, keep only 1 → "AAAAAa"
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 5
+
+
+def test_max_trailing_silence_larger_than_actual(validator):
+    """When max_trailing_silence > actual trailing silence, keep all."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=2,
+        max_trailing_silence=5,
+    )
+    data_source = StringDataSource("AAAAAaaa")
+    #                               01234567
+    # mcs=2: frames 5,6 tolerated, frame 7 triggers SILENCE
+    # 2 trailing frames < max_trailing_silence(5), keep all
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 6
+
+
+def test_max_trailing_silence_0_matches_drop_trailing_mode(validator):
+    """max_trailing_silence=0 gives the same result as DROP_TRAILING_SILENCE
+    mode flag."""
+    tokenizer_mode = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+        mode=StreamTokenizer.DROP_TRAILING_SILENCE,
+    )
+    tokenizer_param = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+        max_trailing_silence=0,
+    )
+    data = "aaAAAAAaaaAAAa"
+    tokens_mode = tokenizer_mode.tokenize(StringDataSource(data))
+    tokens_param = tokenizer_param.tokenize(StringDataSource(data))
+    assert len(tokens_mode) == len(tokens_param)
+    for t1, t2 in zip(tokens_mode, tokens_param):
+        assert "".join(t1[0]) == "".join(t2[0])
+        assert t1[1] == t2[1]
+        assert t1[2] == t2[2]
+
+
+def test_max_trailing_silence_with_max_leading_silence(validator):
+    """Both leading and trailing silence control work together."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=20,
+        max_continuous_silence=3,
+        max_leading_silence=2,
+        max_trailing_silence=1,
+    )
+    data_source = StringDataSource("aaaAAAAAaaaa")
+    #                               0123456789 10 11
+    # buffer=[a,a] from frames 1,2. Leading prepended → start=1
+    # mcs=3: frames 8,9,10 tolerated, frame 11 triggers SILENCE
+    # 3 trailing frames, keep 1 → trim 2
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "aaAAAAAa"
+    assert tokens[0][1] == 1
+    assert tokens[0][2] == 8

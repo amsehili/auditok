@@ -52,7 +52,6 @@ def test_TokenizerWorker(audio_data_source, expected_detections):
             min_dur=0.3,
             max_dur=2,
             max_silence=0.2,
-            drop_trailing_silence=False,
             strict_min_dur=False,
             eth=50,
         )
@@ -93,7 +92,6 @@ def test_PlayerWorker(audio_data_source, expected_detections):
             min_dur=0.3,
             max_dur=2,
             max_silence=0.2,
-            drop_trailing_silence=False,
             strict_min_dur=False,
             eth=50,
         )
@@ -136,7 +134,6 @@ def test_RegionSaverWorker(audio_data_source, expected_detections):
             min_dur=0.3,
             max_dur=2,
             max_silence=0.2,
-            drop_trailing_silence=False,
             strict_min_dur=False,
             eth=50,
         )
@@ -197,7 +194,6 @@ def test_CommandLineWorker(audio_data_source, expected_detections):
             min_dur=0.3,
             max_dur=2,
             max_silence=0.2,
-            drop_trailing_silence=False,
             strict_min_dur=False,
             eth=50,
         )
@@ -239,7 +235,6 @@ def test_PrintWorker(audio_data_source, expected_detections):
         min_dur=0.3,
         max_dur=2,
         max_silence=0.2,
-        drop_trailing_silence=False,
         strict_min_dur=False,
         eth=50,
     )

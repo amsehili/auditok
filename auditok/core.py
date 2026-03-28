@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 import os
+import warnings
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -53,6 +54,13 @@ __all__ = [
 DEFAULT_ANALYSIS_WINDOW = 0.05
 DEFAULT_ENERGY_THRESHOLD = 50
 _EPSILON = 1e-10
+
+_DROP_TRAILING_SILENCE_DEPRECATION = (
+    "'drop_trailing_silence' is deprecated and will be removed in a "
+    "future version. Use max_trailing_silence=0 to drop trailing "
+    "silence, or max_trailing_silence=None (default) to keep all "
+    "trailing silence (determined by max_silence)."
+)
 
 
 def load(
@@ -125,12 +133,14 @@ def load(
 
 def split(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    *,
     min_dur: float = 0.2,
     max_dur: float | None = 5,
     max_silence: float = 0.3,
-    drop_trailing_silence: bool = False,
-    strict_min_dur: bool = False,
     max_leading_silence: float = 0,
+    max_trailing_silence: float | None = None,
+    drop_trailing_silence: bool | None = None,
+    strict_min_dur: bool = False,
     **kwargs: Any,
 ) -> Generator[AudioRegion, None, None]:
     """
@@ -167,17 +177,8 @@ def split(
     max_silence : float, default=0.3
         Maximum duration of continuous silence allowed within an audio event.
         Multiple silent gaps of this duration may appear in a single event.
-        Trailing silence at the end of an event is kept if
-        `drop_trailing_silence` is False.
-
-    drop_trailing_silence : bool, default=False
-        Whether to remove trailing silence from detected events. To prevent
-        abrupt speech cuts, it is recommended to keep trailing silence, so
-        default is False.
-
-    strict_min_dur : bool, default=False
-        Whether to strictly enforce `min_dur` for all events, rejecting any
-        event shorter than `min_dur`, even if contiguous with a valid event.
+        This controls *when* a detection ends; use ``max_trailing_silence``
+        to control how much of that trailing silence to keep.
 
     max_leading_silence : float, default=0
         Maximum duration in seconds of non-valid audio (silence) to retain
@@ -193,8 +194,30 @@ def split(
         uncomfortable. Including a small amount of leading context (e.g.,
         0.1-0.3 seconds) preserves the natural attack of the sound.
 
-        When set to 0 (default), events start at the first valid frame,
-        preserving backward-compatible behavior.
+        When set to 0 (default), events start at the first valid frame.
+
+    max_trailing_silence : float or None, default=None
+        Maximum duration in seconds of trailing silence to retain at the
+        end of each detected event. When an event ends, up to
+        ``max_trailing_silence`` seconds of the accumulated trailing
+        silence are kept; any excess is trimmed.
+
+        - ``None`` (default): keep all trailing silence (up to
+          ``max_silence``). This preserves the natural decay of the sound.
+        - ``0``: drop all trailing silence.
+        - A positive value: keep up to that many seconds of trailing
+          silence, independently of ``max_silence``.
+
+    drop_trailing_silence : bool or None, default=None
+        .. deprecated::
+            Use ``max_trailing_silence=0`` instead of
+            ``drop_trailing_silence=True``, or ``max_trailing_silence=None``
+            (default) to keep all trailing silence (determined by
+            ``max_silence``).
+
+    strict_min_dur : bool, default=False
+        Whether to strictly enforce `min_dur` for all events, rejecting any
+        event shorter than `min_dur`, even if contiguous with a valid event.
 
     Other Parameters
     ----------------
@@ -298,9 +321,17 @@ def split(
         validator = AudioEnergyValidator(
             energy_threshold, source.sw, source.ch, use_channel=use_channel
         )
-    mode = StreamTokenizer.DROP_TRAILING_SILENCE if drop_trailing_silence else 0
-    if strict_min_dur:
-        mode |= StreamTokenizer.STRICT_MIN_LENGTH
+    # Handle deprecated drop_trailing_silence
+    if drop_trailing_silence is not None:
+        warnings.warn(
+            _DROP_TRAILING_SILENCE_DEPRECATION,
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if max_trailing_silence is None:
+            max_trailing_silence = 0.0 if drop_trailing_silence else None
+
+    mode = StreamTokenizer.STRICT_MIN_LENGTH if strict_min_dur else 0
     min_length = _duration_to_nb_windows(min_dur, analysis_window, math.ceil)
     if max_dur == float("inf"):
         max_length = float("inf")
@@ -314,6 +345,12 @@ def split(
     max_leading_silence_frames = _duration_to_nb_windows(
         max_leading_silence, analysis_window, math.floor, _EPSILON
     )
+    if max_trailing_silence is not None:
+        max_trailing_silence_frames: int | None = _duration_to_nb_windows(
+            max_trailing_silence, analysis_window, math.floor, _EPSILON
+        )
+    else:
+        max_trailing_silence_frames = None
 
     err_msg = "({0} sec.) results in {1} analysis window(s) "
     err_msg += "({1} == {6}({0} / {2})) which is {5} the number "
@@ -354,6 +391,7 @@ def split(
         max_continuous_silence,
         mode=mode,
         max_leading_silence=max_leading_silence_frames,
+        max_trailing_silence=max_trailing_silence_frames,
     )
     source.open()
     token_gen = tokenizer.tokenize(source, generator=True)
@@ -443,10 +481,13 @@ def split_and_join_with_silence(
 
 def trim(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    *,
     min_dur: float = 0.2,
     max_dur: float | None = 5,
     max_silence: float = 0.3,
-    drop_trailing_silence: bool = False,
+    max_leading_silence: float = 0,
+    max_trailing_silence: float | None = None,
+    drop_trailing_silence: bool | None = None,
     strict_min_dur: bool = False,
     **kwargs: Any,
 ) -> AudioRegion:
@@ -464,21 +505,8 @@ def trim(
     ----------
     input : str, Path, bytes, AudioSource, AudioReader, AudioRegion, or None
         Audio input (see :func:`split` for details).
-    min_dur : float, default=0.2
-        Minimum duration of a detected audio event (see :func:`split`).
-    max_dur : float or None, default=5
-        Maximum duration of a detected audio event (see :func:`split`).
-    max_silence : float, default=0.3
-        Maximum tolerated silence within an event (see :func:`split`).
-    drop_trailing_silence : bool, default=False
-        Whether to drop trailing silence from events (see :func:`split`).
-    strict_min_dur : bool, default=False
-        Whether to strictly enforce `min_dur` (see :func:`split`).
-    **kwargs
-        Additional parameters forwarded to :func:`split` and
-        :class:`AudioReader` (e.g., ``energy_threshold``,
-        ``analysis_window``, ``sampling_rate``, ``sample_width``,
-        ``channels``, ``audio_format``).
+
+    See :func:`split` for descriptions of all other parameters.
 
     Returns
     -------
@@ -491,12 +519,21 @@ def trim(
     AudioRegion.trim : Trim an in-memory AudioRegion.
     split : Split audio into individual activity regions.
     """
+    if drop_trailing_silence is not None:
+        warnings.warn(
+            _DROP_TRAILING_SILENCE_DEPRECATION,
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if max_trailing_silence is None:
+            max_trailing_silence = 0.0 if drop_trailing_silence else None
     if isinstance(input, AudioRegion):
         return input.trim(
             min_dur=min_dur,
             max_dur=max_dur,
             max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
+            max_leading_silence=max_leading_silence,
+            max_trailing_silence=max_trailing_silence,
             strict_min_dur=strict_min_dur,
             **kwargs,
         )
@@ -525,7 +562,8 @@ def trim(
         min_dur=min_dur,
         max_dur=max_dur,
         max_silence=max_silence,
-        drop_trailing_silence=drop_trailing_silence,
+        max_leading_silence=max_leading_silence,
+        max_trailing_silence=max_trailing_silence,
         strict_min_dur=strict_min_dur,
         **kwargs,
     ):
@@ -1028,12 +1066,14 @@ class AudioRegion(object):
 
     def split(
         self,
+        *,
         min_dur: float = 0.2,
         max_dur: float | None = 5,
         max_silence: float = 0.3,
-        drop_trailing_silence: bool = False,
-        strict_min_dur: bool = False,
         max_leading_silence: float = 0,
+        max_trailing_silence: float | None = None,
+        drop_trailing_silence: bool | None = None,
+        strict_min_dur: bool = False,
         **kwargs: Any,
     ) -> Generator[AudioRegion, None, None]:
         """
@@ -1046,25 +1086,35 @@ class AudioRegion(object):
             warn_msg += "AudioRegion.split_and_plot(). You should rather "
             warn_msg += "slice audio region before calling this method"
             raise RuntimeWarning(warn_msg)
+        if drop_trailing_silence is not None:
+            warnings.warn(
+                _DROP_TRAILING_SILENCE_DEPRECATION,
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if max_trailing_silence is None:
+                max_trailing_silence = 0.0 if drop_trailing_silence else None
         return split(
             self,
             min_dur=min_dur,
             max_dur=max_dur,
             max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
-            strict_min_dur=strict_min_dur,
             max_leading_silence=max_leading_silence,
+            max_trailing_silence=max_trailing_silence,
+            strict_min_dur=strict_min_dur,
             **kwargs,
         )
 
     def trim(
         self,
+        *,
         min_dur: float = 0.2,
         max_dur: float | None = 5,
         max_silence: float = 0.3,
-        drop_trailing_silence: bool = False,
-        strict_min_dur: bool = False,
         max_leading_silence: float = 0,
+        max_trailing_silence: float | None = None,
+        drop_trailing_silence: bool | None = None,
+        strict_min_dur: bool = False,
         **kwargs: Any,
     ) -> AudioRegion:
         """
@@ -1075,24 +1125,7 @@ class AudioRegion(object):
         detection. All audio between detections (including internal silence)
         is preserved.
 
-        Parameters
-        ----------
-        min_dur : float, default=0.2
-            Minimum duration of a detected audio event (see :func:`split`).
-        max_dur : float or None, default=5
-            Maximum duration of a detected audio event (see :func:`split`).
-        max_silence : float, default=0.3
-            Maximum tolerated silence within an event (see :func:`split`).
-        drop_trailing_silence : bool, default=False
-            Whether to drop trailing silence from events (see :func:`split`).
-        strict_min_dur : bool, default=False
-            Whether to strictly enforce `min_dur` (see :func:`split`).
-        max_leading_silence : float, default=0
-            Maximum leading silence to retain before each event (see
-            :func:`split`).
-        **kwargs
-            Additional parameters forwarded to :func:`split` (e.g.,
-            ``energy_threshold``, ``analysis_window``, ``use_channel``).
+        See :func:`split` for parameter descriptions.
 
         Returns
         -------
@@ -1106,15 +1139,23 @@ class AudioRegion(object):
         --------
         split : Split audio into individual activity regions.
         """
+        if drop_trailing_silence is not None:
+            warnings.warn(
+                _DROP_TRAILING_SILENCE_DEPRECATION,
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if max_trailing_silence is None:
+                max_trailing_silence = 0.0 if drop_trailing_silence else None
         first = None
         last = None
         for region in self.split(
             min_dur=min_dur,
             max_dur=max_dur,
             max_silence=max_silence,
-            drop_trailing_silence=drop_trailing_silence,
-            strict_min_dur=strict_min_dur,
             max_leading_silence=max_leading_silence,
+            max_trailing_silence=max_trailing_silence,
+            strict_min_dur=strict_min_dur,
             **kwargs,
         ):
             if first is None:
@@ -1167,12 +1208,14 @@ class AudioRegion(object):
 
     def split_and_plot(
         self,
+        *,
         min_dur: float = 0.2,
         max_dur: float | None = 5,
         max_silence: float = 0.3,
-        drop_trailing_silence: bool = False,
-        strict_min_dur: bool = False,
         max_leading_silence: float = 0,
+        max_trailing_silence: float | None = None,
+        drop_trailing_silence: bool | None = None,
+        strict_min_dur: bool = False,
         scale_signal: bool = True,
         show: bool = True,
         figsize: tuple[float, float] | None = None,
@@ -1205,14 +1248,22 @@ class AudioRegion(object):
         Refer to :func:`auditok.split()` for a detailed description of split
         parameters, and to :meth:`plot` for plot-specific parameters.
         """
+        if drop_trailing_silence is not None:
+            warnings.warn(
+                _DROP_TRAILING_SILENCE_DEPRECATION,
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if max_trailing_silence is None:
+                max_trailing_silence = 0.0 if drop_trailing_silence else None
         regions: list[AudioRegion] = list(
             self.split(
                 min_dur=min_dur,
                 max_dur=max_dur,
                 max_silence=max_silence,
-                drop_trailing_silence=drop_trailing_silence,
-                strict_min_dur=strict_min_dur,
                 max_leading_silence=max_leading_silence,
+                max_trailing_silence=max_trailing_silence,
+                strict_min_dur=strict_min_dur,
                 **kwargs,
             )
         )
@@ -1497,6 +1548,20 @@ class StreamTokenizer:
         starts at the first valid frame, preserving backward-compatible
         behavior.
 
+    max_trailing_silence : int or None, default=None
+        Maximum number of trailing non-valid frames to keep at the end of
+        each token. When a token ends because ``max_continuous_silence`` is
+        exceeded (or data ends), up to ``max_trailing_silence`` frames of
+        the accumulated trailing silence are retained; the rest are trimmed.
+
+        - ``None`` (default): keep all trailing silence (no trimming).
+        - ``0``: drop all trailing silence (equivalent to the legacy
+          ``DROP_TRAILING_SILENCE`` mode flag).
+        - ``N > 0``: keep up to N trailing silent frames.
+
+        This decouples the *perceptual padding* at the end of a token from
+        ``max_continuous_silence``, which controls *when* a token ends.
+
     init_min : int, default=0
         Minimum number of consecutive valid frames required before
         tolerating any non-valid frames. Helps discard non-valid tokens
@@ -1610,6 +1675,7 @@ class StreamTokenizer:
         init_max_silence: int = 0,
         mode: int = 0,
         max_leading_silence: int = 0,
+        max_trailing_silence: int | None = None,
     ) -> None:
         if callable(validator):
             self._is_valid = validator
@@ -1650,6 +1716,13 @@ class StreamTokenizer:
         self.init_max_silent = init_max_silence
         self.max_leading_silence = max_leading_silence
         self._set_mode(mode)
+        # max_trailing_silence takes precedence over DROP_TRAILING_SILENCE flag
+        if max_trailing_silence is not None:
+            self.max_trailing_silence = max_trailing_silence
+        elif self._drop_trailing_silence:
+            self.max_trailing_silence = 0
+        else:
+            self.max_trailing_silence = None
         self._deliver = None
         self._tokens = None
         self._state = None
@@ -1854,12 +1927,14 @@ class StreamTokenizer:
 
         if (
             not truncated
-            and self._drop_trailing_silence
-            and self._silence_length > 0
+            and self.max_trailing_silence is not None
+            and self._silence_length > self.max_trailing_silence
         ):
+            # Trim trailing silence beyond the allowed amount.
             # happens if max_continuous_silence is reached
             # or max_length is reached at a silent frame
-            self._data = self._data[0 : -self._silence_length]
+            excess = self._silence_length - self.max_trailing_silence
+            self._data = self._data[:-excess]
 
         if (len(self._data) >= self.min_length) or (
             len(self._data) > 0
