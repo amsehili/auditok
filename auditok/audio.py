@@ -9,7 +9,7 @@ Module for high-level audio operations and data structures.
     trim
     make_silence
     split_and_join_with_silence
-    remove_pauses
+    fix_pauses
     AudioRegion
 """
 
@@ -47,7 +47,7 @@ __all__ = [
     "trim",
     "make_silence",
     "split_and_join_with_silence",
-    "remove_pauses",
+    "fix_pauses",
     "AudioRegion",
 ]
 
@@ -480,10 +480,10 @@ def split_and_join_with_silence(
     return _empty_audio_region(input, kwargs)
 
 
-_REMOVE_PAUSES_FIXED = {"max_dur", "strict_min_dur"}
+_FIX_PAUSES_FIXED = {"max_dur", "strict_min_dur"}
 
 
-def remove_pauses(
+def fix_pauses(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
     silence_duration: float,
     *,
@@ -491,17 +491,18 @@ def remove_pauses(
     max_silence: float = 0.3,
     max_leading_silence: float = 0,
     max_trailing_silence: float | None = None,
-    drop_trailing_silence: bool | None = None,
     **kwargs: Any,
 ) -> AudioRegion:
     """
-    Remove long pauses from audio while preserving all detected events
-    regardless of their duration.
+    Normalize pauses in audio by replacing them with a fixed duration of
+    silence while preserving all detected events regardless of their
+    duration.
 
     This is a convenience wrapper around :func:`split_and_join_with_silence`
     that forces ``max_dur=None`` and ``strict_min_dur=False`` so that events
     are never truncated. The resulting audio contains all detected events
-    separated by exactly ``silence_duration`` seconds of silence.
+    separated by exactly ``silence_duration`` seconds of silence. Events
+    shorter than ``min_dur`` are discarded and will not appear in the output.
 
     Parameters
     ----------
@@ -519,13 +520,11 @@ def remove_pauses(
         Maximum duration in seconds of silence to retain before each event.
     max_trailing_silence : float or None, default=None
         Maximum duration in seconds of trailing silence to retain at the end
-        of each event.
-    drop_trailing_silence : bool or None, default=None
-        [Deprecated] Use ``max_trailing_silence=0`` instead.
-    **kwargs
-        Additional parameters forwarded to :func:`split` (e.g.,
-        ``energy_threshold``, ``analysis_window``, ``sampling_rate``,
-        ``sample_width``, ``channels``, ``audio_format``).
+        of each event. ``None`` keeps all trailing silence (up to
+        `max_silence`); ``0`` drops it entirely.
+
+    See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
+    energy threshold, analysis window, etc.).
 
     Returns
     -------
@@ -544,22 +543,13 @@ def remove_pauses(
     split_and_join_with_silence : Lower-level function with full control.
     trim : Remove leading and trailing silence only.
     """
-    fixed = _REMOVE_PAUSES_FIXED.intersection(kwargs)
+    fixed = _FIX_PAUSES_FIXED.intersection(kwargs)
     if fixed:
         names = ", ".join(sorted(fixed))
         raise TypeError(
-            f"remove_pauses() does not accept {names}; "
+            f"fix_pauses() does not accept {names}; "
             f"use split_and_join_with_silence() for full control"
         )
-    if drop_trailing_silence is not None:
-        warnings.warn(
-            _DROP_TRAILING_SILENCE_DEPRECATION,
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if max_trailing_silence is None:
-            max_trailing_silence = 0
-        drop_trailing_silence = None
     return split_and_join_with_silence(
         input,
         silence_duration,
@@ -577,12 +567,9 @@ def trim(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
     *,
     min_dur: float = 0.2,
-    max_dur: float | None = 5,
     max_silence: float = 0.3,
     max_leading_silence: float = 0,
     max_trailing_silence: float | None = None,
-    drop_trailing_silence: bool | None = None,
-    strict_min_dur: bool = False,
     **kwargs: Any,
 ) -> AudioRegion:
     """
@@ -595,12 +582,30 @@ def trim(
     makes ``trim`` efficient for live sources where a second pass is
     impossible or expensive.
 
+    Internally, ``max_dur`` is set to ``None`` (events are never truncated)
+    and ``strict_min_dur`` is ``False``. Events shorter than `min_dur` are
+    ignored when determining the trim boundaries.
+
     Parameters
     ----------
     input : str, Path, bytes, AudioSource, AudioReader, AudioRegion, or None
         Audio input (see :func:`split` for details).
+    min_dur : float, optional, default=0.2
+        Minimum duration (in seconds) of a valid audio event. Events
+        shorter than this are ignored when determining trim boundaries.
+    max_silence : float, optional, default=0.3
+        Maximum duration (in seconds) of consecutive silence allowed
+        within a single audio event.
+    max_leading_silence : float, optional, default=0
+        Maximum duration (in seconds) of silence to retain before each
+        detected event.
+    max_trailing_silence : float or None, optional, default=None
+        Maximum duration (in seconds) of trailing silence to keep at the
+        end of each detected event. ``None`` keeps all trailing silence
+        (up to `max_silence`); ``0`` drops it entirely.
 
-    See :func:`split` for descriptions of all other parameters.
+    See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
+    energy threshold, analysis window, etc.).
 
     Returns
     -------
@@ -613,22 +618,12 @@ def trim(
     AudioRegion.trim : Trim an in-memory AudioRegion.
     split : Split audio into individual activity regions.
     """
-    if drop_trailing_silence is not None:
-        warnings.warn(
-            _DROP_TRAILING_SILENCE_DEPRECATION,
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if max_trailing_silence is None:
-            max_trailing_silence = 0.0 if drop_trailing_silence else None
     if isinstance(input, AudioRegion):
         return input.trim(
             min_dur=min_dur,
-            max_dur=max_dur,
             max_silence=max_silence,
             max_leading_silence=max_leading_silence,
             max_trailing_silence=max_trailing_silence,
-            strict_min_dur=strict_min_dur,
             **kwargs,
         )
 
@@ -654,11 +649,11 @@ def trim(
     for region in split(
         reader,
         min_dur=min_dur,
-        max_dur=max_dur,
+        max_dur=None,
         max_silence=max_silence,
         max_leading_silence=max_leading_silence,
         max_trailing_silence=max_trailing_silence,
-        strict_min_dur=strict_min_dur,
+        strict_min_dur=False,
         **kwargs,
     ):
         if first is None:
@@ -1224,12 +1219,9 @@ class AudioRegion(object):
         self,
         *,
         min_dur: float = 0.2,
-        max_dur: float | None = 5,
         max_silence: float = 0.3,
         max_leading_silence: float = 0,
         max_trailing_silence: float | None = None,
-        drop_trailing_silence: bool | None = None,
-        strict_min_dur: bool = False,
         **kwargs: Any,
     ) -> AudioRegion:
         """
@@ -1240,7 +1232,28 @@ class AudioRegion(object):
         detection. All audio between detections (including internal silence)
         is preserved.
 
-        See :func:`split` for parameter descriptions.
+        Internally, ``max_dur`` is set to ``None`` (events are never
+        truncated) and ``strict_min_dur`` is ``False``. Events shorter
+        than `min_dur` are ignored when determining the trim boundaries.
+
+        Parameters
+        ----------
+        min_dur : float, optional, default=0.2
+            Minimum duration (in seconds) of a valid audio event. Events
+            shorter than this are ignored when determining trim boundaries.
+        max_silence : float, optional, default=0.3
+            Maximum duration (in seconds) of consecutive silence allowed
+            within a single audio event.
+        max_leading_silence : float, optional, default=0
+            Maximum duration (in seconds) of silence to retain before each
+            detected event.
+        max_trailing_silence : float or None, optional, default=None
+            Maximum duration (in seconds) of trailing silence to keep at
+            the end of each detected event. ``None`` keeps all trailing
+            silence (up to `max_silence`); ``0`` drops it entirely.
+
+        See :func:`split` for descriptions of ``**kwargs`` (energy
+        threshold, analysis window, etc.).
 
         Returns
         -------
@@ -1254,23 +1267,15 @@ class AudioRegion(object):
         --------
         split : Split audio into individual activity regions.
         """
-        if drop_trailing_silence is not None:
-            warnings.warn(
-                _DROP_TRAILING_SILENCE_DEPRECATION,
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if max_trailing_silence is None:
-                max_trailing_silence = 0.0 if drop_trailing_silence else None
         first = None
         last = None
         for region in self.split(
             min_dur=min_dur,
-            max_dur=max_dur,
+            max_dur=None,
             max_silence=max_silence,
             max_leading_silence=max_leading_silence,
             max_trailing_silence=max_trailing_silence,
-            strict_min_dur=strict_min_dur,
+            strict_min_dur=False,
             **kwargs,
         ):
             if first is None:

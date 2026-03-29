@@ -15,6 +15,14 @@ SPLIT_KWARGS_10HZ = {
     "eth": 50,
 }
 
+# trim() no longer accepts max_dur or strict_min_dur
+TRIM_KWARGS_10HZ = {
+    "min_dur": 0.2,
+    "max_silence": 0.2,
+    "analysis_window": 0.1,
+    "eth": 50,
+}
+
 MONO_RAW = "tests/data/test_split_10HZ_mono.raw"
 STEREO_RAW = "tests/data/test_split_10HZ_stereo.raw"
 SR, SW = 10, 2
@@ -42,9 +50,7 @@ class TestAudioRegionTrim:
         """Trim should remove leading and trailing silence."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        # split with default params gives [(2,16), (17,31), (34,76)]
-        # so trim should give data[2:76] (in samples)
-        trimmed = region.trim(**SPLIT_KWARGS_10HZ)
+        trimmed = region.trim(**TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
@@ -52,8 +58,7 @@ class TestAudioRegionTrim:
         """Trim should work with stereo data."""
         data = _load_raw(STEREO_RAW)
         region = AudioRegion(data, SR, SW, 2)
-        # stereo split with default params gives [(2,32), (34,76)]
-        trimmed = region.trim(**SPLIT_KWARGS_10HZ)
+        trimmed = region.trim(**TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 2, 2, 76)
         assert bytes(trimmed) == expected
 
@@ -61,7 +66,7 @@ class TestAudioRegionTrim:
         """Trimmed region should keep sr, sw, ch from the original."""
         data = _load_raw(STEREO_RAW)
         region = AudioRegion(data, SR, SW, 2)
-        trimmed = region.trim(**SPLIT_KWARGS_10HZ)
+        trimmed = region.trim(**TRIM_KWARGS_10HZ)
         assert trimmed.sr == SR
         assert trimmed.sw == SW
         assert trimmed.ch == 2
@@ -70,9 +75,8 @@ class TestAudioRegionTrim:
         """When no activity is detected, return an empty AudioRegion."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        # energy_threshold=60 produces no detections on this data
         trimmed = region.trim(
-            **{**SPLIT_KWARGS_10HZ, "eth": 60},
+            **{**TRIM_KWARGS_10HZ, "eth": 60},
         )
         assert isinstance(trimmed, AudioRegion)
         assert trimmed.duration == 0.0
@@ -84,8 +88,7 @@ class TestAudioRegionTrim:
         """Empty region from trim should be usable with + and join."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        empty = region.trim(**{**SPLIT_KWARGS_10HZ, "eth": 60})
-        # Should not raise
+        empty = region.trim(**{**TRIM_KWARGS_10HZ, "eth": 60})
         joined = empty + region
         assert joined.duration == region.duration
 
@@ -93,8 +96,10 @@ class TestAudioRegionTrim:
         """trim() result should span from first split start to last split end."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        regions = list(region.split(**SPLIT_KWARGS_10HZ))
-        trimmed = region.trim(**SPLIT_KWARGS_10HZ)
+        regions = list(
+            region.split(max_dur=None, strict_min_dur=False, **TRIM_KWARGS_10HZ)
+        )
+        trimmed = region.trim(**TRIM_KWARGS_10HZ)
         first, last = regions[0], regions[-1]
         expected = region.sec[first.start : last.end]
         assert bytes(trimmed) == bytes(expected)
@@ -103,22 +108,22 @@ class TestAudioRegionTrim:
         """Silence between detections must be preserved."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        trimmed = region.trim(**SPLIT_KWARGS_10HZ)
-        regions = list(region.split(**SPLIT_KWARGS_10HZ))
-        # Sum of detection durations is less than trimmed duration
-        # because internal silence is kept
+        trimmed = region.trim(**TRIM_KWARGS_10HZ)
+        regions = list(
+            region.split(max_dur=None, strict_min_dur=False, **TRIM_KWARGS_10HZ)
+        )
         detection_dur = sum(r.duration for r in regions)
         assert trimmed.duration > detection_dur
 
     @pytest.mark.parametrize(
-        "min_dur, max_dur, max_silence, max_trailing_silence, "
-        "strict_min_dur, kwargs, expected_onset, expected_offset",
+        "min_dur, max_silence, max_trailing_silence, "
+        "kwargs, expected_onset, expected_offset",
         [
-            (0.2, 5, 0.2, None, False, {"eth": 50}, 2, 76),
-            (3, 5, 0.2, None, False, {"eth": 50}, 34, 76),
-            (0.2, 80, 10, None, False, {"eth": 50}, 2, 76),
-            (0.2, 5, 0.2, 0, False, {"eth": 50}, 2, 76),
-            (0.2, 5, 0.2, None, False, {"energy_threshold": 40}, 0, 76),
+            (0.2, 0.2, None, {"eth": 50}, 2, 76),
+            (3, 0.2, None, {"eth": 50}, 34, 76),
+            (0.2, 10, None, {"eth": 50}, 2, 76),
+            (0.2, 0.2, 0, {"eth": 50}, 2, 76),
+            (0.2, 0.2, None, {"energy_threshold": 40}, 0, 76),
         ],
         ids=[
             "default",
@@ -128,25 +133,21 @@ class TestAudioRegionTrim:
             "low_energy_threshold",
         ],
     )
-    def test_trim_with_various_split_params(
+    def test_trim_with_various_params(
         self,
         min_dur,
-        max_dur,
         max_silence,
         max_trailing_silence,
-        strict_min_dur,
         kwargs,
         expected_onset,
         expected_offset,
     ):
-        """Trim boundaries should match first/last split region boundaries."""
+        """Trim boundaries should match first/last detection boundaries."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
         trim_kwargs = dict(
             min_dur=min_dur,
-            max_dur=max_dur,
             max_silence=max_silence,
-            strict_min_dur=strict_min_dur,
             analysis_window=0.1,
             **kwargs,
         )
@@ -165,33 +166,33 @@ class TestModuleTrim:
 
     def test_trim_with_filename(self):
         data = _load_raw(MONO_RAW)
-        trimmed = trim(MONO_RAW, sr=SR, sw=SW, ch=1, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(MONO_RAW, sr=SR, sw=SW, ch=1, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
     def test_trim_with_path(self):
         data = _load_raw(MONO_RAW)
-        trimmed = trim(Path(MONO_RAW), sr=SR, sw=SW, ch=1, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(Path(MONO_RAW), sr=SR, sw=SW, ch=1, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
     def test_trim_with_bytes(self):
         data = _load_raw(MONO_RAW)
-        trimmed = trim(data, sr=SR, sw=SW, ch=1, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(data, sr=SR, sw=SW, ch=1, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
     def test_trim_with_audio_region(self):
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        trimmed = trim(region, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(region, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
     def test_trim_with_audio_source(self):
         data = _load_raw(MONO_RAW)
         source = get_audio_source(MONO_RAW, sr=SR, sw=SW, ch=1)
-        trimmed = trim(source, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(source, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
@@ -201,7 +202,7 @@ class TestModuleTrim:
         reader = AudioReader(
             MONO_RAW, sr=SR, sw=SW, ch=1, block_dur=0.1, record=True
         )
-        trimmed = trim(reader, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(reader, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
@@ -212,13 +213,13 @@ class TestModuleTrim:
             MONO_RAW, sr=SR, sw=SW, ch=1, block_dur=0.1, record=False
         )
         assert not reader.rewindable
-        trimmed = trim(reader, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(reader, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 1, 2, 76)
         assert bytes(trimmed) == expected
 
     def test_trim_stereo(self):
         data = _load_raw(STEREO_RAW)
-        trimmed = trim(STEREO_RAW, sr=SR, sw=SW, ch=2, **SPLIT_KWARGS_10HZ)
+        trimmed = trim(STEREO_RAW, sr=SR, sw=SW, ch=2, **TRIM_KWARGS_10HZ)
         expected = _expected_trimmed(data, 2, 2, 76)
         assert bytes(trimmed) == expected
 
@@ -229,7 +230,7 @@ class TestModuleTrim:
             sr=SR,
             sw=SW,
             ch=1,
-            **{**SPLIT_KWARGS_10HZ, "eth": 60},
+            **{**TRIM_KWARGS_10HZ, "eth": 60},
         )
         assert isinstance(trimmed, AudioRegion)
         assert trimmed.duration == 0.0
@@ -238,14 +239,14 @@ class TestModuleTrim:
         """Module-level trim should give the same result as AudioRegion.trim."""
         data = _load_raw(MONO_RAW)
         region = AudioRegion(data, SR, SW, 1)
-        trimmed_method = region.trim(**SPLIT_KWARGS_10HZ)
-        trimmed_func = trim(data, sr=SR, sw=SW, ch=1, **SPLIT_KWARGS_10HZ)
+        trimmed_method = region.trim(**TRIM_KWARGS_10HZ)
+        trimmed_func = trim(data, sr=SR, sw=SW, ch=1, **TRIM_KWARGS_10HZ)
         assert bytes(trimmed_func) == bytes(trimmed_method)
 
     def test_trim_consistent_across_input_types(self):
         """All input types should produce the same trimmed result."""
         data = _load_raw(STEREO_RAW)
-        kw = {**SPLIT_KWARGS_10HZ}
+        kw = {**TRIM_KWARGS_10HZ}
 
         from_file = trim(STEREO_RAW, sr=SR, sw=SW, ch=2, **kw)
         from_path = trim(Path(STEREO_RAW), sr=SR, sw=SW, ch=2, **kw)
