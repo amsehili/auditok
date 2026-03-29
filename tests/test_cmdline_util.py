@@ -45,6 +45,8 @@ _ArgsNamespace = namedtuple(
         "min_duration",
         "max_duration",
         "max_silence",
+        "max_leading_silence",
+        "max_trailing_silence",
         "drop_trailing_silence",
         "strict_min_duration",
         "energy_threshold",
@@ -118,6 +120,8 @@ def test_make_kwargs(
         0.2,
         10,
         0.3,
+        0,  # max_leading_silence
+        None,  # max_trailing_silence
         False,
         False,
         55,
@@ -156,6 +160,8 @@ def test_make_kwargs(
         "min_dur": 0.2,
         "max_dur": 10,
         "max_silence": 0.3,
+        "max_leading_silence": 0,
+        "max_trailing_silence": None,
         "drop_trailing_silence": False,
         "strict_min_dur": False,
         "energy_threshold": 55,
@@ -199,6 +205,8 @@ def test_make_kwargs_error():
         0.2,
         10,
         0.3,
+        0,  # max_leading_silence
+        None,  # max_trailing_silence
         False,
         False,
         55,

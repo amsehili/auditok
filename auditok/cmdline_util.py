@@ -52,6 +52,8 @@ def make_kwargs(args_ns):
         "min_dur": args_ns.min_duration,
         "max_dur": args_ns.max_duration,
         "max_silence": args_ns.max_silence,
+        "max_leading_silence": args_ns.max_leading_silence,
+        "max_trailing_silence": args_ns.max_trailing_silence,
         "drop_trailing_silence": args_ns.drop_trailing_silence,
         "strict_min_dur": args_ns.strict_min_duration,
         "energy_threshold": args_ns.energy_threshold,

@@ -41,7 +41,7 @@ def main(argv=None):
         parser.add_argument(
             "--version", "-v", action="version", version=__version__
         )
-        group = parser.add_argument_group("Input-Output options:")
+        group = parser.add_argument_group("Input-Output options")
         group.add_argument(
             dest="input",
             help="Input audio or video file. Use '-' for stdin "
@@ -167,7 +167,7 @@ def main(argv=None):
         )
 
         group = parser.add_argument_group(
-            "Tokenization options:",
+            "Tokenization options",
             "Set audio events' duration and set the threshold for detection.",
         )
         group.add_argument(
@@ -211,13 +211,39 @@ def main(argv=None):
             metavar="FLOAT",
         )
         group.add_argument(
+            "-l",
+            "--max-leading-silence",
+            dest="max_leading_silence",
+            type=float,
+            default=0,
+            help="Maximum duration (in seconds) of silence to retain before "
+            "each detected event. Preserves the natural onset of sounds "
+            "(e.g., the gradual rise of speech). A value of 0.1-0.3 seconds "
+            "is typically a good choice. [Default: %(default)s]",
+            metavar="FLOAT",
+        )
+        group.add_argument(
+            "-g",
+            "--max-trailing-silence",
+            dest="max_trailing_silence",
+            type=float,
+            default=None,
+            help="Maximum duration (in seconds) of trailing silence to keep "
+            "at the end of each detected event. Use 0 to drop all trailing "
+            "silence. When omitted, all trailing silence (up to --max-silence) "
+            "is kept. [Default: %(default)s]",
+            metavar="FLOAT",
+        )
+        group.add_argument(
             "-d",
             "--drop-trailing-silence",
             dest="drop_trailing_silence",
             action="store_true",
             default=False,
-            help="Remove trailing silence from a detection. [Default: trailing "
-            "silence is retained].",
+            help="[Deprecated: use -g/--max-trailing-silence 0 instead.] "
+            "Remove trailing silence from a detection. Ignored if "
+            "-g/--max-trailing-silence is also provided. "
+            "[Default: trailing silence is retained].",
         )
         group.add_argument(
             "-R",
@@ -241,7 +267,7 @@ def main(argv=None):
         )
 
         group = parser.add_argument_group(
-            "Audio parameters:",
+            "Audio parameters",
             "Set audio parameters when reading from a headerless file "
             "(raw or stdin) or when using custom microphone settings.",
         )
@@ -274,7 +300,7 @@ def main(argv=None):
         )
 
         group = parser.add_argument_group(
-            "Use audio events:",
+            "Use audio events",
             "Use these options to print, play, or plot detected audio events.",
         )
         group.add_argument(

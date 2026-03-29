@@ -14,8 +14,9 @@ about available parameters and descriptions, type:
     usage: auditok [-h] [--version] [-I INT] [-F INT] [-f STRING] [-M FLOAT]
                    [-L] [-O FILE] [-o STRING] [-j FLOAT] [-T STRING]
                    [-u INT/STRING] [-a FLOAT] [-n FLOAT] [-m FLOAT] [-s FLOAT]
-                   [-d] [-R] [-e FLOAT] [-r INT] [-c INT] [-w INT] [-C STRING]
-                   [-E] [-B] [-p] [--save-image FILE] [--printf STRING]
+                   [-l FLOAT] [-g FLOAT] [-d] [-R] [-e FLOAT] [-r INT]
+                   [-c INT] [-w INT] [-C STRING] [-E] [-B] [-p]
+                   [--save-image FILE] [--printf STRING]
                    [--time-format STRING] [--timestamp-format TIMESTAMP_FORMAT]
                    [-q] [-D] [--debug-file FILE]
                    [input]
@@ -98,10 +99,22 @@ about available parameters and descriptions, type:
     -s FLOAT, --max-silence FLOAT
                             Maximum duration of consecutive silence allowed within
                             a valid audio event in seconds. [Default: 0.3]
+    -l FLOAT, --max-leading-silence FLOAT
+                            Maximum duration (in seconds) of silence to retain
+                            before each detected event. Preserves the natural onset
+                            of sounds (e.g., the gradual rise of speech). A value
+                            of 0.1-0.3 seconds is typically a good choice.
+                            [Default: 0]
+    -g FLOAT, --max-trailing-silence FLOAT
+                            Maximum duration (in seconds) of trailing silence to
+                            keep at the end of each detected event. Use 0 to drop
+                            all trailing silence. When omitted, all trailing
+                            silence (up to --max-silence) is kept. [Default: None]
     -d, --drop-trailing-silence
-                            [Deprecated: use max_trailing_silence=0 in the Python
-                            API instead.] Remove trailing silence from a
-                            detection. [Default: trailing silence is retained].
+                            [Deprecated: use -g/--max-trailing-silence 0 instead.]
+                            Remove trailing silence from a detection. Ignored if
+                            -g/--max-trailing-silence is also provided.
+                            [Default: trailing silence is retained].
     -R, --strict-min-duration
                             Reject events shorter than --min-duration, even if
                             adjacent to the most recent valid event that reached
