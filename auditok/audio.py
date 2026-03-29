@@ -9,6 +9,7 @@ Module for high-level audio operations and data structures.
     trim
     make_silence
     split_and_join_with_silence
+    remove_pauses
     AudioRegion
 """
 
@@ -46,6 +47,7 @@ __all__ = [
     "trim",
     "make_silence",
     "split_and_join_with_silence",
+    "remove_pauses",
     "AudioRegion",
 ]
 
@@ -443,7 +445,7 @@ def split_and_join_with_silence(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
     silence_duration: float,
     **kwargs: Any,
-) -> AudioRegion | None:
+) -> AudioRegion:
     """
     Split input audio and join the resulting regions with a specified
     silence duration between them. This can be used to adjust the length of
@@ -464,10 +466,10 @@ def split_and_join_with_silence(
 
     Returns
     -------
-    AudioRegion or None
+    AudioRegion
         An AudioRegion with the specified between-events silence
-        duration. Returns None if no audio events are detected in the input
-        data.
+        duration. Returns an empty AudioRegion (zero duration, evaluates
+        to False) if no audio events are detected.
     """
     regions = list(split(input, **kwargs))
     if regions:
@@ -475,7 +477,100 @@ def split_and_join_with_silence(
         # create a silence with the same parameters as input audio
         silence = make_silence(silence_duration, first.sr, first.sw, first.ch)
         return silence.join(regions)
-    return None
+    return _empty_audio_region(input, kwargs)
+
+
+_REMOVE_PAUSES_FIXED = {"max_dur", "strict_min_dur"}
+
+
+def remove_pauses(
+    input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
+    silence_duration: float,
+    *,
+    min_dur: float = 0.2,
+    max_silence: float = 0.3,
+    max_leading_silence: float = 0,
+    max_trailing_silence: float | None = None,
+    drop_trailing_silence: bool | None = None,
+    **kwargs: Any,
+) -> AudioRegion:
+    """
+    Remove long pauses from audio while preserving all detected events
+    regardless of their duration.
+
+    This is a convenience wrapper around :func:`split_and_join_with_silence`
+    that forces ``max_dur=None`` and ``strict_min_dur=False`` so that events
+    are never truncated. The resulting audio contains all detected events
+    separated by exactly ``silence_duration`` seconds of silence.
+
+    Parameters
+    ----------
+    input : str, Path, bytes, AudioSource, AudioReader, AudioRegion, or None
+        Audio input (see :func:`split` for details).
+    silence_duration : float
+        Duration of silence in seconds to insert between events.
+    min_dur : float, default=0.2
+        Minimum duration of a valid audio event in seconds. Events shorter
+        than this are discarded and will not appear in the output.
+    max_silence : float, default=0.3
+        Maximum duration of continuous silence allowed within an audio event
+        in seconds.
+    max_leading_silence : float, default=0
+        Maximum duration in seconds of silence to retain before each event.
+    max_trailing_silence : float or None, default=None
+        Maximum duration in seconds of trailing silence to retain at the end
+        of each event.
+    drop_trailing_silence : bool or None, default=None
+        [Deprecated] Use ``max_trailing_silence=0`` instead.
+    **kwargs
+        Additional parameters forwarded to :func:`split` (e.g.,
+        ``energy_threshold``, ``analysis_window``, ``sampling_rate``,
+        ``sample_width``, ``channels``, ``audio_format``).
+
+    Returns
+    -------
+    AudioRegion
+        An AudioRegion with pauses replaced by ``silence_duration`` seconds
+        of silence. Returns an empty AudioRegion (zero duration, evaluates
+        to False) if no audio events are detected.
+
+    Raises
+    ------
+    TypeError
+        If ``max_dur`` or ``strict_min_dur`` is passed in ``**kwargs``.
+
+    See Also
+    --------
+    split_and_join_with_silence : Lower-level function with full control.
+    trim : Remove leading and trailing silence only.
+    """
+    fixed = _REMOVE_PAUSES_FIXED.intersection(kwargs)
+    if fixed:
+        names = ", ".join(sorted(fixed))
+        raise TypeError(
+            f"remove_pauses() does not accept {names}; "
+            f"use split_and_join_with_silence() for full control"
+        )
+    if drop_trailing_silence is not None:
+        warnings.warn(
+            _DROP_TRAILING_SILENCE_DEPRECATION,
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if max_trailing_silence is None:
+            max_trailing_silence = 0
+        drop_trailing_silence = None
+    return split_and_join_with_silence(
+        input,
+        silence_duration,
+        min_dur=min_dur,
+        max_dur=None,
+        max_silence=max_silence,
+        max_leading_silence=max_leading_silence,
+        max_trailing_silence=max_trailing_silence,
+        strict_min_dur=False,
+        **kwargs,
+    )
 
 
 def trim(
@@ -578,6 +673,17 @@ def trim(
     full_region = AudioRegion(reader.data, reader.sr, reader.sw, reader.ch)
     reader.close()
     return full_region.sec[first.start : last.end]  # type: ignore[misc]
+
+
+def _empty_audio_region(input, kwargs):
+    """Return an empty AudioRegion with audio params resolved from *input*."""
+    if isinstance(input, (AudioRegion, AudioSource)):
+        sr, sw, ch = input.sr, input.sw, input.ch
+    else:
+        sr = kwargs.get("sampling_rate", kwargs.get("sr", 16000))
+        sw = kwargs.get("sample_width", kwargs.get("sw", 2))
+        ch = kwargs.get("channels", kwargs.get("ch", 1))
+    return AudioRegion(b"", sr, sw, ch)
 
 
 def _duration_to_nb_windows(
