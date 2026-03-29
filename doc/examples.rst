@@ -219,7 +219,7 @@ Read audio data from the microphone and perform real-time event detection
 -------------------------------------------------------------------------
 
 If the first argument of :func:`split` is ``None``, audio data is read from the
-microphone (requires `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_):
+microphone (requires `sounddevice <https://python-sounddevice.readthedocs.io/>`_):
 
 .. code:: python
 

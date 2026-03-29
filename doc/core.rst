@@ -1,5 +1,5 @@
-Core
-----
+Tokenization
+-------------
 
 .. automodule:: auditok.core
    :members:

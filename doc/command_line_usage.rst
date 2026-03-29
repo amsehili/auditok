@@ -11,10 +11,14 @@ about available parameters and descriptions, type:
 
 .. code::
 
-    usage: auditok [-h] [--version] [-I INT] [-F INT] [-f STRING] [-M FLOAT] [-L] [-O FILE] [-o STRING] [-j FLOAT] [-T STRING] [-u INT/STRING]
-               [-a FLOAT] [-n FLOAT] [-m FLOAT] [-s FLOAT] [-d] [-R] [-e FLOAT] [-r INT] [-c INT] [-w INT] [-C STRING] [-E] [-B] [-p]
-               [--save-image FILE] [--printf STRING] [--time-format STRING] [--timestamp-format TIMESTAMP_FORMAT] [-q] [-D] [--debug-file FILE]
-               [input]
+    usage: auditok [-h] [--version] [-I INT] [-F INT] [-f STRING] [-M FLOAT]
+                   [-L] [-O FILE] [-o STRING] [-j FLOAT] [-T STRING]
+                   [-u INT/STRING] [-a FLOAT] [-n FLOAT] [-m FLOAT] [-s FLOAT]
+                   [-d] [-R] [-e FLOAT] [-r INT] [-c INT] [-w INT] [-C STRING]
+                   [-E] [-B] [-p] [--save-image FILE] [--printf STRING]
+                   [--time-format STRING] [--timestamp-format TIMESTAMP_FORMAT]
+                   [-q] [-D] [--debug-file FILE]
+                   [input]
 
     auditok, an audio tokenization tool.
 
@@ -26,59 +30,89 @@ about available parameters and descriptions, type:
     --debug-file FILE     Save processing operations to the specified file.
 
     Input-Output options::
-    input                 Input audio or video file. Use '-' for stdin [Default: read from a microphone using PyAudio].
+    input                 Input audio or video file. Use '-' for stdin
+                            [Default: read from a microphone using sounddevice].
     -I INT, --input-device-index INT
-                            Audio device index [Default: None]. Optional and only effective when using PyAudio.
+                            Audio device index [Default: None]. Optional and only
+                            effective when reading from a microphone.
     -F INT, --audio-frame-per-buffer INT
-                            Audio frame per buffer [Default: 1024]. Optional and only effective when using PyAudio.
+                            Audio frame per buffer [Default: 1024]. Optional and
+                            only effective when reading from a microphone.
     -f STRING, --input-format STRING
-                            Specify the input audio file format. If not provided, the format is inferred from the file extension. If the output file
-                            name lacks an extension, the format is guessed from the file header (requires pydub). If neither condition is met, an
-                            error is raised.
+                            Specify the input audio file format. If not provided,
+                            the format is inferred from the file extension. If the
+                            output file name lacks an extension, the format is
+                            guessed from the file header (requires ffmpeg). If
+                            neither condition is met, an error is raised.
     -M FLOAT, --max-read FLOAT
-                            Maximum data (in seconds) to read from a microphone or a file [Default: read until the end of the file or stream].
-    -L, --large-file      Whether the input file should be treated as a large file. If True, data will be read from file on demand, otherwise all
-                            audio data is loaded into memory before tokenization.
+                            Maximum data (in seconds) to read from a microphone or
+                            a file [Default: read until the end of the file or
+                            stream].
+    -L, --large-file      Whether the input file should be treated as a large
+                            file. If True, data will be read from file on demand,
+                            otherwise all audio data is loaded into memory before
+                            tokenization.
     -O FILE, --save-stream FILE
-                            Save read audio data (from a file or a microphone) to a file. If omitted, no audio data will be saved.
+                            Save read audio data (from a file or a microphone) to
+                            a file. If omitted, no audio data will be saved.
     -o STRING, --save-detections-as STRING
-                            Specify the file name format to save detected events. You can use the following placeholders to construct the output
-                            file name: {id} (sequential, starting from 1), {start}, {end}, and {duration}. Time placeholders are in seconds.
-                            Example: 'Event_{id}{start}-{end}{duration:.3f}.wav'
+                            Specify the file name format to save detected events.
+                            You can use the following placeholders to construct the
+                            output file name: {id} (sequential, starting from 1),
+                            {start}, {end}, and {duration}. Time placeholders are
+                            in seconds. Example:
+                            'Event_{id}{start}-{end}{duration:.3f}.wav'
     -j FLOAT, --join-detections FLOAT
-                            Join (glue) detected audio events with a specified duration of silence between them. To be used in combination with the
-                            --save-stream / -O option.
+                            Join (glue) detected audio events with a specified
+                            duration of silence between them. To be used in
+                            combination with the --save-stream / -O option.
     -T STRING, --output-format STRING
-                            Specify the audio format for saving detections and/or the main stream. If not provided, the format will be (1) inferred
-                            from the file extension or (2) default to raw format.
+                            Specify the audio format for saving detections and/or
+                            the main stream. If not provided, the format will be
+                            (1) inferred from the file extension or (2) default to
+                            raw format.
     -u INT/STRING, --use-channel INT/STRING
-                            Specify the audio channel to use for tokenization when the input stream is multi-channel (0 refers to the first
-                            channel). By default, this is set to None, meaning all channels are used, capturing any valid audio event from any
-                            channel. Alternatively, set this to 'mix' (or 'avg'/'average') to combine all channels into a single averaged channel
-                            for tokenization. Regardless of theoption chosen, saved audio events will have the same number of channels as the input
+                            Specify the audio channel to use for tokenization when
+                            the input stream is multi-channel (0 refers to the
+                            first channel). By default, this is set to None,
+                            meaning all channels are used, capturing any valid
+                            audio event from any channel. Alternatively, set this
+                            to 'mix' (or 'avg'/'average') to combine all channels
+                            into a single averaged channel for tokenization.
+                            Regardless of the option chosen, saved audio events
+                            will have the same number of channels as the input
                             stream. [Default: None, use all channels].
 
     Tokenization options::
     Set audio events' duration and set the threshold for detection.
 
     -a FLOAT, --analysis-window FLOAT
-                            Specify the size of the analysis window in seconds. [Default: 0.01 (10ms)].
+                            Specify the size of the analysis window in seconds.
+                            [Default: 0.01 (10ms)].
     -n FLOAT, --min-duration FLOAT
-                            Minimum duration of a valid audio event in seconds. [Default: 0.2].
+                            Minimum duration of a valid audio event in seconds.
+                            [Default: 0.2].
     -m FLOAT, --max-duration FLOAT
-                            Maximum duration of a valid audio event in seconds. [Default: 5].
+                            Maximum duration of a valid audio event in seconds.
+                            [Default: 5].
     -s FLOAT, --max-silence FLOAT
-                            Maximum duration of consecutive silence allowed within a valid audio event in seconds. [Default: 0.3]
+                            Maximum duration of consecutive silence allowed within
+                            a valid audio event in seconds. [Default: 0.3]
     -d, --drop-trailing-silence
-                            Remove trailing silence from a detection. [Default: trailing silence is retained].
+                            [Deprecated: use max_trailing_silence=0 in the Python
+                            API instead.] Remove trailing silence from a
+                            detection. [Default: trailing silence is retained].
     -R, --strict-min-duration
-                            Reject events shorter than --min-duration, even if adjacent to the most recent valid event that reached max-duration.
-                            [Default: retain such events].
+                            Reject events shorter than --min-duration, even if
+                            adjacent to the most recent valid event that reached
+                            max-duration. [Default: retain such events].
     -e FLOAT, --energy-threshold FLOAT
-                            Set the log energy threshold for detection. [Default: 50]
+                            Set the log energy threshold for detection.
+                            [Default: 50]
 
     Audio parameters::
-    Set audio parameters when reading from a headerless file (raw or stdin) or when using custom microphone settings.
+    Set audio parameters when reading from a headerless file (raw or stdin) or
+    when using custom microphone settings.
 
     -r INT, --rate INT    Sampling rate of audio data [Default: 16000].
     -c INT, --channels INT
@@ -89,25 +123,41 @@ about available parameters and descriptions, type:
     Use these options to print, play, or plot detected audio events.
 
     -C STRING, --command STRING
-                            Provide a command to execute when an audio event is detected. Use '{file}' as a placeholder for the temporary WAV file
-                            containing the event data (e.g., `-C 'du -h {file}'` to display the file size or `-C 'play -q {file}'` to play audio
-                            with sox).
-    -E, --echo            Immediately play back a detected audio event using pyaudio.
+                            Provide a command to execute when an audio event is
+                            detected. Use '{file}' as a placeholder for the
+                            temporary WAV file containing the event data (e.g.,
+                            ``-C 'du -h {file}'`` to display the file size or
+                            ``-C 'play -q {file}'`` to play audio with sox).
+    -E, --echo            Immediately play back a detected audio event using
+                            sounddevice.
     -B, --progress-bar    Show a progress bar when playing audio.
-    -p, --plot            Plot and displays the audio signal along with detections (requires matplotlib).
-    --save-image FILE     Save the plotted audio signal and detections as a picture or a PDF file (requires matplotlib).
-    --printf STRING       Prints information about each audio event on a new line using the specified format. The format can include text and
-                            placeholders: {id} (sequential, starting from 1), {start}, {end}, {duration}, and {timestamp}. The first three time
-                            placeholders are in seconds, with formatting controlled by the --time-format argument. {timestamp} represents the system
-                            date and time of the event, configurable with the --timestamp-format argument. Example: '[{id}]: {start} -> {end} --
-                            {timestamp}'.
-    --time-format STRING  Specify the format for printing {start}, {end}, and {duration} placeholders with --printf. [Default: %S]. Accepted
-                            formats are : - %S: absolute time in seconds - %I: absolute time in milliseconds - %h, %m, %s, %i: converts time into
-                            hours, minutes, seconds, and milliseconds (e.g., %h:%m:%s.%i) and only displays provided fields. Note that %S and %I can
-                            only be used independently.
+    -p, --plot            Plot and displays the audio signal along with
+                            detections (requires matplotlib).
+    --save-image FILE     Save the plotted audio signal and detections as a
+                            picture or a PDF file (requires matplotlib).
+    --printf STRING       Prints information about each audio event on a new
+                            line using the specified format. The format can include
+                            text and placeholders: {id} (sequential, starting
+                            from 1), {start}, {end}, {duration}, and {timestamp}.
+                            The first three time placeholders are in seconds, with
+                            formatting controlled by the --time-format argument.
+                            {timestamp} represents the system date and time of the
+                            event, configurable with the --timestamp-format
+                            argument. Example:
+                            '[{id}]: {start} -> {end} -- {timestamp}'.
+    --time-format STRING  Specify the format for printing {start}, {end}, and
+                            {duration} placeholders with --printf. [Default: %S].
+                            Accepted formats are:
+                            - %S: absolute time in seconds
+                            - %I: absolute time in milliseconds
+                            - %h, %m, %s, %i: converts time into hours, minutes,
+                            seconds, and milliseconds (e.g., %h:%m:%s.%i) and only
+                            displays provided fields. Note that %S and %I can only
+                            be used independently.
     --timestamp-format TIMESTAMP_FORMAT
-                            Specify the format used for printing {timestamp}. Should be a format accepted by the 'datetime' standard module.
-                            [Default: '%Y/%m/%d %H:%M:%S'].
+                            Specify the format used for printing {timestamp}.
+                            Should be a format accepted by the 'datetime' standard
+                            module. [Default: '%Y/%m/%d %H:%M:%S'].
 
 
 Below, we provide several examples covering the most common use cases.
@@ -117,7 +167,7 @@ Real-Time audio acquisition and event detection
 -----------------------------------------------
 
 To try ``auditok`` from the command line with your own voice, you’ll need to
-either install `pyaudio <https://people.csail.mit.edu/hubert/pyaudio>`_ so
+either install `sounddevice <https://python-sounddevice.readthedocs.io/>`_ so
 that ``auditok`` can read directly from the microphone, or record audio with
 an external program (e.g., `sox`) and redirect its output to ``auditok``.
 
@@ -185,7 +235,7 @@ Use the ``-E`` (or ``--echo``) option :
     rec -q -t raw -r 16000 -c 1 -b 16 -e signed - | auditok - -E
 
 
-Using ``-E`` requires `pyaudio`, if it's not installed you can use the ``-C``
+Using ``-E`` requires `sounddevice`, if it's not installed you can use the ``-C``
 (used to run an external command with detected audio event as argument):
 
 .. code:: bash

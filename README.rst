@@ -20,7 +20,7 @@ Full documentation is available on `Read the Docs <https://auditok.readthedocs.i
 Installation
 ------------
 
-``auditok`` requires Python 3.7 or higher.
+``auditok`` requires Python 3.8 or higher.
 
 To install the latest stable version, use pip:
 
@@ -40,7 +40,7 @@ Alternatively, clone the repository and install it manually:
 
     git clone https://github.com/amsehili/auditok.git
     cd auditok
-    python setup.py install
+    pip install .
 
 Basic example
 -------------

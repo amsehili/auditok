@@ -39,6 +39,7 @@ Full documentation is available on `Read the Docs <https://auditok.readthedocs.i
     :caption: API Reference
     :maxdepth: 3
 
+    audio
     core
     util
     io
