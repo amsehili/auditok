@@ -132,6 +132,21 @@ def load(
     return AudioRegion.load(input, skip, max_read, **kwargs)
 
 
+def _make_region_gen(token_gen, source):
+    try:
+        for token in token_gen:
+            yield _make_audio_region(
+                token[0],
+                token[1],
+                source.block_dur,
+                source.sr,
+                source.sw,
+                source.ch,
+            )
+    finally:
+        source.close()
+
+
 def split(
     input: str | Path | bytes | AudioSource | AudioReader | AudioRegion | None,
     *,
@@ -396,18 +411,8 @@ def split(
     )
     source.open()
     token_gen = tokenizer.tokenize(source, generator=True)
-    region_gen = (
-        _make_audio_region(
-            token[0],
-            token[1],
-            source.block_dur,
-            source.sr,
-            source.sw,
-            source.ch,
-        )
-        for token in token_gen
-    )
-    return region_gen
+
+    return _make_region_gen(token_gen, source)
 
 
 def make_silence(
