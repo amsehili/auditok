@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 
 AUDITOK_PLOT_THEME = {
@@ -26,6 +25,8 @@ def _make_time_axis(nb_samples, sampling_rate):
 
 
 def _plot_line(x, y, theme, xlabel=None, ylabel=None, **kwargs):
+    import matplotlib.pyplot as plt
+
     color = theme.get("color", theme.get("c"))
     ls = theme.get("linestyle", theme.get("ls"))
     lw = theme.get("linewidth", theme.get("lw"))
@@ -55,6 +56,8 @@ def plot(
     dpi=120,
     theme="auditok",
 ):
+    import matplotlib.pyplot as plt
+
     y = np.asarray(audio_region)
     if len(y.shape) == 1:
         y = y.reshape(1, -1)
