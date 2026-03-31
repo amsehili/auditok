@@ -1,23 +1,27 @@
-auditok, an AUDIo TOKenization tool
-===================================
+auditok -- Audio Activity Detection
+====================================
+
+.. image:: https://img.shields.io/pypi/v/auditok.svg
+    :target: https://pypi.org/project/auditok/
+    :alt: PyPI version
+
+.. image:: https://img.shields.io/pypi/pyversions/auditok.svg
+    :target: https://pypi.org/project/auditok/
+    :alt: Python versions
 
 .. image:: https://github.com/amsehili/auditok/actions/workflows/ci.yml/badge.svg
     :target: https://github.com/amsehili/auditok/actions/workflows/ci.yml/
     :alt: Build Status
 
 .. image:: https://codecov.io/github/amsehili/auditok/graph/badge.svg?token=0rwAqYBdkf
- :target: https://codecov.io/github/amsehili/auditok
+    :target: https://codecov.io/github/amsehili/auditok
 
-.. image:: https://readthedocs.org/projects/auditok/badge/?version=latest
-    :target: http://auditok.readthedocs.org/en/latest/?badge=latest
-    :alt: Documentation Status
+**auditok** is a lightweight audio activity detection library for Python. It
+splits audio streams into events by thresholding signal energy (no models or
+training data required).
 
-
-
-``auditok`` is an **Audio Activity Detection** tool that processes online data
-(from an audio device or standard input) and audio files. It can be used via the command line or through its API.
-
-Full documentation is available on `Read the Docs <https://auditok.readthedocs.io/en/latest/>`_.
+Use it for voice activity detection, silence removal, audio segmentation,
+or any task where you need to find "where the sound is" in an audio stream.
 
 
 .. toctree::
@@ -33,17 +37,13 @@ Full documentation is available on `Read the Docs <https://auditok.readthedocs.i
 
     command_line_usage
 
-
-
 .. toctree::
     :caption: API Reference
     :maxdepth: 3
 
     audio
     core
-    util
-    io
-    signal
+
 
 License
 -------
