@@ -1,6 +1,58 @@
 auditok Changelog
 =================
 
+Version 0.4.0
+-------------
+
+Breaking changes:
+
+- Drop Python 3.7 support (EOL since June 2023)
+- Drop pydub dependency; ffmpeg is now required directly for non-WAV/raw formats
+- Replace pyaudio with sounddevice for microphone input
+- Remove deprecated ``AudioRegion.meta`` accessor (use ``.start`` / ``.end``)
+- Remove deprecated ``AudioRegion.samples`` property (use ``.numpy()``)
+- Make ``split()``, ``trim()``, ``split_and_plot()`` keyword-only after the first positional argument
+- Remove ``dataset`` module; split ``core.py`` into ``audio.py`` and ``core.py``
+- Remove ``setup.py``; migrate to ``pyproject.toml``
+
+New features:
+
+- Add ``FFmpegAudioSource``: streams audio from an ffmpeg subprocess pipe, ~2x faster than pydub's temp-file approach
+- Add ``trim()`` to remove leading and trailing silence from audio
+- Add ``fix_pauses()`` / ``remove_pauses()`` to normalize pauses between audio events
+- Add ``max_leading_silence`` parameter to ``split()``, ``trim()``, and ``StreamTokenizer`` to preserve natural sound onsets
+- Add ``max_trailing_silence`` parameter to control trailing silence independently of ``max_silence``; deprecate ``drop_trailing_silence``
+- ``split()`` accepts ``max_dur=None`` (or ``float("inf")``) for unlimited event length
+- ``FFmpegAudioSource`` accepts ``sampling_rate``, ``sample_width``, ``channels`` for on-the-fly conversion
+- ``from_file()`` forwards ``sr``/``sw``/``ch`` to ``FFmpegAudioSource``
+- Use ffmpeg for audio export; ``save()`` accepts ``audio_codec``, ``audio_bitrate``, ``audio_quality``, ``ffmpeg_extra_args``
+- ``AudioRegion._repr_html_()`` renders inline HTML5 audio player in Jupyter
+- Add interactive Jupyter widget: ``split_and_plot(interactive=True)`` with Canvas waveform, clickable regions, playback controls, and time ruler
+- Restructure CLI with subcommands: ``auditok split`` (default), ``auditok trim``, ``auditok fix-pauses``
+- Add ``--max-leading-silence`` and ``--max-trailing-silence`` CLI options
+- Add recording indicator with elapsed time for mic-based ``trim`` and ``fix-pauses``
+- Make ``--drop-trailing-silence`` deprecated in CLI
+
+Packaging and metadata:
+
+- Migrate from ``setup.py`` to ``pyproject.toml``
+- Make ``matplotlib``, ``sounddevice``, and ``tqdm`` optional (``pip install auditok[all]``)
+- Update development status from Alpha to Production/Stable
+- Add VAD, silence detection, and audio segmentation keywords for PyPI
+- Add Python 3.14 support
+- Add type annotations to public API with ``py.typed`` marker (PEP 561)
+- Add mypy to pre-commit hooks
+
+Bug fixes:
+
+- Fix ``split()`` using ``analysis_window`` instead of actual frame duration after int truncation
+- Validate ``hop_size`` and ``block_size`` in ``_OverlapAudioReader``
+- Fix matplotlib plot layout: wide figure default, proper legend placement
+- Fix deprecated ``AudioRegion.meta.start``/``.end`` usage in ``split_and_plot()``
+- Suppress C-level ALSA/JACK/OSS warnings from PortAudio during initialization
+- Fix resource leak in ``split()`` when generator is not fully consumed
+
+
 Version 0.3.0
 -------------
 
