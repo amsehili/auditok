@@ -32,6 +32,40 @@ __updated__ = "2026-03-30"
 
 _SUBCOMMANDS = {"split", "trim", "fix-pauses"}
 
+# ANSI escape helpers
+_BOLD = "\033[1m"
+_DIM = "\033[2m"
+_ITALIC = "\033[3m"
+_RED = "\033[91m"
+_RESET = "\033[0m"
+_CLEAR_LINE = "\033[2K\r"
+
+
+def _recording_loop(quiet=False):
+    """Block while workers are running, showing a recording indicator."""
+    start = time.monotonic()
+    dot_visible = True
+    try:
+        while True:
+            if not quiet:
+                elapsed = time.monotonic() - start
+                mins, secs = divmod(int(elapsed), 60)
+                dot = f"{_RED}\u25cf{_RESET}" if dot_visible else " "
+                sys.stderr.write(
+                    f"{_CLEAR_LINE}{dot} {_DIM}{_ITALIC}Recording "
+                    f"{mins:02d}:{secs:02d}  "
+                    f"(Ctrl+C to stop){_RESET}"
+                )
+                sys.stderr.flush()
+                dot_visible = not dot_visible
+            time.sleep(1)
+            if len(threading.enumerate()) == 1:
+                raise EndOfProcessing
+    except (KeyboardInterrupt, EndOfProcessing):
+        if not quiet:
+            sys.stderr.write(f"{_CLEAR_LINE}")
+            sys.stderr.flush()
+
 
 # ── Shared argument helpers ──────────────────────────────────────────
 
@@ -502,6 +536,14 @@ def _setup_trim_parser(subparsers):
     )
     _add_audio_params(group)
 
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="quiet",
+        action="store_true",
+        default=False,
+        help="Quiet mode: suppress recording indicator and status messages.",
+    )
     _add_debug_args(parser)
 
     parser.set_defaults(func=_run_trim)
@@ -562,6 +604,14 @@ def _setup_fix_pauses_parser(subparsers):
     )
     _add_audio_params(group)
 
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        dest="quiet",
+        action="store_true",
+        default=False,
+        help="Quiet mode: suppress recording indicator and status messages.",
+    )
     _add_debug_args(parser)
 
     parser.set_defaults(func=_run_fix_pauses)
@@ -711,14 +761,8 @@ def _run_trim(args):
         **split_kw,
     )
     tokenizer_worker.start_all()
-
-    try:
-        while True:
-            time.sleep(1)
-            if len(threading.enumerate()) == 1:
-                raise EndOfProcessing
-    except (KeyboardInterrupt, EndOfProcessing):
-        tokenizer_worker.stop_all()
+    _recording_loop(quiet=args.quiet)
+    tokenizer_worker.stop_all()
 
     detections = tokenizer_worker.detections
     if detections:
@@ -729,8 +773,14 @@ def _run_trim(args):
         )
         trimmed = full_region.sec[first.start : last.end]
         trimmed.save(args.output, audio_format=args.output_format)
+        if not args.quiet:
+            print(
+                f"{_DIM}Saved to {_RESET}{_BOLD}{args.output}{_RESET}",
+                file=sys.stderr,
+            )
     else:
-        print("No audio activity detected.", file=sys.stderr)
+        if not args.quiet:
+            print("No audio activity detected.", file=sys.stderr)
 
     try:
         os.unlink(tmp_path)
@@ -790,19 +840,19 @@ def _run_fix_pauses(args):
         **split_kw,
     )
     tokenizer_worker.start_all()
-
-    try:
-        while True:
-            time.sleep(1)
-            if len(threading.enumerate()) == 1:
-                raise EndOfProcessing
-    except (KeyboardInterrupt, EndOfProcessing):
-        tokenizer_worker.stop_all()
+    _recording_loop(quiet=args.quiet)
+    tokenizer_worker.stop_all()
 
     try:
         joiner.export_audio()
+        if not args.quiet:
+            print(
+                f"{_DIM}Saved to {_RESET}{_BOLD}{args.output}{_RESET}",
+                file=sys.stderr,
+            )
     except Exception as exc:
-        print(exc, file=sys.stderr)
+        if not args.quiet:
+            print(exc, file=sys.stderr)
 
     return 0
 
