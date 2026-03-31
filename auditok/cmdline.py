@@ -10,7 +10,7 @@ microphones, and standard input.
 @copyright:  2015-2026 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 30 Mar 2026
+@deffield    updated: 01 Apr 2026
 """
 
 import os
@@ -28,7 +28,7 @@ from .exceptions import ArgumentError, EndOfProcessing
 
 __all__ = []  # type: ignore[var-annotated]
 __date__ = "2015-11-23"
-__updated__ = "2026-03-30"
+__updated__ = "2026-04-01"
 
 _SUBCOMMANDS = {"split", "trim", "fix-pauses"}
 
