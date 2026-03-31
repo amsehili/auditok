@@ -57,19 +57,19 @@ API at a glance
 | Function            | Purpose                                         | Key parameters                                  |
 +=====================+=================================================+=================================================+
 | ``split()``         | Detect and yield audio events as a generator    | ``min_dur``, ``max_dur``, ``max_silence``,      |
-|                     |                                                 | ``energy_threshold``                             |
+|                     |                                                 | ``energy_threshold``                            |
 +---------------------+-------------------------------------------------+-------------------------------------------------+
 | ``trim()``          | Remove leading and trailing silence             | ``min_dur``, ``max_silence``,                   |
-|                     |                                                 | ``energy_threshold``                             |
+|                     |                                                 | ``energy_threshold``                            |
 +---------------------+-------------------------------------------------+-------------------------------------------------+
 | ``fix_pauses()``    | Normalize pauses between events to a fixed      | ``silence_duration``, ``min_dur``,              |
-|                     | duration                                        | ``max_silence``, ``energy_threshold``            |
+|                     | duration                                        | ``max_silence``, ``energy_threshold``           |
 +---------------------+-------------------------------------------------+-------------------------------------------------+
 | ``split_and_plot()``| Split and visualize results (matplotlib or      | split params + ``interactive``,                 |
-|                     | interactive Jupyter widget)                     | ``save_as``                                      |
+|                     | interactive Jupyter widget)                     | ``save_as``                                     |
 +---------------------+-------------------------------------------------+-------------------------------------------------+
 | ``load()``          | Load audio from file, bytes, or mic into an     | ``sr``, ``sw``, ``ch``                          |
-|                     | ``AudioRegion``                                 |                                                  |
+|                     | ``AudioRegion``                                 |                                                 |
 +---------------------+-------------------------------------------------+-------------------------------------------------+
 
 All functions accept file paths, raw bytes, ``AudioRegion`` objects, or ``None``
@@ -165,8 +165,10 @@ Visualize the audio signal with detected events:
 
     import auditok
 
-    region = auditok.load("audio.wav")
-    events = region.split_and_plot(energy_threshold=55) # or region.splitp(...)
+    import auditok
+    audio = auditok.load("audio.wav")
+    events = audio.split_and_plot(max_leading_silence=0.1,
+                                  max_trailing_silence=0.1) # or region.splitp(...)
 
 .. image:: doc/figures/tokenization-result.png
 
@@ -178,7 +180,9 @@ widget with clickable detection regions and inline playback:
 
 .. code:: python
 
-    events = region.split_and_plot(interactive=True, energy_threshold=55)
+    events = audio.split_and_plot(interactive=True,
+                                  max_leading_silence=0.1,
+                                  max_trailing_silence=0.1)
 
 .. image:: doc/figures/tokenization-result-notebook-interactive.png
 
@@ -231,8 +235,9 @@ Split audio into events
 .. code:: bash
 
     # Split a file (default subcommand, both forms are equivalent)
-    auditok audio.wav -e 55 -n 0.5 -m 10 -s 0.3
     auditok split audio.wav -e 55 -n 0.5 -m 10 -s 0.3
+    # Or simply
+    auditok audio.wav -e 55 -n 0.5 -m 10 -s 0.3
 
     # Save detected events to individual files
     auditok audio.wav -o "event_{id}_{start:.3f}-{end:.3f}.wav"
