@@ -684,7 +684,7 @@ def _run_trim(args):
     from .util import AudioReader
 
     reader = AudioReader(
-        source=None,
+        None,
         block_dur=split_kw["analysis_window"],
         sampling_rate=audio_kw["sampling_rate"],
         sample_width=audio_kw["sample_width"],
@@ -761,7 +761,7 @@ def _run_fix_pauses(args):
     from .util import AudioReader
 
     reader = AudioReader(
-        source=None,
+        None,
         block_dur=split_kw["analysis_window"],
         sampling_rate=audio_kw["sampling_rate"],
         sample_width=audio_kw["sample_width"],
