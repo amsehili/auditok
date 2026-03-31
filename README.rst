@@ -1,4 +1,4 @@
-.. image:: doc/figures/auditok-logo.png
+.. image:: https://raw.githubusercontent.com/amsehili/auditok/0cef3df7e8064707a7f3624669b3b838cb60523b/doc/figures/auditok-logo.png
     :align: center
 
 .. image:: https://img.shields.io/pypi/v/auditok.svg
@@ -170,7 +170,9 @@ Visualize the audio signal with detected events:
     events = audio.split_and_plot(max_leading_silence=0.1,
                                   max_trailing_silence=0.1) # or region.splitp(...)
 
-.. image:: doc/figures/tokenization-result.png
+.. image:: https://raw.githubusercontent.com/amsehili/auditok/refs/heads/main/doc/figures/tokenization-result.png
+    :align: center
+    :alt: Split and plot example
 
 Interactive widget in Jupyter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,7 +186,9 @@ widget with clickable detection regions and inline playback:
                                   max_leading_silence=0.1,
                                   max_trailing_silence=0.1)
 
-.. image:: doc/figures/tokenization-result-notebook-interactive.png
+.. image:: https://raw.githubusercontent.com/amsehili/auditok/refs/heads/main/doc/figures/tokenization-result-notebook-interactive.png
+    :align: center
+    :alt: interactive tokenization Jupyter notebook
 
 Working with ``AudioRegion``
 ----------------------------
