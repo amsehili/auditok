@@ -20,7 +20,7 @@ import os
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Generator, Iterable
+from typing import Any, Generator, Iterable
 
 import numpy as np
 
@@ -34,12 +34,8 @@ from .io import (
     to_file,
 )
 from .plotting import plot
-from .util import AudioEnergyValidator, AudioReader, DataSource, DataValidator
-
-try:
-    from . import signal_numpy as signal  # type: ignore[attr-defined]
-except ImportError:
-    from . import signal
+from .signal import to_array
+from .util import AudioEnergyValidator, AudioReader
 
 __all__ = [
     "load",
@@ -1460,7 +1456,7 @@ class AudioRegion(object):
 
     def numpy(self) -> np.ndarray:
         """Audio region a 2D numpy array of shape (n_channels, n_samples)."""
-        return signal.to_array(self.data, self.sample_width, self.channels)
+        return to_array(self.data, self.sample_width, self.channels)
 
     def __len__(self) -> int:
         """
