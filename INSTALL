@@ -1,8 +1,12 @@
 ### Install via pip
 
-    sudo pip install auditok
+    pip install auditok
 
-### Install the latest version on Github
+With all optional dependencies (plotting, playback, progress bars):
+
+    pip install auditok[all]
+
+### Install the latest version from GitHub
 
     pip install git+https://github.com/amsehili/auditok
 
@@ -10,4 +14,4 @@ or:
 
     git clone https://github.com/amsehili/auditok.git
     cd auditok
-    python setup.py install
+    pip install .
