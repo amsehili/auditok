@@ -29,14 +29,29 @@ def make_kwargs(args_ns):
             "to be specified."
         )
 
+    # Use audio parameter for microphone, stdin, and raw input only
+    # For audio files formats leave them as None so FFmpegAudioSource
+    # preserves the original data.
+    if (
+        args_ns.input is None
+        or args_ns.input == "-"
+        or args_ns.input_format == "raw"
+    ):
+        sr = args_ns.sampling_rate
+        sw = args_ns.sample_width
+        ch = args_ns.channels
+    else:
+        sr = None
+        sw = None
+        ch = None
     io_kwargs = {
         "input": args_ns.input,
         "audio_format": args_ns.input_format,
         "max_read": args_ns.max_read,
         "block_dur": args_ns.analysis_window,
-        "sampling_rate": args_ns.sampling_rate,
-        "sample_width": args_ns.sample_width,
-        "channels": args_ns.channels,
+        "sampling_rate": sr,
+        "sample_width": sw,
+        "channels": ch,
         "use_channel": use_channel,
         "save_stream": args_ns.save_stream,
         "save_detections_as": args_ns.save_detections_as,

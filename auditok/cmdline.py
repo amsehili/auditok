@@ -638,10 +638,22 @@ def _build_kwargs(args):
         "energy_threshold": args.energy_threshold,
         "analysis_window": args.analysis_window,
     }
+    # Use audio parameter for microphone, stdin, and raw input only
+    # For audio files formats leave them as None so FFmpegAudioSource
+    # preserves the original data.
+    if args.input is None or args.input == "-" or args.input_format == "raw":
+        sr = args.sampling_rate
+        sw = args.sample_width
+        ch = args.channels
+    else:
+        sr = None
+        sw = None
+        ch = None
+
     audio_kw = {
-        "sampling_rate": args.sampling_rate,
-        "sample_width": args.sample_width,
-        "channels": args.channels,
+        "sampling_rate": sr,
+        "sample_width": sw,
+        "channels": ch,
         "use_channel": use_channel,
         "audio_format": args.input_format,
         "large_file": args.large_file,

@@ -675,6 +675,10 @@ def _empty_audio_region(input, kwargs):
     """Return an empty AudioRegion with audio params resolved from *input*."""
     if isinstance(input, (AudioRegion, AudioSource)):
         sr, sw, ch = input.sr, input.sw, input.ch
+    elif isinstance(input, (str, Path)):
+        source = get_audio_source(input, **kwargs)
+        sr, sw, ch = source.sr, source.sw, source.ch
+        source.close()
     else:
         sr = kwargs.get("sampling_rate", kwargs.get("sr", 16000))
         sw = kwargs.get("sample_width", kwargs.get("sw", 2))
