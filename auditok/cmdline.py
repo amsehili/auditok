@@ -19,7 +19,7 @@ import sys
 import tempfile
 import threading
 import time
-from argparse import ArgumentParser
+from argparse import Action, ArgumentParser
 from collections import namedtuple
 
 from auditok import AudioRegion, __version__
@@ -74,6 +74,16 @@ def _recording_loop(quiet=False):
 # ── Shared argument helpers ──────────────────────────────────────────
 
 
+class _StoreOnce(Action):
+    """Argparse action that rejects an option if it appears more than once."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(self, "_seen", False):
+            parser.error(f"argument {option_string} appears more than once")
+        self._seen = True
+        setattr(namespace, self.dest, values)
+
+
 def _add_input_source_args(group):
     """Add input source configuration arguments."""
     group.add_argument(
@@ -84,6 +94,7 @@ def _add_input_source_args(group):
         "Optional and only effective when reading from a microphone.",
         type=int,
         default=None,
+        action=_StoreOnce,
         metavar="INT",
     )
     group.add_argument(
@@ -94,6 +105,7 @@ def _add_input_source_args(group):
         "Optional and only effective when reading from a microphone.",
         type=int,
         default=1024,
+        action=_StoreOnce,
         metavar="INT",
     )
     group.add_argument(
@@ -102,6 +114,7 @@ def _add_input_source_args(group):
         dest="input_format",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Specify the input audio file format. If not provided, the "
         "format is inferred from the file extension. If the output file "
         "name lacks an extension, the format is guessed from the file "
@@ -115,6 +128,7 @@ def _add_input_source_args(group):
         dest="max_read",
         type=float,
         default=None,
+        action=_StoreOnce,
         help="Maximum data (in seconds) to read from a microphone or a file"
         " [Default: read until the end of the file or stream].",
         metavar="FLOAT",
@@ -139,6 +153,7 @@ def _add_output_format_arg(group):
         dest="output_format",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Specify the audio format for saving detections and/or the "
         "main stream. If not provided, the format will be (1) inferred from"
         " the file extension or (2) default to raw format.",
@@ -154,6 +169,7 @@ def _add_channel_arg(group):
         dest="use_channel",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Specify the audio channel to use for tokenization when the "
         "input stream is multi-channel (0 refers to the first channel). By "
         "default, this is set to None, meaning all channels are used, "
@@ -175,6 +191,7 @@ def _add_detection_args(group):
         dest="analysis_window",
         default=0.01,
         type=float,
+        action=_StoreOnce,
         help="Specify the size of the analysis window in seconds. "
         "[Default: %(default)s (10ms)].",
         metavar="FLOAT",
@@ -185,6 +202,7 @@ def _add_detection_args(group):
         dest="min_duration",
         type=float,
         default=0.2,
+        action=_StoreOnce,
         help="Minimum duration of a valid audio event in seconds. "
         "[Default: %(default)s].",
         metavar="FLOAT",
@@ -195,6 +213,7 @@ def _add_detection_args(group):
         dest="max_silence",
         type=float,
         default=0.3,
+        action=_StoreOnce,
         help="Maximum duration of consecutive silence allowed within a "
         "valid audio event in seconds. [Default: %(default)s]",
         metavar="FLOAT",
@@ -205,6 +224,7 @@ def _add_detection_args(group):
         dest="max_leading_silence",
         type=float,
         default=0,
+        action=_StoreOnce,
         help="Maximum duration (in seconds) of silence to retain before "
         "each detected event. Preserves the natural onset of sounds "
         "(e.g., the gradual rise of speech). A value of 0.1-0.3 seconds "
@@ -217,6 +237,7 @@ def _add_detection_args(group):
         dest="max_trailing_silence",
         type=float,
         default=None,
+        action=_StoreOnce,
         help="Maximum duration (in seconds) of trailing silence to keep "
         "at the end of each detected event. Use 0 to drop all trailing "
         "silence. When omitted, all trailing silence (up to --max-silence) "
@@ -229,6 +250,7 @@ def _add_detection_args(group):
         dest="energy_threshold",
         type=float,
         default=50,
+        action=_StoreOnce,
         help="Set the log energy threshold for detection. "
         "[Default: %(default)s]",
         metavar="FLOAT",
@@ -243,6 +265,7 @@ def _add_audio_params(group):
         dest="sampling_rate",
         type=int,
         default=16000,
+        action=_StoreOnce,
         help="Sampling rate of audio data [Default: %(default)s].",
         metavar="INT",
     )
@@ -252,6 +275,7 @@ def _add_audio_params(group):
         dest="channels",
         type=int,
         default=1,
+        action=_StoreOnce,
         help="Number of channels of audio data [Default: %(default)s].",
         metavar="INT",
     )
@@ -261,6 +285,7 @@ def _add_audio_params(group):
         dest="sample_width",
         type=int,
         default=2,
+        action=_StoreOnce,
         help="Number of bytes per audio sample [Default: %(default)s].",
         metavar="INT",
     )
@@ -281,6 +306,7 @@ def _add_debug_args(parser):
         dest="debug_file",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Save processing operations to the specified file.",
         metavar="FILE",
     )
@@ -315,6 +341,7 @@ def _setup_split_parser(subparsers):
         dest="save_stream",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Save read audio data (from a file or a microphone) to a file."
         " If omitted, no audio data will be saved.",
         metavar="FILE",
@@ -325,11 +352,12 @@ def _setup_split_parser(subparsers):
         dest="save_detections_as",
         type=str,
         default=None,
+        action=_StoreOnce,
         help="Specify the file name format to save detected events. You can "
         "use the following placeholders to construct the output file name: "
         "{id} (sequential, starting from 1), {start}, {end}, and {duration}. "
         "Time placeholders are in seconds. "
-        "Example: 'Event_{id}{start}-{end}{duration:.3f}.wav'",
+        "Example: 'Event_{id}_{start:.3f}-{end:.3f}_{duration:.3f}.wav'",
         metavar="STRING",
     )
     group.add_argument(
@@ -338,6 +366,7 @@ def _setup_split_parser(subparsers):
         dest="join_detections",
         type=float,
         default=None,
+        action=_StoreOnce,
         help="[Deprecated: use 'auditok fix-pauses' instead.] "
         "Join (glue) detected audio events with a specified duration "
         "of silence between them. To be used in combination with the "
@@ -358,6 +387,7 @@ def _setup_split_parser(subparsers):
         dest="max_duration",
         type=float,
         default=5,
+        action=_StoreOnce,
         help="Maximum duration of a valid audio event in seconds. "
         "[Default: %(default)s].",
         metavar="FLOAT",
@@ -400,6 +430,7 @@ def _setup_split_parser(subparsers):
         "--command",
         dest="command",
         type=str,
+        action=_StoreOnce,
         help="Provide a command to execute when an audio event is detected."
         " Use '{file}' as a placeholder for the temporary WAV file "
         "containing the event data (e.g., `-C 'du -h {file}'` to "
@@ -437,6 +468,7 @@ def _setup_split_parser(subparsers):
         "--save-image",
         dest="save_image",
         type=str,
+        action=_StoreOnce,
         help="Save the plotted audio signal and detections as a picture "
         "or a PDF file (requires matplotlib).",
         metavar="FILE",
@@ -446,6 +478,7 @@ def _setup_split_parser(subparsers):
         dest="printf",
         type=str,
         default="{id} {start} {end}",
+        action=_StoreOnce,
         help="Prints information about each audio event on a new line "
         "using the specified format. The format can include text and "
         "placeholders: {id} (sequential, starting from 1), {start}, "
@@ -461,6 +494,7 @@ def _setup_split_parser(subparsers):
         dest="time_format",
         type=str,
         default="%S",
+        action=_StoreOnce,
         help="Specify the format for printing {start}, {end}, and "
         "{duration} placeholders with --printf. [Default: %(default)s]. "
         "Accepted formats are\n:"
@@ -477,6 +511,7 @@ def _setup_split_parser(subparsers):
         dest="timestamp_format",
         type=str,
         default="%Y/%m/%d %H:%M:%S",
+        action=_StoreOnce,
         help="Specify the format used for printing {timestamp}. Should be "
         "a format accepted by the 'datetime' standard module. [Default: "
         "'%%Y/%%m/%%d %%H:%%M:%%S'].",
@@ -493,6 +528,7 @@ def _setup_split_parser(subparsers):
     _add_debug_args(parser)
 
     parser.set_defaults(func=_run_split)
+    return parser
 
 
 def _setup_trim_parser(subparsers):
@@ -520,6 +556,7 @@ def _setup_trim_parser(subparsers):
         dest="output",
         type=str,
         required=True,
+        action=_StoreOnce,
         help="Output file path.",
         metavar="FILE",
     )
@@ -551,6 +588,7 @@ def _setup_trim_parser(subparsers):
     _add_debug_args(parser)
 
     parser.set_defaults(func=_run_trim)
+    return parser
 
 
 def _setup_fix_pauses_parser(subparsers):
@@ -578,6 +616,7 @@ def _setup_fix_pauses_parser(subparsers):
         dest="output",
         type=str,
         required=True,
+        action=_StoreOnce,
         help="Output file path.",
         metavar="FILE",
     )
@@ -587,6 +626,7 @@ def _setup_fix_pauses_parser(subparsers):
         dest="pause_duration",
         type=float,
         required=True,
+        action=_StoreOnce,
         help="Duration of silence (in seconds) to insert between detected "
         "audio events.",
         metavar="FLOAT",
@@ -619,6 +659,7 @@ def _setup_fix_pauses_parser(subparsers):
     _add_debug_args(parser)
 
     parser.set_defaults(func=_run_fix_pauses)
+    return parser
 
 
 # ── Shared kwargs builders ───────────────────────────────────────────

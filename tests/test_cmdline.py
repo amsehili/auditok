@@ -259,6 +259,60 @@ class TestDeprecationWarnings:
             assert "deprecated" in captured.err.lower()
 
 
+class TestDuplicateOptions:
+    """Reject CLI arguments that appear more than once."""
+
+    def test_duplicate_short_flag(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(["split", "-e", "50", "-e", "65", WAV_FILE])
+
+    def test_duplicate_long_flag(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(
+                [
+                    "split",
+                    "--energy-threshold",
+                    "50",
+                    "--energy-threshold",
+                    "65",
+                    WAV_FILE,
+                ]
+            )
+
+    def test_short_and_long_alias_conflict(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(["split", "-e", "50", "--energy-threshold", "65", WAV_FILE])
+
+    def test_duplicate_on_fix_pauses(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(
+                [
+                    "fix-pauses",
+                    "-e",
+                    "50",
+                    "-e",
+                    "65",
+                    "-o",
+                    "out.wav",
+                    "-d",
+                    "1",
+                    WAV_FILE,
+                ]
+            )
+
+    def test_duplicate_on_trim(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(["trim", "-e", "50", "-e", "65", "-o", "out.wav", WAV_FILE])
+
+    def test_duplicate_with_implicit_split(self):
+        with pytest.raises(SystemExit, match="2"):
+            main(["-e", "50", "-e", "65", WAV_FILE])
+
+    def test_no_error_when_no_duplicates(self):
+        ret = main(["split", WAV_FILE, "-q", "-e", "50"])
+        assert ret == 0
+
+
 # ── _build_split_command_kwargs ───────────────────────────────────
 
 _ArgsNamespace = namedtuple(
