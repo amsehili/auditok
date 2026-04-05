@@ -174,6 +174,23 @@ def test_split_and_join_with_silence(duration):
     assert region_with_silence == expected_region
 
 
+@requires_ffmpeg
+def test_fix_pauses_no_activity_preserves_file_format():
+    """When fix_pauses detects no activity, the returned empty AudioRegion
+    must match the input file's original audio parameters."""
+    from auditok.audio import fix_pauses
+
+    result = fix_pauses(
+        "tests/data/DTMF_tones_44.1KHZ_stereo.mp3",
+        silence_duration=0.5,
+        energy_threshold=99,
+    )
+    assert not result  # empty region
+    assert result.sr == 44100
+    assert result.sw == 2
+    assert result.ch == 2
+
+
 @pytest.mark.parametrize(
     "duration, analysis_window, round_fn, expected, kwargs",
     [

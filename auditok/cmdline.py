@@ -13,18 +13,22 @@ microphones, and standard input.
 @deffield    updated: 01 Apr 2026
 """
 
+import logging
 import os
 import sys
 import tempfile
 import threading
 import time
 from argparse import ArgumentParser
+from collections import namedtuple
 
 from auditok import AudioRegion, __version__
 
+from . import workers
 from .audio import fix_pauses, trim
-from .cmdline_util import initialize_workers, make_kwargs, make_logger
 from .exceptions import ArgumentError, EndOfProcessing
+from .io import player_for
+from .util import AudioReader
 
 __all__ = []  # type: ignore[var-annotated]
 __date__ = "2015-11-23"
@@ -617,7 +621,12 @@ def _setup_fix_pauses_parser(subparsers):
     parser.set_defaults(func=_run_fix_pauses)
 
 
-# ── Handler functions ────────────────────────────────────────────────
+# ── Shared kwargs builders ───────────────────────────────────────────
+
+_AUDITOK_LOGGER = "AUDITOK_LOGGER"
+_SplitCommandKwargs = namedtuple(
+    "_SplitCommandKwargs", ["io", "split", "miscellaneous"]
+)
 
 
 def _parse_use_channel(value):
@@ -627,20 +636,14 @@ def _parse_use_channel(value):
         return value
 
 
-def _build_kwargs(args):
-    """Build split and audio kwargs dicts from parsed args."""
+def _build_audio_kwargs(args):
+    """Build the audio-source keyword dict from parsed CLI args.
+
+    Audio parameters (-r, -w, -c) are only forwarded for microphone,
+    stdin, and raw input.  For audio files they are set to None so
+    that FFmpegAudioSource preserves the original data.
+    """
     use_channel = _parse_use_channel(args.use_channel)
-    split_kw = {
-        "min_dur": args.min_duration,
-        "max_silence": args.max_silence,
-        "max_leading_silence": args.max_leading_silence,
-        "max_trailing_silence": args.max_trailing_silence,
-        "energy_threshold": args.energy_threshold,
-        "analysis_window": args.analysis_window,
-    }
-    # Use audio parameter for microphone, stdin, and raw input only
-    # For audio files formats leave them as None so FFmpegAudioSource
-    # preserves the original data.
     if args.input is None or args.input == "-" or args.input_format == "raw":
         sr = args.sampling_rate
         sw = args.sample_width
@@ -649,8 +652,7 @@ def _build_kwargs(args):
         sr = None
         sw = None
         ch = None
-
-    audio_kw = {
+    return {
         "sampling_rate": sr,
         "sample_width": sw,
         "channels": ch,
@@ -661,13 +663,162 @@ def _build_kwargs(args):
         "frames_per_buffer": args.frame_per_buffer,
         "input_device_index": args.input_device_index,
     }
-    return split_kw, audio_kw
+
+
+def _build_split_kwargs(args):
+    """Build the split/tokenizer keyword dict from parsed CLI args."""
+    return {
+        "min_dur": args.min_duration,
+        "max_silence": args.max_silence,
+        "max_leading_silence": args.max_leading_silence,
+        "max_trailing_silence": args.max_trailing_silence,
+        "energy_threshold": args.energy_threshold,
+        "analysis_window": args.analysis_window,
+    }
+
+
+def _build_split_command_kwargs(args):
+    """Build the full kwargs for the *split* subcommand.
+
+    Returns a ``_SplitCommandKwargs(io, split, miscellaneous)`` named
+    tuple.  The *io* dict extends :func:`_build_audio_kwargs` with
+    split-specific I/O options (save_stream, echo, etc.) and the *split*
+    dict extends :func:`_build_split_kwargs` with max_dur /
+    strict_min_dur / drop_trailing_silence.
+    """
+    if args.save_stream is None:
+        record = args.plot or (args.save_image is not None)
+    else:
+        record = False
+
+    if args.join_detections is not None and args.save_stream is None:
+        raise ArgumentError(
+            "using --join-detections/-j requires --save-stream/-O "
+            "to be specified."
+        )
+
+    audio_kw = _build_audio_kwargs(args)
+    audio_kw.update(
+        input=args.input,
+        block_dur=args.analysis_window,
+        save_stream=args.save_stream,
+        save_detections_as=args.save_detections_as,
+        join_detections=args.join_detections,
+        export_format=args.output_format,
+        record=record,
+    )
+
+    split_kw = _build_split_kwargs(args)
+    split_kw.update(
+        max_dur=args.max_duration,
+        strict_min_dur=args.strict_min_duration,
+        drop_trailing_silence=args.drop_trailing_silence,
+    )
+
+    miscellaneous = {
+        "echo": args.echo,
+        "progress_bar": args.progress_bar,
+        "command": args.command,
+        "quiet": args.quiet,
+        "printf": args.printf,
+        "time_format": args.time_format,
+        "timestamp_format": args.timestamp_format,
+    }
+    return _SplitCommandKwargs(audio_kw, split_kw, miscellaneous)
+
+
+# ── Logger / worker helpers ──────────────────────────────────────────
+
+
+def make_logger(stderr=False, file=None, name=_AUDITOK_LOGGER):
+    if not stderr and file is None:
+        return None
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    if stderr:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
+    if file is not None:
+        handler = logging.FileHandler(file, "w")
+        fmt = logging.Formatter("[%(asctime)s] | %(message)s")
+        handler.setFormatter(fmt)
+        handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
+    return logger
+
+
+def initialize_workers(logger=None, **kwargs):
+    observers = []
+    reader = AudioReader(source=kwargs["input"], **kwargs)
+    if kwargs["save_stream"] is not None:
+        if kwargs["join_detections"] is not None:
+            stream_saver = workers.AudioEventsJoinerWorker(
+                silence_duration=kwargs["join_detections"],
+                filename=kwargs["save_stream"],
+                export_format=kwargs["export_format"],
+                sampling_rate=reader.sampling_rate,
+                sample_width=reader.sample_width,
+                channels=reader.channels,
+            )
+            observers.append(stream_saver)
+        else:
+            reader = workers.StreamSaverWorker(
+                reader,
+                filename=kwargs["save_stream"],
+                export_format=kwargs["export_format"],
+            )
+            stream_saver = reader
+            stream_saver.start()
+    else:
+        stream_saver = None
+
+    if kwargs["save_detections_as"] is not None:
+        worker = workers.RegionSaverWorker(
+            kwargs["save_detections_as"],
+            kwargs["export_format"],
+            logger=logger,
+        )
+        observers.append(worker)
+
+    if kwargs["echo"]:
+        player = player_for(reader)
+        worker = workers.PlayerWorker(
+            player, progress_bar=kwargs["progress_bar"], logger=logger
+        )
+        observers.append(worker)
+
+    if kwargs["command"] is not None:
+        worker = workers.CommandLineWorker(
+            command=kwargs["command"], logger=logger
+        )
+        observers.append(worker)
+
+    if not kwargs["quiet"]:
+        print_format = (
+            kwargs["printf"]
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\r", "\r")
+        )
+        worker = workers.PrintWorker(
+            print_format, kwargs["time_format"], kwargs["timestamp_format"]
+        )
+        observers.append(worker)
+
+    tokenizer_worker = workers.TokenizerWorker(
+        reader, observers, logger=logger, **kwargs
+    )
+    return stream_saver, tokenizer_worker
+
+
+# ── Handler functions ────────────────────────────────────────────────
 
 
 def _run_split(args):
     """Execute the split subcommand (original auditok behavior)."""
     try:
-        kwargs = make_kwargs(args)
+        kwargs = _build_split_command_kwargs(args)
     except ArgumentError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -730,7 +881,8 @@ def _run_split(args):
 def _run_trim(args):
     """Execute the trim subcommand."""
     logger = make_logger(args.debug, args.debug_file)
-    split_kw, audio_kw = _build_kwargs(args)
+    split_kw = _build_split_kwargs(args)
+    audio_kw = _build_audio_kwargs(args)
 
     if args.input is not None:
         # File input: call trim() directly
@@ -805,7 +957,8 @@ def _run_trim(args):
 def _run_fix_pauses(args):
     """Execute the fix-pauses subcommand."""
     logger = make_logger(args.debug, args.debug_file)
-    split_kw, audio_kw = _build_kwargs(args)
+    split_kw = _build_split_kwargs(args)
+    audio_kw = _build_audio_kwargs(args)
 
     if args.input is not None:
         # File input: call fix_pauses() directly

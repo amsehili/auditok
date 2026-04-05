@@ -6,7 +6,7 @@ import pytest
 
 import auditok.workers
 from auditok import AudioReader, AudioRegion, split, split_and_join_with_silence
-from auditok.cmdline_util import make_logger
+from auditok.cmdline import make_logger
 from auditok.workers import (
     AudioEventsJoinerWorker,
     CommandLineWorker,
