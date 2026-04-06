@@ -58,7 +58,7 @@ class Worker(Thread, metaclass=ABCMeta):
     def _log(self, message):
         self._logger.info(message)
 
-    def _stop_requested(self):
+    def _stop_playinguested(self):
         try:
             message = self._inbox.get_nowait()
             if message == _STOP_PROCESSING:
@@ -141,7 +141,7 @@ class TokenizerWorker(Worker, AudioReader):
         self._reader.close()
 
     def read(self):
-        if self._stop_requested():
+        if self._stop_playinguested():
             return None
         else:
             return self._reader.read()
@@ -433,6 +433,7 @@ class PlayerWorker(Worker):
         self._player = player
         self._progress_bar = progress_bar
         self._log_format = "[PLAY]: Detection {id} played"
+        self._stop_playing = False
         super().__init__(timeout=timeout, logger=logger)
 
     def _process_message(self, message):
@@ -440,9 +441,21 @@ class PlayerWorker(Worker):
         if self._logger is not None:
             message = self._log_format.format(id=_id)
             self._log(message)
-        audio_region.play(
-            player=self._player, progress_bar=self._progress_bar, leave=False
-        )
+        if not self._stop_playing:
+            audio_region.play(
+                player=self._player,
+                progress_bar=self._progress_bar,
+                leave=False,
+            )
+
+    def stop(self):
+        # Set self._stop_playing = True to stop playing as early as possible
+        # Avoid waiting for _STOP_PROCESSING special message which queued last
+        # after all detected audio events
+        self._stop_playing = True
+        self._player.stop()
+        self.send(_STOP_PROCESSING)
+        self.join(timeout=2)
 
 
 class RegionSaverWorker(Worker):

@@ -857,6 +857,32 @@ class AudioDevicePlayer:
         self.channels = channels
         self._dtype = dtype
         self._stream = None
+        self._abort = False
+
+    def _open_stream(self):
+        """Create and start a fresh output stream."""
+        import sounddevice as sd
+
+        with _suppress_stderr():
+            self._stream = sd.RawOutputStream(
+                samplerate=self.sampling_rate,
+                channels=self.channels,
+                dtype=self._dtype,
+            )
+        self._stream.start()
+
+    def _close_stream(self):
+        """Stop and close the stream. Must be called from the same thread
+        that calls play/write — never cross-thread."""
+        if self._stream is None:
+            return
+        try:
+            with _suppress_stderr():
+                self._stream.stop()
+                self._stream.close()
+        except Exception:
+            pass
+        self._stream = None
 
     def play(
         self,
@@ -864,8 +890,7 @@ class AudioDevicePlayer:
         progress_bar: bool = False,
         **progress_bar_kwargs: Any,
     ) -> None:
-        import sounddevice as sd
-
+        self._abort = False
         chunk_gen, nb_chunks = self._chunk_data(data)
         if progress_bar and _WITH_TQDM:
             duration = len(data) / (
@@ -877,25 +902,26 @@ class AudioDevicePlayer:
                 duration=duration,
                 **progress_bar_kwargs,
             )
-        with _suppress_stderr():
-            self._stream = sd.RawOutputStream(
-                samplerate=self.sampling_rate,
-                channels=self.channels,
-                dtype=self._dtype,
-            )
-        self._stream.start()
+        if self._stream is None:
+            self._open_stream()
         try:
             for chunk in chunk_gen:
+                if self._abort:
+                    break
                 self._stream.write(chunk)
         except KeyboardInterrupt:
             pass
-        self._stream.stop()
+            self._close_stream()
+        except Exception:
+            if not self._abort:
+                raise
+        if self._abort:
+            self._close_stream()
 
     def stop(self) -> None:
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+        """Signal the play loop to stop. The stream is closed by play()
+        itself so that all PortAudio calls happen on the same thread."""
+        self._abort = True
 
     def _chunk_data(self, data):
         # make audio chunks of 100 ms to allow interruption (like ctrl+c)
