@@ -1,6 +1,22 @@
 auditok Changelog
 =================
 
+Version 0.4.1
+-------------
+
+Bug fixes:
+
+- Fix CLI forcing default ``-r``/``-w``/``-c`` on file input via ``FFmpegAudioSource``
+- Fix Ctrl+C crash and audio glitches during playback with ``-E``
+- Quit correctly when ``-B`` is specified for audio playback with progress bar
+
+Improvements:
+
+- Refactor command line code and tests
+- Show an error message when a command line argument appears more than once
+- Make CLI help text 80-column max
+
+
 Version 0.4.0
 -------------
 
