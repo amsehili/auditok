@@ -19,7 +19,7 @@ import sys
 import tempfile
 import threading
 import time
-from argparse import Action, ArgumentParser
+from argparse import Action, ArgumentParser, HelpFormatter
 from collections import namedtuple
 
 from auditok import AudioRegion, __version__
@@ -315,6 +315,10 @@ def _add_debug_args(parser):
 # ── Subparser setup ──────────────────────────────────────────────────
 
 
+def _get_help_formatter(prog):
+    return HelpFormatter(prog, width=80)
+
+
 def _setup_split_parser(subparsers):
     """Set up the 'split' subcommand parser."""
     parser = subparsers.add_parser(
@@ -323,6 +327,7 @@ def _setup_split_parser(subparsers):
         description="Detect and split audio into individual events based on "
         "energy thresholds. This is the default subcommand.",
         help="Detect and split audio into events (default subcommand).",
+        formatter_class=_get_help_formatter,
     )
 
     group = parser.add_argument_group("Input-Output options")
@@ -389,7 +394,8 @@ def _setup_split_parser(subparsers):
         default=5,
         action=_StoreOnce,
         help="Maximum duration of a valid audio event in seconds. "
-        "[Default: %(default)s].",
+        "[Default: %(default)s]. "
+        "Pass 'inf' to detect event of arbitrary duration",
         metavar="FLOAT",
     )
     group.add_argument(
@@ -539,6 +545,7 @@ def _setup_trim_parser(subparsers):
         description="Remove leading and trailing silence from audio, "
         "keeping everything between the first and last detected events.",
         help="Remove leading and trailing silence from audio.",
+        formatter_class=_get_help_formatter,
     )
 
     group = parser.add_argument_group("Input-Output options")
@@ -599,6 +606,7 @@ def _setup_fix_pauses_parser(subparsers):
         description="Normalize pauses between detected audio events to a "
         "fixed duration, removing excess silence.",
         help="Normalize pauses between audio events to a fixed duration.",
+        formatter_class=_get_help_formatter,
     )
 
     group = parser.add_argument_group("Input-Output options")
@@ -1094,6 +1102,7 @@ def main(argv=None):
         epilog="Run '%(prog)s <command> -h' for help on a specific command. "
         "Running '%(prog)s' without a command is equivalent to "
         "'%(prog)s split'.",
+        formatter_class=_get_help_formatter,
     )
     subparsers = parser.add_subparsers(dest="subcommand")
     _setup_split_parser(subparsers)
