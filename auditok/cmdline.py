@@ -63,7 +63,7 @@ def _recording_loop(quiet=False):
                 sys.stderr.flush()
                 dot_visible = not dot_visible
             time.sleep(1)
-            if len(threading.enumerate()) == 1:
+            if sum(not t.daemon for t in threading.enumerate()) == 1:
                 raise EndOfProcessing
     except (KeyboardInterrupt, EndOfProcessing):
         if not quiet:
@@ -883,12 +883,15 @@ def _run_split(args):
 
         while True:
             time.sleep(1)
-            if len(threading.enumerate()) == 1:
+            if sum(not t.daemon for t in threading.enumerate()) == 1:
                 raise EndOfProcessing
 
     except (KeyboardInterrupt, EndOfProcessing):
         if tokenizer_worker is not None:
-            tokenizer_worker.stop_all()
+            try:
+                tokenizer_worker.stop_all()
+            except KeyboardInterrupt:
+                pass
 
             if stream_saver is not None:
                 stream_saver.join()
