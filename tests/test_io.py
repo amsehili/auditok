@@ -5,13 +5,12 @@ import wave
 from pathlib import Path
 from shutil import which
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 from test_AudioSource import PURE_TONE_DICT, _sample_generator
 
-import auditok
 from auditok.io import (
     AudioIOError,
     AudioParameterError,

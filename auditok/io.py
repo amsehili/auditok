@@ -26,7 +26,7 @@ import sys
 import wave
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 from .exceptions import AudioIOError, AudioParameterError
 

@@ -1,6 +1,4 @@
-import math
 from array import array as array_
-from unittest.mock import patch
 
 import numpy as np
 import pytest

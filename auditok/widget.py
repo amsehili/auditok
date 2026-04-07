@@ -38,15 +38,21 @@ _WIDGET_HTML = """\
     <span style="margin-left:8px">{title}</span>
   </div>
   <canvas id="{wid}_cv"
-    style="cursor:pointer; display:block; border-radius:4px; width:100%; height:{height}px">
+    style="cursor:pointer; display:block; border-radius:4px;
+           width:100%; height:{height}px">
   </canvas>
   <div style="margin-top:6px; display:flex; align-items:center; gap:10px">
     <button id="{wid}_play" class="atk-btn" style="
-        background:#40d970; color:#282a36; min-width:90px; justify-content:center;
-    "><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,0 2,12 11,6" fill="currentColor"/></svg> Play all</button>
+        background:#40d970; color:#282a36;
+        min-width:90px; justify-content:center;
+    "><svg width="12" height="12" viewBox="0 0 12 12">
+      <polygon points="2,0 2,12 11,6"
+       fill="currentColor"/></svg> Play all</button>
     <button id="{wid}_stop" class="atk-btn" style="
         background:#e31f8f; color:#fff;
-    "><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="1" fill="currentColor"/></svg> Stop</button>
+    "><svg width="12" height="12" viewBox="0 0 12 12">
+      <rect x="1" y="1" width="10" height="10" rx="1"
+       fill="currentColor"/></svg> Stop</button>
     <span id="{wid}_time" style="
         color:#40d970; font-size:12px; font-weight:bold;
         user-select:all; -webkit-user-select:all; cursor:text;
@@ -308,11 +314,19 @@ _WIDGET_HTML = """\
   function formatTimePrecise(t) {{
     var m = Math.floor(t / 60);
     var s = t % 60;
-    return (m > 0 ? m + ":" : "") + (m > 0 && s < 10 ? "0" : "") + s.toFixed(3) + "s";
+    return (m > 0 ? m + ":" : "")
+      + (m > 0 && s < 10 ? "0" : "")
+      + s.toFixed(3) + "s";
   }}
 
-  var ICO_PLAY = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,0 2,12 11,6" fill="currentColor"/></svg>';
-  var ICO_PAUSE = '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="0" width="3.5" height="12" rx="0.5" fill="currentColor"/><rect x="7.5" y="0" width="3.5" height="12" rx="0.5" fill="currentColor"/></svg>';
+  var ICO_PLAY = '<svg width="12" height="12" viewBox="0 0 12 12">'
+    + '<polygon points="2,0 2,12 11,6"'
+    + ' fill="currentColor"/></svg>';
+  var ICO_PAUSE = '<svg width="12" height="12" viewBox="0 0 12 12">'
+    + '<rect x="1" y="0" width="3.5" height="12"'
+    + ' rx="0.5" fill="currentColor"/>'
+    + '<rect x="7.5" y="0" width="3.5" height="12"'
+    + ' rx="0.5" fill="currentColor"/></svg>';
 
   function setPlaying(on) {{
     playing = on;
@@ -345,7 +359,8 @@ _WIDGET_HTML = """\
   function stopPlayback() {{
     playGen++;  // invalidate any pending async decode callbacks
     if (currentSource) {{
-      currentSource.onended = null;  // prevent stale callback from clobbering next source
+      // prevent stale callback from clobbering next source
+      currentSource.onended = null;
       try {{ currentSource.stop(); }} catch(e) {{}}
       currentSource = null;
     }}
@@ -520,7 +535,9 @@ _WIDGET_HTML = """\
       var det = detections[idx];
       var dur = det[1] - det[0];
       playB64(regionB64[idx], det[0], dur,
-        "Event " + (idx+1) + ": " + det[0].toFixed(3) + "s \u2013 " + det[1].toFixed(3) + "s");
+        "Event " + (idx+1) + ": "
+        + det[0].toFixed(3) + "s \u2013 "
+        + det[1].toFixed(3) + "s");
     }}
   }});
 
@@ -683,9 +700,11 @@ def display_interactive(
     full_audio_b64 = _audio_to_wav_b64(audio_region.data, sr, sw, ch)
 
     wid = "auditok_" + uuid.uuid4().hex[:10]
-    title = "{:.2f}s &middot; {} Hz &middot; {}&#x2011;bit &middot; {} ch &middot; {} events".format(
-        duration, sr, sw * 8, ch, len(regions)
-    )
+    title = (
+        "{:.2f}s &middot; {} Hz &middot; "
+        "{}&#x2011;bit &middot; {} ch &middot; "
+        "{} events"
+    ).format(duration, sr, sw * 8, ch, len(regions))
 
     html = _WIDGET_HTML.format(
         wid=wid,

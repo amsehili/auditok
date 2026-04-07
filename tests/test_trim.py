@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from auditok import AudioRegion, split, trim
+from auditok import AudioRegion, trim
 from auditok.io import get_audio_source
 from auditok.util import AudioReader
 

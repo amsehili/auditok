@@ -9,10 +9,10 @@ Amine SEHILI <amine.sehili@gmail.com>
 This package is published under the MIT license.
 """
 
-from .audio import *
-from .core import *
-from .exceptions import *
-from .io import *
-from .util import *
+from .audio import *  # noqa: F401
+from .core import *  # noqa: F401
+from .exceptions import *  # noqa: F401
+from .io import *  # noqa: F401
+from .util import *  # noqa: F401
 
 __version__ = "0.4.0"

@@ -1,5 +1,3 @@
-from array import array as array_
-
 import numpy as np
 import pytest
 

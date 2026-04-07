@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from auditok import DataValidator, StreamTokenizer, StringDataSource

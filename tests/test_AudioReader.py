@@ -1,6 +1,4 @@
-import sys
 import wave
-from functools import partial
 
 import pytest
 

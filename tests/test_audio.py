@@ -18,12 +18,7 @@ from auditok import (
     split,
     split_and_join_with_silence,
 )
-from auditok.audio import (
-    _duration_to_nb_windows,
-    _make_audio_region,
-    _read_chunks_online,
-    _read_offline,
-)
+from auditok.audio import _duration_to_nb_windows, _read_offline
 from auditok.io import get_audio_source
 from auditok.signal import to_array
 from auditok.util import AudioReader
