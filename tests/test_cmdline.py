@@ -2,6 +2,7 @@
 
 import os
 from collections import namedtuple
+from shutil import which
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
@@ -23,6 +24,10 @@ from auditok.workers import (
     PrintWorker,
     RegionSaverWorker,
     StreamSaverWorker,
+)
+
+requires_ffmpeg = pytest.mark.skipif(
+    which("ffmpeg") is None, reason="ffmpeg not available"
 )
 
 WAV_FILE = "tests/data/test_16KHZ_mono_400Hz.wav"
@@ -156,6 +161,7 @@ class TestFixPausesSubcommand:
 # ── Audio params not forced on file input ─────────────────────────
 
 
+@requires_ffmpeg
 class TestAudioParamsNotForcedOnFileInput:
     """CLI must not pass default -r/-w/-c to FFmpegAudioSource so that
     the original audio format is preserved."""
