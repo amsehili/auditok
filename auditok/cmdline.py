@@ -10,7 +10,7 @@ microphones, and standard input.
 @copyright:  2015-2026 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 06 Apr 2026
+@deffield    updated: 09 Apr 2026
 """
 
 import logging
@@ -32,7 +32,7 @@ from .util import AudioReader
 
 __all__ = []  # type: ignore[var-annotated]
 __date__ = "2015-11-23"
-__updated__ = "2026-04-06"
+__updated__ = "2026-04-09"
 
 _SUBCOMMANDS = {"split", "trim", "fix-pauses"}
 
