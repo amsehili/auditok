@@ -393,7 +393,9 @@ class StreamTokenizer:
                 # max token reached at this frame will _deliver if
                 # _contiguous_token and not _strict_min_length
                 self._state = self.SILENCE
-                return self._process_end_of_detection()
+                token = self._process_end_of_detection()
+                self._leading_buffer.append(frame)
+                return token
             else:
                 # this is the first silent frame following a valid one
                 # and it is tolerated
@@ -418,10 +420,13 @@ class StreamTokenizer:
                 if self._silence_length >= self.max_continuous_silence:
                     self._state = self.SILENCE
                     if self._silence_length < len(self._data):
-                        # _deliver only gathered frames aren't all silent
-                        return self._process_end_of_detection()
+                        # _deliver only if gathered frames aren't all silent
+                        token = self._process_end_of_detection()
+                        self._leading_buffer.append(frame)
+                        return token
                     self._data = []
                     self._silence_length = 0
+                    self._leading_buffer.append(frame)
                 else:
                     self._data.append(frame)
                     self._silence_length += 1
@@ -446,7 +451,12 @@ class StreamTokenizer:
             # happens if max_continuous_silence is reached
             # or max_length is reached at a silent frame
             excess = self._silence_length - self.max_trailing_silence
+            trimmed = self._data[-excess:]
             self._data = self._data[:-excess]
+            # Seed trimmed frames into the leading buffer so they
+            # can become leading silence for the next token.
+            for f in trimmed:
+                self._leading_buffer.append(f)
 
         if (len(self._data) >= self.min_length) or (
             len(self._data) > 0

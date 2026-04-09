@@ -830,8 +830,8 @@ def test_max_leading_silence_two_tokens_no_overlap(validator):
     data_source = StringDataSource("aaAAAAAaaaAAAAAaa")
     #                               01234567890123456
     # Token 1: buffer=[a,a] from frames 0,1 → start=0
-    # Token 2: buffer=[a] from frame 9 (1 frame in SILENCE after frame 8
-    #          was consumed) → start=9
+    # Token 2: frame 8 (trigger) seeded into buffer, frame 9 appended
+    #          → buffer=[a(8),a(9)], leading=[a,a], start=8
 
     tokens = tokenizer.tokenize(data_source)
     assert len(tokens) == 2
@@ -840,8 +840,8 @@ def test_max_leading_silence_two_tokens_no_overlap(validator):
     assert tokens[0][1] == 0
     assert tokens[0][2] == 7
 
-    assert "".join(tokens[1][0]) == "aAAAAAa"
-    assert tokens[1][1] == 9
+    assert "".join(tokens[1][0]) == "aaAAAAAa"
+    assert tokens[1][1] == 8
     assert tokens[1][2] == 15
 
     # verify no overlap
@@ -860,10 +860,10 @@ def test_max_leading_silence_wide_gap_between_tokens(validator):
     data_source = StringDataSource("aAAAaaaaaaAAAa")
     #                               01234567890123
     # Token 1: buffer=[a] from frame 0 → start=0
-    # After token 1, SILENCE entered. buffer starts collecting.
-    #   Frame 5 was consumed at the POSSIBLE_SILENCE→SILENCE transition.
-    #   Frame 6: buffer=[a]
-    #   Frame 7: buffer=[a,a]
+    # After token 1, SILENCE entered. Frame 5 (trigger) seeded into buffer.
+    #   Frame 5: buffer=[a]  (seeded)
+    #   Frame 6: buffer=[a,a]
+    #   Frame 7: buffer=[a,a] (evicts 5, keeps 6,7)
     #   Frame 8: buffer=[a,a] (evicts 6, keeps 7,8)
     #   Frame 9: buffer=[a,a] (evicts 7, keeps 8,9)
     # Frame 10 (A): leading=[a,a] from frames 8,9 → start=10-2=8
