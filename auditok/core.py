@@ -62,17 +62,22 @@ class StreamTokenizer:
 
     max_trailing_silence : int or None, default=None
         Maximum number of trailing non-valid frames to keep at the end of
-        each token. When a token ends because ``max_continuous_silence`` is
-        exceeded (or data ends), up to ``max_trailing_silence`` frames of
-        the accumulated trailing silence are retained; the rest are trimmed.
+        each token.
 
-        - ``None`` (default): keep all trailing silence (no trimming).
+        - ``None`` (default): keep all trailing silence up to
+          ``max_continuous_silence`` (no trimming, no extension).
         - ``0``: drop all trailing silence (equivalent to the legacy
           ``DROP_TRAILING_SILENCE`` mode flag).
-        - ``N > 0``: keep up to N trailing silent frames.
+        - ``N <= max_continuous_silence``: trim trailing silence to N.
+        - ``N > max_continuous_silence``: after the event boundary is
+          decided (at ``max_continuous_silence``), **continue collecting**
+          silent frames up to N total. Collection stops early if a valid
+          frame appears or if data ends.
 
         This decouples the *perceptual padding* at the end of a token from
         ``max_continuous_silence``, which controls *when* a token ends.
+        Values larger than ``max_continuous_silence`` are useful for
+        preserving natural fadeouts without merging separate events.
 
     init_min : int, default=0
         Minimum number of consecutive valid frames required before
@@ -173,6 +178,7 @@ class StreamTokenizer:
     POSSIBLE_SILENCE = 1
     POSSIBLE_NOISE = 2
     NOISE = 3
+    TRAILING_COLLECTION = 4
     NORMAL = 0
     STRICT_MIN_LENGTH = 2
     DROP_TRAILING_SILENCE = 4
@@ -235,6 +241,10 @@ class StreamTokenizer:
             self.max_trailing_silence = 0
         else:
             self.max_trailing_silence = None
+        self._needs_trailing_extension = (
+            self.max_trailing_silence is not None
+            and self.max_trailing_silence > self.max_continuous_silence
+        )
         self._deliver = None
         self._tokens = None
         self._state = None
@@ -390,12 +400,18 @@ class StreamTokenizer:
                     return self._process_end_of_detection(True)
 
             elif self.max_continuous_silence <= 0:
-                # max token reached at this frame will _deliver if
-                # _contiguous_token and not _strict_min_length
-                self._state = self.SILENCE
-                token = self._process_end_of_detection()
-                self._leading_buffer.append(frame)
-                return token
+                if self._needs_trailing_extension:
+                    self._data.append(frame)
+                    self._silence_length = 1
+                    self._state = self.TRAILING_COLLECTION
+                    if len(self._data) >= self.max_length:
+                        self._state = self.SILENCE
+                        return self._process_end_of_detection()
+                else:
+                    self._state = self.SILENCE
+                    token = self._process_end_of_detection()
+                    self._leading_buffer.append(frame)
+                    return token
             else:
                 # this is the first silent frame following a valid one
                 # and it is tolerated
@@ -418,15 +434,29 @@ class StreamTokenizer:
 
             else:
                 if self._silence_length >= self.max_continuous_silence:
-                    self._state = self.SILENCE
-                    if self._silence_length < len(self._data):
-                        # _deliver only if gathered frames aren't all silent
-                        token = self._process_end_of_detection()
+                    if (
+                        self._needs_trailing_extension
+                        and self._silence_length < len(self._data)
+                    ):
+                        # Continue collecting trailing beyond mcs
+                        self._data.append(frame)
+                        self._silence_length += 1
+                        self._state = self.TRAILING_COLLECTION
+                        if self._silence_length >= self.max_trailing_silence:
+                            self._state = self.SILENCE
+                            return self._process_end_of_detection()
+                        if len(self._data) >= self.max_length:
+                            self._state = self.SILENCE
+                            return self._process_end_of_detection()
+                    else:
+                        self._state = self.SILENCE
+                        if self._silence_length < len(self._data):
+                            token = self._process_end_of_detection()
+                            self._leading_buffer.append(frame)
+                            return token
+                        self._data = []
+                        self._silence_length = 0
                         self._leading_buffer.append(frame)
-                        return token
-                    self._data = []
-                    self._silence_length = 0
-                    self._leading_buffer.append(frame)
                 else:
                     self._data.append(frame)
                     self._silence_length += 1
@@ -435,8 +465,39 @@ class StreamTokenizer:
                         # don't reset _silence_length because we still
                         # need to know the total number of silent frames
 
+        elif self._state == self.TRAILING_COLLECTION:
+
+            if frame_is_valid:
+                # Event is over. Deliver with collected trailing, then
+                # start a new token from this valid frame.
+                token = self._process_end_of_detection()
+                leading = list(self._leading_buffer)
+                self._leading_buffer.clear()
+                self._init_count = 1
+                self._silence_length = 0
+                self._start_frame = self._current_frame - len(leading)
+                self._data = leading + [frame]
+                if self._init_count >= self.init_min:
+                    self._state = self.NOISE
+                else:
+                    self._state = self.POSSIBLE_NOISE
+                return token
+            else:
+                self._data.append(frame)
+                self._silence_length += 1
+                if self._silence_length >= self.max_trailing_silence:
+                    self._state = self.SILENCE
+                    return self._process_end_of_detection()
+                if len(self._data) >= self.max_length:
+                    self._state = self.SILENCE
+                    return self._process_end_of_detection()
+
     def _post_process(self):
-        if self._state == self.NOISE or self._state == self.POSSIBLE_SILENCE:
+        if self._state in (
+            self.NOISE,
+            self.POSSIBLE_SILENCE,
+            self.TRAILING_COLLECTION,
+        ):
             if len(self._data) > 0 and len(self._data) > self._silence_length:
                 return self._process_end_of_detection()
 

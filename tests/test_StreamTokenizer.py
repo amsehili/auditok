@@ -1074,13 +1074,14 @@ def test_max_trailing_silence_larger_than_actual(validator):
     )
     data_source = StringDataSource("AAAAAaaa")
     #                               01234567
-    # mcs=2: frames 5,6 tolerated, frame 7 triggers SILENCE
-    # 2 trailing frames < max_trailing_silence(5), keep all
+    # mcs=2: frames 5,6 tolerated, frame 7 triggers TRAILING_COLLECTION
+    # TRAILING_COLLECTION collects frame 7, then data ends.
+    # 3 trailing frames total < max_trailing_silence(5), keep all
     tokens = tokenizer.tokenize(data_source)
     assert len(tokens) == 1
-    assert "".join(tokens[0][0]) == "AAAAAaa"
+    assert "".join(tokens[0][0]) == "AAAAAaaa"
     assert tokens[0][1] == 0
-    assert tokens[0][2] == 6
+    assert tokens[0][2] == 7
 
 
 def test_max_trailing_silence_0_matches_drop_trailing_mode(validator):
@@ -1130,3 +1131,188 @@ def test_max_trailing_silence_with_max_leading_silence(validator):
     assert "".join(tokens[0][0]) == "aaAAAAAa"
     assert tokens[0][1] == 1
     assert tokens[0][2] == 8
+
+
+# ── TRAILING_COLLECTION (max_trailing_silence > max_continuous_silence) ──
+
+
+def test_trailing_collection_basic(validator):
+    """Trailing collection extends beyond max_continuous_silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=2,
+        max_trailing_silence=5,
+    )
+    data_source = StringDataSource("AAAAAaaaaaaa")
+    #                               0123456789 10
+    # mcs=2: frames 5,6 tolerated, frame 7 enters TRAILING_COLLECTION.
+    # TRAILING_COLLECTION collects frames 7,8,9 → silence_length=5 → deliver.
+    # Frame 10 is not included.
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAaaaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 9
+
+
+def test_trailing_collection_data_ends_before_cap(validator):
+    """Data ends during trailing collection; deliver what we have."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=2,
+        max_trailing_silence=10,
+    )
+    data_source = StringDataSource("AAAAAaaa")
+    #                               01234567
+    # mcs=2: frames 5,6 tolerated, frame 7 enters TRAILING_COLLECTION.
+    # Data ends → deliver with 3 trailing frames (< cap of 10).
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 1
+    assert "".join(tokens[0][0]) == "AAAAAaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 7
+
+
+def test_trailing_collection_valid_frame_stops_collection(validator):
+    """A valid frame during trailing collection stops it and starts new."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=1,
+        max_trailing_silence=5,
+    )
+    data_source = StringDataSource("AAAAAaaaAAAAA")
+    #                               0123456789 10 11 12
+    # mcs=1: frame 5 tolerated, frame 6 enters TRAILING_COLLECTION.
+    # TRAILING_COLLECTION: frame 7 collected → silence_length=3 (< 5)
+    # Frame 8 (A): valid → deliver token 1, start token 2.
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "AAAAAaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 7
+
+    assert "".join(tokens[1][0]) == "AAAAA"
+    assert tokens[1][1] == 8
+    assert tokens[1][2] == 12
+
+
+def test_trailing_collection_two_tokens_no_gap(validator):
+    """When trailing consumes all gap, next token has no leading silence."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=1,
+        max_trailing_silence=10,
+        max_leading_silence=10,
+    )
+    data_source = StringDataSource("AAAAAaaAAAAA")
+    #                               01234567 8 9 10 11
+    # mcs=1: frame 5 tolerated, frame 6 enters TRAILING_COLLECTION.
+    # TRAILING_COLLECTION: silence_length=2 (< 10)
+    # Frame 7 (A): valid → deliver token 1, start token 2.
+    # Leading buffer is empty (trailing consumed the gap).
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "AAAAAaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 6
+
+    assert "".join(tokens[1][0]) == "AAAAA"
+    assert tokens[1][1] == 7
+    assert tokens[1][2] == 11
+    # No gap between tokens
+    assert tokens[1][1] == tokens[0][2] + 1
+
+
+def test_trailing_collection_with_wide_gap(validator):
+    """With a wide gap, trailing reaches its cap and remaining gap feeds
+    the leading buffer of the next token."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=1,
+        max_trailing_silence=3,
+        max_leading_silence=3,
+    )
+    data_source = StringDataSource("AAAaaaaaaaAAA")
+    #                               0123456789 10 11 12
+    # mcs=1: frame 3 tolerated, frame 4 enters TRAILING_COLLECTION.
+    # TRAILING_COLLECTION: frames 4,5 → silence_length=3 at frame 5
+    #   → cap reached → deliver, state=SILENCE.
+    # SILENCE: frames 6,7,8,9 fill leading buffer (maxlen=3).
+    #   buffer=[a(7),a(8),a(9)]
+    # Frame 10 (A): leading=[a,a,a], start=7
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "AAAaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 5
+
+    assert "".join(tokens[1][0]) == "aaaAAA"
+    assert tokens[1][1] == 7
+    assert tokens[1][2] == 12
+
+    # No overlap
+    assert tokens[1][1] > tokens[0][2]
+
+
+def test_trailing_collection_with_mcs_zero(validator):
+    """Trailing collection works when max_continuous_silence=0."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=0,
+        max_trailing_silence=3,
+    )
+    data_source = StringDataSource("AAAAAaaaAAA")
+    #                               01234567 8 9 10
+    # mcs=0: frame 5 (a) → enters TRAILING_COLLECTION, silence_length=1
+    # TRAILING_COLLECTION: frames 6,7 → silence_length=3 → deliver
+    # Frame 8 (A): SILENCE → new token
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "AAAAAaaa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 7
+
+    assert "".join(tokens[1][0]) == "AAA"
+    assert tokens[1][1] == 8
+    assert tokens[1][2] == 10
+
+
+def test_trailing_collection_mcs_zero_valid_interrupts(validator):
+    """With mcs=0, trailing collection is cut short by valid frame."""
+    tokenizer = StreamTokenizer(
+        validator,
+        min_length=1,
+        max_length=30,
+        max_continuous_silence=0,
+        max_trailing_silence=5,
+    )
+    data_source = StringDataSource("AAAAaAAAA")
+    #                               012345678
+    # mcs=0: frame 4 (a) → enters TRAILING_COLLECTION, silence_length=1
+    # Frame 5 (A): valid → deliver token 1, start token 2
+    tokens = tokenizer.tokenize(data_source)
+    assert len(tokens) == 2
+
+    assert "".join(tokens[0][0]) == "AAAAa"
+    assert tokens[0][1] == 0
+    assert tokens[0][2] == 4
+
+    assert "".join(tokens[1][0]) == "AAAA"
+    assert tokens[1][1] == 5
+    assert tokens[1][2] == 8

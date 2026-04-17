@@ -210,15 +210,18 @@ def split(
 
     max_trailing_silence : float or None, default=None
         Maximum duration in seconds of trailing silence to retain at the
-        end of each detected event. When an event ends, up to
-        ``max_trailing_silence`` seconds of the accumulated trailing
-        silence are kept; any excess is trimmed.
+        end of each detected event.
 
-        - ``None`` (default): keep all trailing silence (up to
-          ``max_silence``). This preserves the natural decay of the sound.
+        - ``None`` (default): keep all trailing silence up to
+          ``max_silence`` (no trimming, no extension).
         - ``0``: drop all trailing silence.
-        - A positive value: keep up to that many seconds of trailing
-          silence, independently of ``max_silence``.
+        - A value ``<= max_silence``: trim trailing silence to that
+          duration.
+        - A value ``> max_silence``: after the event boundary is decided
+          (at ``max_silence``), continue collecting silent frames up to
+          ``max_trailing_silence`` total. Collection stops early if a
+          valid frame appears or if data ends. This is useful for
+          preserving natural fadeouts without merging separate events.
 
     drop_trailing_silence : bool or None, default=None
         .. deprecated::
@@ -522,7 +525,9 @@ def fix_pauses(
     max_trailing_silence : float or None, default=None
         Maximum duration in seconds of trailing silence to retain at the end
         of each event. ``None`` keeps all trailing silence (up to
-        `max_silence`); ``0`` drops it entirely.
+        `max_silence`); ``0`` drops it entirely. Values larger than
+        ``max_silence`` extend collection beyond the event boundary.
+        See :func:`split` for full semantics.
 
     See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
     energy threshold, analysis window, etc.).
@@ -603,7 +608,9 @@ def trim(
     max_trailing_silence : float or None, optional, default=None
         Maximum duration (in seconds) of trailing silence to keep at the
         end of each detected event. ``None`` keeps all trailing silence
-        (up to `max_silence`); ``0`` drops it entirely.
+        (up to `max_silence`); ``0`` drops it entirely. Values larger than
+        ``max_silence`` extend collection beyond the event boundary.
+        See :func:`split` for full semantics.
 
     See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
     energy threshold, analysis window, etc.).
@@ -1255,7 +1262,9 @@ class AudioRegion(object):
         max_trailing_silence : float or None, optional, default=None
             Maximum duration (in seconds) of trailing silence to keep at
             the end of each detected event. ``None`` keeps all trailing
-            silence (up to `max_silence`); ``0`` drops it entirely.
+            silence (up to `max_silence`); ``0`` drops it entirely. Values
+            larger than ``max_silence`` extend collection beyond the event
+            boundary. See :func:`split` for full semantics.
 
         See :func:`split` for descriptions of ``**kwargs`` (energy
         threshold, analysis window, etc.).

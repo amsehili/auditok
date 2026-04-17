@@ -241,7 +241,9 @@ def _add_detection_args(group):
         help="Maximum duration (in seconds) of trailing silence to keep "
         "at the end of each detected event. Use 0 to drop all trailing "
         "silence. When omitted, all trailing silence (up to --max-silence) "
-        "is kept. [Default: %(default)s]",
+        "is kept. Values larger than --max-silence extend collection "
+        "beyond the event boundary, preserving natural fadeouts without "
+        "merging separate events. [Default: %(default)s]",
         metavar="FLOAT",
     )
     group.add_argument(
