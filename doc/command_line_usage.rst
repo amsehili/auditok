@@ -164,6 +164,29 @@ extend detection boundaries and capture the natural attack and fade-out of speec
 Values of 0.1 -- 0.3 seconds typically work well. These options are available on
 all three subcommands.
 
+Trailing silence vs. ``--max-silence``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``-s``/``--max-silence`` controls **when** an event ends (the longest silence
+tolerated *inside* an event), while ``-g``/``--max-trailing-silence`` controls
+**how much** silence is kept at the end of each delivered event:
+
+- Omitted (default): keep all trailing silence accumulated up to ``--max-silence``.
+- ``-g 0``: drop all trailing silence.
+- ``-g <= --max-silence``: trim trailing silence to that duration.
+- ``-g > --max-silence``: after the event boundary is decided (at
+  ``--max-silence``), keep collecting silent frames past the boundary up to
+  ``--max-trailing-silence``. Collection stops as soon as a new valid frame
+  appears, so separate events are not merged.
+
+This is useful when you want short, tightly segmented events that still keep a
+natural fadeout, e.g. a small ``--max-silence`` for crisp boundaries combined
+with a larger ``--max-trailing-silence`` for padding:
+
+.. code:: bash
+
+    auditok speech.wav -s 0.1 -g 0.4
+
 
 Real-time microphone input
 --------------------------

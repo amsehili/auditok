@@ -209,6 +209,40 @@ on :func:`split`, :func:`trim`, :func:`fix_pauses`, and their :class:`AudioRegio
 method counterparts, as well as on the command line (``-l`` / ``--max-leading-silence``
 and ``-g`` / ``--max-trailing-silence``).
 
+``max_silence`` and ``max_trailing_silence`` control two different things:
+
+- ``max_silence`` decides **when** an event ends — it is the longest run of
+  silence tolerated *inside* an event before the event boundary is closed.
+- ``max_trailing_silence`` decides **how much** silence is kept at the end of
+  the delivered event, as perceptual padding around the natural fade-out.
+
+The accepted values for ``max_trailing_silence`` are:
+
+- ``None`` (default): keep all trailing silence up to ``max_silence`` (no
+  trimming, no extension).
+- ``0``: drop all trailing silence.
+- A value ``<= max_silence``: trim trailing silence to that duration.
+- A value ``> max_silence``: once the event boundary is decided (at
+  ``max_silence``), **continue collecting** silent frames past the boundary up
+  to ``max_trailing_silence`` total. Collection stops early if a valid frame
+  appears (in which case the current event is delivered with its accumulated
+  trailing silence and a new event starts immediately from that frame, so
+  separate events are *not* merged) or if the audio ends.
+
+This decoupling is useful when you want **short, well-segmented events** but
+still need enough fade-out padding to sound natural. A small ``max_silence``
+keeps events tight, while a larger ``max_trailing_silence`` adds the fade-out:
+
+.. code:: python
+
+    # Close events quickly (100ms of silence ends an event), but keep up to
+    # 400ms of trailing silence so each event has a natural fadeout.
+    events = auditok.split(
+        "speech.wav",
+        max_silence=0.1,
+        max_trailing_silence=0.4,
+    )
+
 
 Trim silence
 ------------
