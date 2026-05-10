@@ -1,6 +1,29 @@
 auditok Changelog
 =================
 
+Version 0.4.2
+-------------
+
+Improvements:
+
+- Allow ``max_trailing_silence`` to exceed ``max_silence``: after the event
+  boundary is decided (at ``max_silence``), additional silent frames are
+  collected past the boundary up to ``max_trailing_silence``. Collection stops
+  as soon as a new valid frame is detected, so separate events are not merged.
+  This lets you use a small ``max_silence`` for tight event boundaries while
+  keeping enough trailing audio to preserve natural fadeouts. The same option
+  is exposed on the CLI as ``-g``/``--max-trailing-silence``.
+
+Bug fixes:
+
+- Fix 1-frame gap in leading silence between consecutive events. The silent
+  frame that triggered the transition into ``SILENCE`` was previously dropped
+  instead of being seeded into the leading buffer for the next token, causing
+  an unavoidable 1-frame gap regardless of ``max_leading_silence``. Trailing
+  frames trimmed by ``max_trailing_silence`` are now also seeded into the
+  leading buffer of the next token.
+
+
 Version 0.4.1
 -------------
 
