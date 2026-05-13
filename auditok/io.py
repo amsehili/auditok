@@ -654,8 +654,12 @@ class FFmpegAudioSource(AudioSource):
             ch = wfp.getnchannels()
         except Exception as exc:
             stderr = b""
-            if self._process is not None and self._process.stderr is not None:
-                stderr = self._process.stderr.read()
+            if self._process is not None:
+                # Kill first so ffmpeg can't block on a full stdout pipe;
+                # otherwise reading stderr would deadlock waiting for EOF.
+                self._process.kill()
+                if self._process.stderr is not None:
+                    stderr = self._process.stderr.read()
             self._close_process()
             err_msg = f"Failed to read audio from {filename!r}"
             if stderr:
