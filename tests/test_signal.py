@@ -29,8 +29,6 @@ def setup_data():
         ),  # int8_4channel
         (2, [[12592, 13106, 13620, 14134, 16697, 17218]]),  # int16_1channel
         (2, [[12592, 13620, 16697], [13106, 14134, 17218]]),  # int16_2channel
-        (4, [[858927408, 926299444, 1128415545]]),  # int32_1channel
-        (4, [[858927408], [926299444], [1128415545]]),  # int32_3channel
     ],
     ids=[
         "int8_1channel",
@@ -38,8 +36,6 @@ def setup_data():
         "int8_4channel",
         "int16_1channel",
         "int16_2channel",
-        "int32_1channel",
-        "int32_3channel",
     ],
 )
 def test_to_array(setup_data, sample_width, expected):

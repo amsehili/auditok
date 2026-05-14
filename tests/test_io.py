@@ -928,16 +928,14 @@ def test_save_with_ffmpeg_bad_codec(mono_16k_data):
 
 
 @requires_ffmpeg
-@pytest.mark.parametrize("sw", [1, 2, 4], ids=["sw1", "sw2", "sw4"])
+@pytest.mark.parametrize("sw", [1, 2], ids=["sw1", "sw2"])
 def test_save_with_ffmpeg_sample_widths(sw):
     """Verify that all supported sample widths encode correctly."""
     n_samples = 16000
     if sw == 1:
         samples = np.full(n_samples, 128, dtype=np.uint8)
-    elif sw == 2:
-        samples = np.zeros(n_samples, dtype=np.int16)
     else:
-        samples = np.zeros(n_samples, dtype=np.int32)
+        samples = np.zeros(n_samples, dtype=np.int16)
     data = samples.tobytes()
     tmpdir = TemporaryDirectory()
     filepath = os.path.join(tmpdir.name, "audio.flac")

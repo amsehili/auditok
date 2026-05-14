@@ -250,8 +250,8 @@ def split(
         None).
 
     sample_width, sw : int
-        Number of bytes per audio sample (typically 1, 2, or 4). Required for
-        raw audio; see `sampling_rate`.
+        Number of bytes per audio sample (1 or 2). Required for raw audio;
+        see `sampling_rate`.
 
     channels, ch : int
         Number of audio channels. Required for raw data; see `sampling_rate`.

@@ -2469,13 +2469,11 @@ def test_truediv(data):
     [
         (b"a" * 10, 1, 1, [97] * 10),  # mono_sw_1
         (b"a" * 10, 2, 1, [24929] * 5),  # mono_sw_2
-        (b"a" * 8, 4, 1, [1633771873] * 2),  # mono_sw_4
         (b"ab" * 5, 1, 2, [[97] * 5, [98] * 5]),  # stereo_sw_1
     ],
     ids=[
         "mono_sw_1",
         "mono_sw_2",
-        "mono_sw_4",
         "stereo_sw_1",
     ],
 )

@@ -198,7 +198,9 @@ class AudioSource(ABC):
     sampling_rate : int
         The number of samples per second of audio data.
     sample_width : int
-        The size, in bytes, of each audio sample. Accepted values are 1, 2, or 4.
+        The size, in bytes, of each audio sample. Accepted values are 1 or 2.
+        32-bit audio (`sample_width=4`) is not supported; see
+        `WIP/32bit_audio_support_notes.md`.
     channels : int
         The number of audio channels.
     """
@@ -210,9 +212,10 @@ class AudioSource(ABC):
         channels: int,
     ) -> None:
 
-        if sample_width not in (1, 2, 4):
+        if sample_width not in (1, 2):
             raise AudioParameterError(
-                "Sample width must be one of: 1, 2 or 4 (bytes)"
+                "Sample width must be one of: 1 or 2 (bytes). "
+                "32-bit audio is not supported; convert to 16-bit PCM first."
             )
 
         self._sampling_rate = sampling_rate
@@ -359,7 +362,7 @@ class BufferAudioSource(Rewindable):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of one audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of one audio sample. Accepted values are 1 or 2.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -451,7 +454,7 @@ class FileAudioSource(AudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of one audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of one audio sample. Accepted values are 1 or 2.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -501,7 +504,7 @@ class RawAudioSource(FileAudioSource):
     sampling_rate : int
         The number of samples per second of audio data.
     sample_width : int
-        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of each audio sample. Accepted values are 1 or 2.
     channels : int
         The number of audio channels.
     """
@@ -592,9 +595,9 @@ class FFmpegAudioSource(AudioSource):
     sampling_rate : int, optional
         Target sampling rate. If provided, ffmpeg resamples the audio.
     sample_width : int, optional
-        Target sample width in bytes (1, 2, or 4). If provided, ffmpeg
-        encodes audio with the corresponding PCM codec (pcm_u8, pcm_s16le,
-        or pcm_s32le).
+        Target sample width in bytes (1 or 2). If provided, ffmpeg encodes
+        audio with the corresponding PCM codec (pcm_u8 or pcm_s16le). 32-bit
+        audio is not supported.
     channels : int, optional
         Target number of channels. If provided, ffmpeg remixes the audio
         (e.g., stereo to mono).
@@ -603,7 +606,6 @@ class FFmpegAudioSource(AudioSource):
     _SW_TO_CODEC = {
         1: "pcm_u8",
         2: "pcm_s16le",
-        4: "pcm_s32le",
     }
 
     def __init__(
@@ -634,8 +636,9 @@ class FFmpegAudioSource(AudioSource):
             codec = self._SW_TO_CODEC.get(sample_width)
             if codec is None:
                 raise AudioParameterError(
-                    "sample_width must be one of 1, 2, or 4, "
-                    "got {}".format(sample_width)
+                    "sample_width must be 1 or 2, got {}. "
+                    "32-bit audio is not supported; "
+                    "convert to 16-bit PCM first.".format(sample_width)
                 )
             cmd += ["-acodec", codec]
         cmd += ["-f", "wav", "pipe:1"]
@@ -700,7 +703,7 @@ class FFmpegAudioSource(AudioSource):
         self._close_process()
 
 
-_SW_TO_DTYPE = {1: "int8", 2: "int16", 4: "int32"}
+_SW_TO_DTYPE = {1: "int8", 2: "int16"}
 
 
 class AudioDeviceSource(AudioSource):
@@ -712,7 +715,7 @@ class AudioDeviceSource(AudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of each audio sample. Accepted values are 1 or 2.
     channels : int, optional, default=1
         The number of audio channels.
     frames_per_buffer : int, optional, default=1024
@@ -735,7 +738,7 @@ class AudioDeviceSource(AudioSource):
         self.input_device_index = input_device_index
         dtype = _SW_TO_DTYPE.get(sample_width)
         if dtype is None:
-            raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
+            raise ValueError("Sample width in bytes must be 1 or 2")
         self._dtype = dtype
         self._audio_stream = None
 
@@ -788,7 +791,7 @@ class StdinAudioSource(FileAudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of each audio sample. Accepted values are 1 or 2.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -841,7 +844,7 @@ class AudioDevicePlayer:
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1, 2, or 4.
+        The size in bytes of each audio sample. Accepted values are 1 or 2.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -854,7 +857,7 @@ class AudioDevicePlayer:
     ) -> None:
         dtype = _SW_TO_DTYPE.get(sample_width)
         if dtype is None:
-            raise ValueError("Sample width in bytes must be one of 1, 2 or 4")
+            raise ValueError("Sample width in bytes must be 1 or 2")
 
         self.sampling_rate = sampling_rate
         self.sample_width = sample_width
@@ -1292,7 +1295,7 @@ def _save_with_ffmpeg(
     sampling_rate : int
         Sampling rate of the input data.
     sample_width : int
-        Sample width in bytes of the input data (1, 2, or 4).
+        Sample width in bytes of the input data (1 or 2).
     channels : int
         Number of channels of the input data.
     audio_codec : str, optional
@@ -1318,8 +1321,8 @@ def _save_with_ffmpeg(
     codec = FFmpegAudioSource._SW_TO_CODEC.get(sample_width)
     if codec is None:
         raise AudioParameterError(
-            "sample_width must be one of 1, 2, or 4, "
-            "got {}".format(sample_width)
+            "sample_width must be 1 or 2, got {}. "
+            "32-bit audio is not supported.".format(sample_width)
         )
     ffmpeg_path = _find_ffmpeg()
     if ffmpeg_path is None:

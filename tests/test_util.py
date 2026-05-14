@@ -101,15 +101,6 @@ def test_make_duration_formatter_error(fmt):
         (2, 3, 0, [12592, 14134]),  # int16_3channel_select_0
         (2, 3, 1, [13106, 16697]),  # int16_3channel_select_1
         (2, 3, 2, [13620, 17218]),  # int16_3channel_select_2
-        (
-            4,
-            1,
-            0,
-            [858927408, 926299444, 1128415545],
-        ),  # int32_1channel_select_0
-        (4, 3, 0, [858927408]),  # int32_3channel_select_0
-        (4, 3, 1, [926299444]),  # int32_3channel_select_1
-        (4, 3, 2, [1128415545]),  # int32_3channel_select_2
     ],
     ids=[
         "int8_1channel_select_0",
@@ -124,10 +115,6 @@ def test_make_duration_formatter_error(fmt):
         "int16_3channel_select_0",
         "int16_3channel_select_1",
         "int16_3channel_select_2",
-        "int32_1channel_select_0",
-        "int32_3channel_select_0",
-        "int32_3channel_select_1",
-        "int32_3channel_select_2",
     ],
 )
 def test_make_channel_selector_one_channel(
@@ -160,7 +147,6 @@ def test_make_channel_selector_one_channel(
             [12592, 13106, 13620, 14134, 16697, 17218],
         ),  # int16_1channel
         (2, 2, "avg", [12849, 13877, 16957.5]),  # int16_2channel
-        (4, 3, "average", [971214132.33]),  # int32_3channel
     ],
     ids=[
         "int8_1channel",
@@ -168,7 +154,6 @@ def test_make_channel_selector_one_channel(
         "int8_4channel",
         "int16_1channel",
         "int16_2channel",
-        "int32_3channel",
     ],
 )
 def test_make_channel_selector_average(
@@ -207,19 +192,12 @@ def test_make_channel_selector_average(
             None,
             [[12592, 13620, 16697], [13106, 14134, 17218]],
         ),  # int16_2channel
-        (
-            4,
-            3,
-            "any",
-            [[858927408], [926299444], [1128415545]],
-        ),  # int32_3channel
     ],
     ids=[
         "int8_1channel",
         "int8_2channel",
         "int8_4channel",
         "int16_2channel",
-        "int32_3channel",
     ],
 )
 def test_make_channel_selector_any(

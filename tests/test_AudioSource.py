@@ -268,16 +268,12 @@ def test_FFmpegAudioSource_downmix_to_mono():
 
 
 @requires_ffmpeg
-def test_FFmpegAudioSource_change_sample_width():
+def test_FFmpegAudioSource_rejects_sample_width_4():
+    """auditok does not support 32-bit audio; see
+    WIP/32bit_audio_support_notes.md."""
     test_file = "tests/data/DTMF_tones_16KHZ_mono.flac"
-    audio_source = FFmpegAudioSource(test_file, sample_width=4)
-    assert audio_source.sr == 16000
-    assert audio_source.sw == 4
-    assert audio_source.ch == 1
-    data = audio_source.read(None)
-    audio_source.close()
-    expected_length = 16000 * 4 * 1  # 1s * sw * ch
-    assert len(data) == expected_length
+    with pytest.raises(AudioParameterError):
+        FFmpegAudioSource(test_file, sample_width=4)
 
 
 @requires_ffmpeg
@@ -727,122 +723,13 @@ class TestBufferAudioSource_SR16_SW2_CH1:
         assert tp == 0
 
 
-class TestBufferAudioSource_SR11_SW4_CH1:
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        self.data = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefgh"
-        self.audio_source = BufferAudioSource(
-            data=self.data, sampling_rate=11, sample_width=4, channels=1
+def test_BufferAudioSource_rejects_sample_width_4():
+    """auditok does not support 32-bit audio; see
+    WIP/32bit_audio_support_notes.md."""
+    with pytest.raises(AudioParameterError):
+        BufferAudioSource(
+            data=b"ABCDEFGH", sampling_rate=11, sample_width=4, channels=1
         )
-        self.audio_source.open()
-        yield
-        self.audio_source.close()
-
-    def test_sr11_sw4_ch1_read_1(self):
-        block = self.audio_source.read(1)
-        exp = b"ABCD"
-        assert block == exp
-
-    def test_sr11_sw4_ch1_read_6(self):
-        block = self.audio_source.read(6)
-        exp = b"ABCDEFGHIJKLMNOPQRSTUVWX"
-        assert block == exp
-
-    def test_sr11_sw4_ch1_read_multiple(self):
-        block = self.audio_source.read(1)
-        exp = b"ABCD"
-        assert block == exp
-
-        block = self.audio_source.read(6)
-        exp = b"EFGHIJKLMNOPQRSTUVWXYZ01"
-        assert block == exp
-
-        block = self.audio_source.read(3)
-        exp = b"23456789abcd"
-        assert block == exp
-
-        block = self.audio_source.read(9999)
-        exp = b"efgh"
-        assert block == exp
-
-    def test_sr11_sw4_ch1_read_all(self):
-        block = self.audio_source.read(9999)
-        assert block == self.data
-
-        block = self.audio_source.read(1)
-        assert block is None
-
-    def test_sr11_sw4_ch1_sampling_rate(self):
-        srate = self.audio_source.sampling_rate
-        assert srate == 11
-
-    def test_sr11_sw4_ch1_sample_width(self):
-        swidth = self.audio_source.sample_width
-        assert swidth == 4
-
-    def test_sr11_sw4_ch1_channels(self):
-        channels = self.audio_source.channels
-        assert channels == 1
-
-    def test_sr11_sw4_ch1_intial_position_0(self):
-        pos = self.audio_source.position
-        assert pos == 0
-
-    def test_sr11_sw4_ch1_position_5(self):
-        self.audio_source.read(5)
-        pos = self.audio_source.position
-        assert pos == 5
-
-    def test_sr11_sw4_ch1_position_9(self):
-        self.audio_source.read(5)
-        self.audio_source.read(4)
-        pos = self.audio_source.position
-        assert pos == 9
-
-    def test_sr11_sw4_ch1_position_0(self):
-        self.audio_source.read(10)
-        self.audio_source.position = 0
-        pos = self.audio_source.position
-        assert pos == 0
-
-    def test_sr11_sw4_ch1_position_10(self):
-        self.audio_source.position = 10
-        pos = self.audio_source.position
-        assert pos == 10
-
-    def test_sr11_sw4_ch1_initial_position_s_0(self):
-        tp = self.audio_source.position_s
-        assert tp == 0.0
-
-    def test_sr11_sw4_ch1_position_s_1_after_read(self):
-        srate = self.audio_source.sampling_rate
-        # read one second
-        self.audio_source.read(srate)
-        tp = self.audio_source.position_s
-        assert tp == 1.0
-
-    def test_sr11_sw4_ch1_position_s_0_63(self):
-        # read 2.5 seconds
-        self.audio_source.read(7)
-        tp = self.audio_source.position_s
-        assert tp, pytest.approx(0.636363636364)
-
-    def test_sr11_sw4_ch1_position_s_0(self):
-        self.audio_source.read(10)
-        self.audio_source.position_s = 0
-        tp = self.audio_source.position_s
-        assert tp == 0.0
-
-    def test_sr11_sw4_ch1_position_s_1(self):
-        self.audio_source.position_s = 1
-        tp = self.audio_source.position_s
-        assert tp == 1.0
-
-    def test_sr11_sw4_ch1_rewind(self):
-        self.audio_source.read(10)
-        self.audio_source.rewind()
-        tp = self.audio_source.position
-        assert tp == 0
 
 
 class TestBufferAudioSourceCreationException:
@@ -853,7 +740,9 @@ class TestBufferAudioSourceCreationException:
             )
         assert (
             str(audio_param_err.value)
-            == "Sample width must be one of: 1, 2 or 4 (bytes)"
+            == "Sample width must be one of: 1 or 2 (bytes). "
+            "32-bit audio is not supported; "
+            "convert to 16-bit PCM first."
         )
 
     def test_wrong_data_buffer_size(self):

@@ -16,7 +16,7 @@ __all__ = [
     "calculate_energy",
 ]
 
-SAMPLE_WIDTH_TO_DTYPE = {1: np.int8, 2: np.int16, 4: np.int32}
+SAMPLE_WIDTH_TO_DTYPE = {1: np.int8, 2: np.int16}
 EPSILON = 1e-10
 
 
@@ -28,7 +28,7 @@ def _get_numpy_dtype(sample_width):
     Parameters
     ----------
     sample_width : int
-        The width of the sample in bytes. Accepted values are 1, 2, or 4.
+        The width of the sample in bytes. Accepted values are 1 or 2.
 
     Returns
     -------
@@ -38,12 +38,12 @@ def _get_numpy_dtype(sample_width):
     Raises
     ------
     ValueError
-        If `sample_width` is not one of the accepted values (1, 2, or 4).
+        If `sample_width` is not one of the accepted values (1 or 2).
     """
 
     dtype = SAMPLE_WIDTH_TO_DTYPE.get(sample_width)
     if dtype is None:
-        err_msg = "'sample_width' must be 1, 2 or 4, given: {}"
+        err_msg = "'sample_width' must be 1 or 2, given: {}"
         raise ValueError(err_msg.format(sample_width))
     return dtype
 
