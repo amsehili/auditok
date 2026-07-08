@@ -250,7 +250,7 @@ def split(
         None).
 
     sample_width, sw : int
-        Number of bytes per audio sample (1 or 2). Required for raw audio;
+        Number of bytes per audio sample (1, 2 or 4). Required for raw audio;
         see `sampling_rate`.
 
     channels, ch : int
@@ -280,8 +280,11 @@ def split(
     energy_threshold, eth : float, default=50
         Energy threshold for audio activity detection. Audio regions with
         sufficient signal energy above this threshold are considered valid.
-        Calculated as the log energy: `20 * log10(sqrt(dot(x, x) / len(x)))`.
-        Ignored if `validator` is specified.
+        Calculated as the log energy: `20 * log10(sqrt(dot(x, x) / len(x)))`,
+        with samples on the int16 amplitude scale regardless of the storage
+        format (32-bit float samples are scaled by 32768), so the same
+        threshold works for all sample widths. Ignored if `validator` is
+        specified.
 
     Yields
     ------
@@ -1510,12 +1513,20 @@ class AudioRegion(object):
         import io
         import wave
 
+        data, sample_width = self.data, self.sw
+        if sample_width == 4:
+            # browsers don't reliably decode float32 WAV; serve int16
+            samples = np.frombuffer(data, dtype=np.float32)
+            samples = np.clip(samples, -1.0, 1.0) * 32767
+            data = samples.astype("<i2").tobytes()
+            sample_width = 2
+
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
             wf.setframerate(self.sr)
-            wf.setsampwidth(self.sw)
+            wf.setsampwidth(sample_width)
             wf.setnchannels(self.ch)
-            wf.writeframes(self.data)
+            wf.writeframes(data)
         b64 = base64.b64encode(buf.getvalue()).decode("ascii")
         src = f"data:audio/wav;base64,{b64}"
 

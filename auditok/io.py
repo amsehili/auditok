@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import wave
@@ -198,9 +199,9 @@ class AudioSource(ABC):
     sampling_rate : int
         The number of samples per second of audio data.
     sample_width : int
-        The size, in bytes, of each audio sample. Accepted values are 1 or 2.
-        32-bit audio (`sample_width=4`) is not supported; see
-        `WIP/32bit_audio_support_notes.md`.
+        The size, in bytes, of each audio sample. Accepted values are 1, 2
+        or 4. A width of 4 means 32-bit IEEE float samples; 32-bit integer
+        audio is not supported.
     channels : int
         The number of audio channels.
     """
@@ -212,10 +213,11 @@ class AudioSource(ABC):
         channels: int,
     ) -> None:
 
-        if sample_width not in (1, 2):
+        if sample_width not in (1, 2, 4):
             raise AudioParameterError(
-                "Sample width must be one of: 1 or 2 (bytes). "
-                "32-bit audio is not supported; convert to 16-bit PCM first."
+                "Sample width must be one of: 1, 2 or 4 (bytes). A width of "
+                "4 means 32-bit float; 32-bit integer audio is not "
+                "supported."
             )
 
         self._sampling_rate = sampling_rate
@@ -362,7 +364,7 @@ class BufferAudioSource(Rewindable):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of one audio sample. Accepted values are 1 or 2.
+        The size in bytes of one audio sample. Accepted values are 1, 2 or 4.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -454,7 +456,7 @@ class FileAudioSource(AudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of one audio sample. Accepted values are 1 or 2.
+        The size in bytes of one audio sample. Accepted values are 1, 2 or 4.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -504,7 +506,7 @@ class RawAudioSource(FileAudioSource):
     sampling_rate : int
         The number of samples per second of audio data.
     sample_width : int
-        The size in bytes of each audio sample. Accepted values are 1 or 2.
+        The size in bytes of each audio sample. Accepted values are 1, 2 or 4.
     channels : int
         The number of audio channels.
     """
@@ -534,12 +536,96 @@ class RawAudioSource(FileAudioSource):
         return data
 
 
+_WAVE_FORMAT_PCM = 0x0001
+_WAVE_FORMAT_IEEE_FLOAT = 0x0003
+_WAVE_FORMAT_EXTENSIBLE = 0xFFFE
+
+
+def _read_exactly(stream, size, what):
+    """Read exactly `size` bytes from `stream` or raise `AudioIOError`."""
+    data = stream.read(size)
+    if data is None or len(data) < size:
+        raise AudioIOError(f"Truncated or invalid WAV stream (reading {what})")
+    return data
+
+
+def _parse_wav_header(stream):
+    """Parse a RIFF/WAVE header using forward-only reads.
+
+    Unlike the stdlib `wave` module, this supports WAVE_FORMAT_IEEE_FLOAT
+    (32-bit float, unsupported by `wave` on all Python versions) and
+    WAVE_FORMAT_EXTENSIBLE (unsupported before Python 3.12), in addition to
+    WAVE_FORMAT_PCM. Only forward reads are used so `stream` may be a
+    non-seekable pipe. The stream is left positioned at the first byte of
+    audio data.
+
+    Returns
+    -------
+    tuple
+        (sampling_rate, sample_width, channels, data_size). `data_size` is
+        None when unknown (e.g., ffmpeg streaming to a pipe writes a
+        placeholder size).
+    """
+    riff = _read_exactly(stream, 12, "RIFF header")
+    if riff[:4] != b"RIFF" or riff[8:12] != b"WAVE":
+        raise AudioIOError("Not a RIFF/WAVE stream")
+    fmt = None
+    while True:
+        header = stream.read(8)
+        if header is None or len(header) < 8:
+            raise AudioIOError("No 'data' chunk found in WAV stream")
+        chunk_id, chunk_size = struct.unpack("<4sI", header)
+        if chunk_id == b"fmt ":
+            body = _read_exactly(stream, chunk_size, "'fmt ' chunk")
+            tag, channels, rate, _, _, bits = struct.unpack(
+                "<HHIIHH", body[:16]
+            )
+            if tag == _WAVE_FORMAT_EXTENSIBLE:
+                if len(body) < 40:
+                    raise AudioIOError(
+                        "Invalid WAVE_FORMAT_EXTENSIBLE 'fmt ' chunk"
+                    )
+                # actual format is in the first 2 bytes of the SubFormat GUID
+                tag = struct.unpack("<H", body[24:26])[0]
+            fmt = (tag, channels, rate, bits)
+            if chunk_size % 2:
+                stream.read(1)
+        elif chunk_id == b"data":
+            if fmt is None:
+                raise AudioIOError("WAV stream has no 'fmt ' chunk")
+            break
+        else:
+            _read_exactly(
+                stream, chunk_size + chunk_size % 2, f"chunk {chunk_id!r}"
+            )
+    tag, channels, rate, bits = fmt
+    if tag == _WAVE_FORMAT_IEEE_FLOAT:
+        if bits != 32:
+            raise AudioIOError(f"Unsupported float WAV with {bits}-bit samples")
+        sample_width = 4
+    elif tag == _WAVE_FORMAT_PCM:
+        if bits not in (8, 16):
+            raise AudioIOError(
+                f"Unsupported PCM WAV with {bits}-bit samples. Supported "
+                "formats are 8/16-bit PCM and 32-bit float; use ffmpeg "
+                "(e.g., `from_file(..., sw=2)`) to convert."
+            )
+        sample_width = bits // 8
+    else:
+        raise AudioIOError(f"Unsupported WAV format tag: {tag:#06x}")
+    data_size = None if chunk_size in (0, 0xFFFFFFFF) else chunk_size
+    return rate, sample_width, channels, data_size
+
+
 class WaveAudioSource(FileAudioSource):
     """
         An `AudioSource` class for reading data from a wave file.
 
     This class is suitable for large wave files, allowing for efficient data
     handling without loading the entire file into memory.
+
+    Supported sample formats are 8/16-bit PCM and 32-bit IEEE float
+    (`sample_width=4`).
 
     Parameters
     ----------
@@ -548,24 +634,35 @@ class WaveAudioSource(FileAudioSource):
     """
 
     def __init__(self, filename: str) -> None:
-        self._filename = str(filename)  # wave requires an str filename
+        self._filename = str(filename)
         self._audio_stream = None
-        stream = wave.open(self._filename, "rb")
-        super().__init__(
-            stream.getframerate(),
-            stream.getsampwidth(),
-            stream.getnchannels(),
-        )
-        stream.close()
+        with open(self._filename, "rb") as fp:
+            sr, sw, ch, data_size = _parse_wav_header(fp)
+            self._data_offset = fp.tell()
+        super().__init__(sr, sw, ch)
+        self._sample_size = sw * ch
+        self._data_size = data_size
+        self._remaining = data_size
 
     def open(self) -> None:
         if self._audio_stream is None:
-            self._audio_stream = wave.open(self._filename)
+            self._audio_stream = open(self._filename, "rb")
+            self._audio_stream.seek(self._data_offset)
+            self._remaining = self._data_size
 
     def _read_from_stream(self, size):
         if size is None or size < 0:
-            size = -1
-        return self._audio_stream.readframes(size)
+            bytes_to_read = self._remaining  # None means read to EOF
+        else:
+            bytes_to_read = size * self._sample_size
+            if self._remaining is not None:
+                bytes_to_read = min(bytes_to_read, self._remaining)
+        if bytes_to_read == 0:
+            return b""
+        data = self._audio_stream.read(bytes_to_read)
+        if self._remaining is not None and data:
+            self._remaining -= len(data)
+        return data
 
 
 def _find_ffmpeg():
@@ -595,9 +692,10 @@ class FFmpegAudioSource(AudioSource):
     sampling_rate : int, optional
         Target sampling rate. If provided, ffmpeg resamples the audio.
     sample_width : int, optional
-        Target sample width in bytes (1 or 2). If provided, ffmpeg encodes
-        audio with the corresponding PCM codec (pcm_u8 or pcm_s16le). 32-bit
-        audio is not supported.
+        Target sample width in bytes (1, 2 or 4). If provided, ffmpeg encodes
+        audio with the corresponding codec (pcm_u8, pcm_s16le or pcm_f32le).
+        A width of 4 means 32-bit float; 32-bit integer input files are
+        converted by ffmpeg.
     channels : int, optional
         Target number of channels. If provided, ffmpeg remixes the audio
         (e.g., stereo to mono).
@@ -606,6 +704,7 @@ class FFmpegAudioSource(AudioSource):
     _SW_TO_CODEC = {
         1: "pcm_u8",
         2: "pcm_s16le",
+        4: "pcm_f32le",
     }
 
     def __init__(
@@ -636,9 +735,9 @@ class FFmpegAudioSource(AudioSource):
             codec = self._SW_TO_CODEC.get(sample_width)
             if codec is None:
                 raise AudioParameterError(
-                    "sample_width must be 1 or 2, got {}. "
-                    "32-bit audio is not supported; "
-                    "convert to 16-bit PCM first.".format(sample_width)
+                    "sample_width must be 1, 2 or 4, got {}. A width of 4 "
+                    "means 32-bit float; 32-bit integer audio is not "
+                    "supported.".format(sample_width)
                 )
             cmd += ["-acodec", codec]
         cmd += ["-f", "wav", "pipe:1"]
@@ -651,10 +750,9 @@ class FFmpegAudioSource(AudioSource):
         except OSError as exc:
             raise AudioIOError(f"Failed to start ffmpeg: {exc}") from exc
         try:
-            wfp = wave.open(self._process.stdout, "rb")  # type: ignore[arg-type]
-            sr = wfp.getframerate()
-            sw = wfp.getsampwidth()
-            ch = wfp.getnchannels()
+            # custom parser: ffmpeg emits WAVE_FORMAT_IEEE_FLOAT or
+            # WAVE_FORMAT_EXTENSIBLE headers that stdlib `wave` can't read
+            sr, sw, ch, _ = _parse_wav_header(self._process.stdout)
         except Exception as exc:
             stderr = b""
             if self._process is not None:
@@ -703,7 +801,7 @@ class FFmpegAudioSource(AudioSource):
         self._close_process()
 
 
-_SW_TO_DTYPE = {1: "int8", 2: "int16"}
+_SW_TO_DTYPE = {1: "int8", 2: "int16", 4: "float32"}
 
 
 class AudioDeviceSource(AudioSource):
@@ -715,7 +813,7 @@ class AudioDeviceSource(AudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1 or 2.
+        The size in bytes of each audio sample. Accepted values are 1, 2 or 4.
     channels : int, optional, default=1
         The number of audio channels.
     frames_per_buffer : int, optional, default=1024
@@ -738,7 +836,7 @@ class AudioDeviceSource(AudioSource):
         self.input_device_index = input_device_index
         dtype = _SW_TO_DTYPE.get(sample_width)
         if dtype is None:
-            raise ValueError("Sample width in bytes must be 1 or 2")
+            raise ValueError("Sample width in bytes must be 1, 2 or 4")
         self._dtype = dtype
         self._audio_stream = None
 
@@ -791,7 +889,7 @@ class StdinAudioSource(FileAudioSource):
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1 or 2.
+        The size in bytes of each audio sample. Accepted values are 1, 2 or 4.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -844,7 +942,7 @@ class AudioDevicePlayer:
     sampling_rate : int, optional, default=16000
         The number of samples per second of audio data.
     sample_width : int, optional, default=2
-        The size in bytes of each audio sample. Accepted values are 1 or 2.
+        The size in bytes of each audio sample. Accepted values are 1, 2 or 4.
     channels : int, optional, default=1
         The number of audio channels.
     """
@@ -857,7 +955,7 @@ class AudioDevicePlayer:
     ) -> None:
         dtype = _SW_TO_DTYPE.get(sample_width)
         if dtype is None:
-            raise ValueError("Sample width in bytes must be 1 or 2")
+            raise ValueError("Sample width in bytes must be 1, 2 or 4")
 
         self.sampling_rate = sampling_rate
         self.sample_width = sample_width
@@ -1115,11 +1213,9 @@ def _load_wave(filename, large_file=False):
 
     if large_file:
         return WaveAudioSource(filename)
-    with wave.open(str(filename)) as fp:
-        channels = fp.getnchannels()
-        srate = fp.getframerate()
-        swidth = fp.getsampwidth()
-        data = fp.readframes(-1)
+    with open(str(filename), "rb") as fp:
+        srate, swidth, channels, data_size = _parse_wav_header(fp)
+        data = fp.read() if data_size is None else fp.read(data_size)
     return BufferAudioSource(
         data, sampling_rate=srate, sample_width=swidth, channels=channels
     )
@@ -1260,11 +1356,43 @@ def _save_wave(data, file, sampling_rate, sample_width, channels):
         raise AudioParameterError(
             "All audio parameters are required to save wave audio files"
         )
+    if sample_width == 4:
+        # stdlib `wave` writes PCM-tagged headers; float32 data needs a
+        # WAVE_FORMAT_IEEE_FLOAT header to be readable by other tools
+        _save_float32_wave(data, file, sampling_rate, channels)
+        return
     with wave.open(str(file), "w") as fp:
         fp.setframerate(sampling_rate)
         fp.setsampwidth(sample_width)
         fp.setnchannels(channels)
         fp.writeframes(data)
+
+
+def _save_float32_wave(data, file, sampling_rate, channels):
+    """Write a 32-bit float WAV file (WAVE_FORMAT_IEEE_FLOAT)."""
+    block_align = 4 * channels
+    fmt_chunk = struct.pack(
+        "<4sIHHIIHHH",
+        b"fmt ",
+        18,  # 16 standard bytes + 2-byte cbSize, required for non-PCM
+        _WAVE_FORMAT_IEEE_FLOAT,
+        channels,
+        sampling_rate,
+        sampling_rate * block_align,
+        block_align,
+        32,
+        0,  # cbSize
+    )
+    fact_chunk = struct.pack("<4sII", b"fact", 4, len(data) // block_align)
+    data_header = struct.pack("<4sI", b"data", len(data))
+    riff_size = 4 + len(fmt_chunk) + len(fact_chunk) + len(data_header)
+    riff_size += len(data)
+    with open(file, "wb") as fp:
+        fp.write(struct.pack("<4sI4s", b"RIFF", riff_size, b"WAVE"))
+        fp.write(fmt_chunk)
+        fp.write(fact_chunk)
+        fp.write(data_header)
+        fp.write(data)
 
 
 def _save_with_ffmpeg(
@@ -1295,7 +1423,8 @@ def _save_with_ffmpeg(
     sampling_rate : int
         Sampling rate of the input data.
     sample_width : int
-        Sample width in bytes of the input data (1 or 2).
+        Sample width in bytes of the input data (1, 2 or 4; 4 means 32-bit
+        float).
     channels : int
         Number of channels of the input data.
     audio_codec : str, optional
@@ -1321,8 +1450,9 @@ def _save_with_ffmpeg(
     codec = FFmpegAudioSource._SW_TO_CODEC.get(sample_width)
     if codec is None:
         raise AudioParameterError(
-            "sample_width must be 1 or 2, got {}. "
-            "32-bit audio is not supported.".format(sample_width)
+            "sample_width must be 1, 2 or 4, got {}. A width of 4 means "
+            "32-bit float; 32-bit integer audio is not "
+            "supported.".format(sample_width)
         )
     ffmpeg_path = _find_ffmpeg()
     if ffmpeg_path is None:
@@ -1334,7 +1464,7 @@ def _save_with_ffmpeg(
         "-nostdin",
         "-y",
         "-f",
-        codec[4:],  # "u8", "s16le", or "s32le"
+        codec[4:],  # "u8", "s16le", or "f32le"
         "-ar",
         str(sampling_rate),
         "-ac",

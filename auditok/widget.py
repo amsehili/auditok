@@ -597,6 +597,11 @@ def _in_notebook():
 
 def _audio_to_wav_b64(data, sr, sw, ch):
     """Encode raw PCM bytes as a base64 WAV string."""
+    if sw == 4:
+        # browsers don't reliably decode float32 WAV; serve int16
+        samples = np.frombuffer(data, dtype=np.float32)
+        data = (np.clip(samples, -1.0, 1.0) * 32767).astype("<i2").tobytes()
+        sw = 2
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
         wf.setframerate(sr)

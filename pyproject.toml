@@ -51,6 +51,7 @@ dependencies = [
 [project.optional-dependencies]
 device-io = ["sounddevice", "tqdm"]
 plot = ["matplotlib"]
+test = ["pytest", "pytest-cov", "matplotlib"]
 all = ["matplotlib", "sounddevice", "tqdm"]
 
 

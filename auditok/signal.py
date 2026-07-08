@@ -16,8 +16,14 @@ __all__ = [
     "calculate_energy",
 ]
 
-SAMPLE_WIDTH_TO_DTYPE = {1: np.int8, 2: np.int16}
+SAMPLE_WIDTH_TO_DTYPE = {1: np.int8, 2: np.int16, 4: np.float32}
 EPSILON = 1e-10
+
+# Full scale of 16-bit audio, used as the common amplitude reference for all
+# sample widths. float32 samples (nominally in [-1.0, 1.0]) are scaled by
+# this factor in `to_array` so that energy values and `energy_threshold`
+# keep the same meaning regardless of the storage format.
+FLOAT32_SCALE = 32768.0
 
 
 def _get_numpy_dtype(sample_width):
@@ -28,7 +34,8 @@ def _get_numpy_dtype(sample_width):
     Parameters
     ----------
     sample_width : int
-        The width of the sample in bytes. Accepted values are 1 or 2.
+        The width of the sample in bytes. Accepted values are 1, 2 or 4.
+        A width of 4 means 32-bit IEEE float samples (not 32-bit integers).
 
     Returns
     -------
@@ -38,12 +45,12 @@ def _get_numpy_dtype(sample_width):
     Raises
     ------
     ValueError
-        If `sample_width` is not one of the accepted values (1 or 2).
+        If `sample_width` is not one of the accepted values (1, 2 or 4).
     """
 
     dtype = SAMPLE_WIDTH_TO_DTYPE.get(sample_width)
     if dtype is None:
-        err_msg = "'sample_width' must be 1 or 2, given: {}"
+        err_msg = "'sample_width' must be 1, 2 or 4, given: {}"
         raise ValueError(err_msg.format(sample_width))
     return dtype
 
@@ -55,6 +62,12 @@ def to_array(data, sample_width, channels):
     This function transforms raw audio data, specified by sample width and
     number of channels, into a 2-D NumPy array of `numpy.float64` data type.
     The array will be arranged by channels and samples.
+
+    Samples keep their integer scale: 16-bit audio yields values in
+    [-32768, 32767]. 32-bit float samples (`sample_width=4`, nominally in
+    [-1.0, 1.0]) are scaled by 32768 so that amplitudes—and therefore
+    energy values and `energy_threshold`—mean the same thing for all
+    sample widths.
 
     Parameters
     ----------
@@ -81,6 +94,8 @@ def to_array(data, sample_width, channels):
 
     dtype = _get_numpy_dtype(sample_width)
     array = np.frombuffer(data, dtype=dtype).astype(np.float64)
+    if sample_width == 4:
+        array *= FLOAT32_SCALE
     return array.reshape(channels, -1, order="F")
 
 
@@ -93,7 +108,9 @@ def calculate_energy(x, agg_fn=None):
        \\text{energy} = 20 \\log(\\sqrt({1}/{N} \\sum_{i=1}^{N} {a_i}^2))  % # noqa: W605
 
     where `a_i` is the i-th audio sample and `N` is the total number of samples
-    in `x`.
+    in `x`. Samples are expected on the int16 amplitude scale (as returned by
+    `to_array` for all sample widths), so energy values are comparable across
+    storage formats.
 
     Parameters
     ----------

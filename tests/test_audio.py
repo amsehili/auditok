@@ -1130,6 +1130,24 @@ def test_split_input_type(input, kwargs):
         assert bytes(reg) == exp_data
 
 
+def test_split_float32_equivalent_to_int16():
+    """The same signal stored as int16 and as float32 must produce identical
+    events with the same `energy_threshold` (float32 samples are scaled to
+    the int16 amplitude reference in `to_array`)."""
+    filename = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+    region = load(filename)
+    int16_samples = np.frombuffer(region.data, dtype=np.int16)
+    float32_data = (int16_samples / 32768.0).astype(np.float32).tobytes()
+
+    common = {"min_dur": 0.2, "max_dur": 5, "max_silence": 0.2}
+    regions_int16 = list(split(filename, **common))
+    regions_float32 = list(split(float32_data, sr=16000, sw=4, ch=1, **common))
+    assert len(regions_int16) > 0
+    assert [(r.start, r.end) for r in regions_float32] == [
+        (r.start, r.end) for r in regions_int16
+    ]
+
+
 @pytest.mark.parametrize(
     "min_dur, max_dur, analysis_window",
     [

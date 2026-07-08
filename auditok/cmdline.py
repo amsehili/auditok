@@ -288,7 +288,8 @@ def _add_audio_params(group):
         type=int,
         default=2,
         action=_StoreOnce,
-        help="Number of bytes per audio sample [Default: %(default)s].",
+        help="Number of bytes per audio sample: 1, 2 or 4 (32-bit float) "
+        "[Default: %(default)s].",
         metavar="INT",
     )
 

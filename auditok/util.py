@@ -156,7 +156,7 @@ def make_channel_selector(
     Parameters
     ----------
     sample_width : int
-        Number of bytes per audio sample; should be 1 or 2.
+        Number of bytes per audio sample; should be 1, 2 or 4.
     channels : int
         Number of channels in the audio data that the selector should expect.
     selected : int or str, optional
@@ -174,7 +174,7 @@ def make_channel_selector(
     Raises
     ------
     ValueError
-        If `sample_width` is not one of {1, 2}, or if `selected` has an
+        If `sample_width` is not one of {1, 2, 4}, or if `selected` has an
         unsupported value.
     """
     to_array_ = partial(
@@ -680,7 +680,7 @@ class AudioReader(DataSource):
         Sampling rate of the audio data. Required for raw audio (bytes, None,
         or raw file).
     sample_width, sw : int
-        Number of bytes per audio sample (1 or 2). Required for raw data.
+        Number of bytes per audio sample (1, 2 or 4). Required for raw data.
     channels, ch : int
         Number of audio channels. Required for raw data.
     use_channel, uc : {None, "any", "mix", "avg", "average"} or int

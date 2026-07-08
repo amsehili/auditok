@@ -49,6 +49,41 @@ def test_to_array(setup_data, sample_width, expected):
 
 
 @pytest.mark.parametrize(
+    "channels",
+    [1, 2],
+    ids=["float32_1channel", "float32_2channel"],
+)
+def test_to_array_float32(channels):
+    """float32 samples are scaled to the int16 amplitude reference so that
+    energy values (and `energy_threshold`) mean the same thing for all
+    sample widths."""
+    samples = np.array([-1.0, -0.5, 0.0, 0.25, 0.5, 1.0], dtype=np.float32)
+    data = samples.tobytes()
+    result = signal.to_array(data, sample_width=4, channels=channels)
+    expected = (samples.astype(np.float64) * signal.FLOAT32_SCALE).reshape(
+        channels, -1, order="F"
+    )
+    assert (result == expected).all()
+    assert result.dtype == np.float64
+
+
+def test_to_array_int16_and_float32_same_energy():
+    """The same signal stored as int16 and float32 must yield the same
+    energy."""
+    int16_samples = (np.sin(np.linspace(0, 8 * np.pi, 160)) * 20000).astype(
+        np.int16
+    )
+    float32_samples = (int16_samples / 32768.0).astype(np.float32)
+    energy_int16 = signal.calculate_energy(
+        signal.to_array(int16_samples.tobytes(), 2, 1)
+    )
+    energy_float32 = signal.calculate_energy(
+        signal.to_array(float32_samples.tobytes(), 4, 1)
+    )
+    assert np.isclose(energy_int16, energy_float32, atol=1e-3)
+
+
+@pytest.mark.parametrize(
     "x, aggregation_fn, expected",
     [
         ([300, 320, 400, 600], None, 52.506639194632434),  # mono_simple

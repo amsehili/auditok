@@ -15,6 +15,7 @@ from auditok.io import (
     AudioIOError,
     AudioParameterError,
     BufferAudioSource,
+    FFmpegAudioSource,
     RawAudioSource,
     StdinAudioSource,
     WaveAudioSource,
@@ -487,6 +488,67 @@ def test_load_wave(file_id, frequencies, large_file):
         _sample_generator(*mono_channels), dtype=dtype
     ).tobytes()
     assert data == expected
+
+
+@pytest.mark.parametrize(
+    "large_file",
+    [False, True],
+    ids=["in_memory", "large_file"],
+)
+def test_load_wave_float32(large_file):
+    filename = "tests/data/test_16KHZ_mono_400Hz_float32.wav"
+    audio_source = _load_wave(filename, large_file=large_file)
+    audio_source.open()
+    data = audio_source.read(-1)
+    audio_source.close()
+    expected_class = WaveAudioSource if large_file else BufferAudioSource
+    assert isinstance(audio_source, expected_class)
+    assert audio_source.sampling_rate == 16000
+    assert audio_source.sample_width == 4
+    assert audio_source.channels == 1
+    samples = np.frombuffer(data, dtype=np.float32)
+    expected = PURE_TONE_DICT[400].astype(np.float32)
+    assert np.allclose(samples * 32768, expected, atol=2.0)
+
+
+def test_save_wave_float32_roundtrip():
+    """Float32 data must be saved with a WAVE_FORMAT_IEEE_FLOAT header
+    (stdlib `wave` would write a PCM header) and read back identically."""
+    import struct
+
+    samples = (PURE_TONE_DICT[400].astype(np.float32) / 32768.0).tobytes()
+    tmpfile = NamedTemporaryFile(suffix=".wav")
+    _save_wave(samples, tmpfile.name, 16000, 4, 1)
+
+    with open(tmpfile.name, "rb") as fp:
+        assert fp.read(4) == b"RIFF"
+        fp.read(8)
+        chunk_id, _ = struct.unpack("<4sI", fp.read(8))
+        assert chunk_id == b"fmt "
+        format_tag = struct.unpack("<H", fp.read(2))[0]
+        assert format_tag == 0x0003  # WAVE_FORMAT_IEEE_FLOAT
+
+    audio_source = _load_wave(tmpfile.name)
+    audio_source.open()
+    data = audio_source.read(-1)
+    audio_source.close()
+    assert audio_source.sampling_rate == 16000
+    assert audio_source.sample_width == 4
+    assert audio_source.channels == 1
+    assert data == samples
+
+
+@requires_ffmpeg
+def test_save_wave_float32_readable_by_ffmpeg():
+    """Interoperability: ffmpeg must decode our float32 WAV files."""
+    samples = (PURE_TONE_DICT[400].astype(np.float32) / 32768.0).tobytes()
+    tmpfile = NamedTemporaryFile(suffix=".wav")
+    _save_wave(samples, tmpfile.name, 16000, 4, 1)
+    audio_source = FFmpegAudioSource(tmpfile.name, sample_width=4)
+    assert audio_source.sw == 4
+    data = audio_source.read(None)
+    audio_source.close()
+    assert data == samples
 
 
 @pytest.mark.parametrize(

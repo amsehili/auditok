@@ -188,7 +188,39 @@ def test_WaveAudioSource(file_suffix, frequencies):
     assert data_read_all == expected
 
 
-@requires_ffmpeg
+@pytest.mark.parametrize(
+    "file_suffix, frequencies",
+    [
+        # written by ffmpeg: WAVE_FORMAT_EXTENSIBLE header, float SubFormat
+        ("mono_400Hz_float32", (400,)),
+        ("3channel_400-800-1600Hz_float32", (400, 800, 1600)),
+        # written by sox: plain WAVE_FORMAT_IEEE_FLOAT header
+        ("mono_400Hz_float32_sox", (400,)),
+    ],
+    ids=["extensible_mono", "extensible_multichannel", "ieee_float_mono"],
+)
+def test_WaveAudioSource_float32(file_suffix, frequencies):
+    """Float32 WAV files use headers the stdlib `wave` module cannot read
+    (IEEE float / EXTENSIBLE); samples must match the int16 originals these
+    fixtures were converted from, within quantization error."""
+    file = "tests/data/test_16KHZ_{}.wav".format(file_suffix)
+    audio_source = WaveAudioSource(file)
+    audio_source.open()
+    data = audio_source.read(None)
+    audio_source.close()
+    assert audio_source.sr == 16000
+    assert audio_source.sw == 4
+    assert audio_source.ch == len(frequencies)
+
+    samples = np.frombuffer(data, dtype=np.float32)
+    mono_channels = [PURE_TONE_DICT[freq] for freq in frequencies]
+    expected_int16 = np.fromiter(
+        _sample_generator(*mono_channels), np.int16
+    ).astype(np.float32)
+    assert samples.shape == expected_int16.shape
+    assert np.allclose(samples * 32768, expected_int16, atol=2.0)
+
+
 @pytest.mark.parametrize(
     "filename, sr, ch",
     [
@@ -208,6 +240,7 @@ def test_WaveAudioSource(file_suffix, frequencies):
         "mono_16KHZ_mp3",
     ],
 )
+@requires_ffmpeg
 def test_FFmpegAudioSource(filename, sr, ch):
     test_file = "tests/data/{}".format(filename)
     audio_source = FFmpegAudioSource(test_file)
@@ -268,12 +301,19 @@ def test_FFmpegAudioSource_downmix_to_mono():
 
 
 @requires_ffmpeg
-def test_FFmpegAudioSource_rejects_sample_width_4():
-    """auditok does not support 32-bit audio; see
-    WIP/32bit_audio_support_notes.md."""
+def test_FFmpegAudioSource_sample_width_4_yields_float32():
     test_file = "tests/data/DTMF_tones_16KHZ_mono.flac"
-    with pytest.raises(AudioParameterError):
-        FFmpegAudioSource(test_file, sample_width=4)
+    audio_source = FFmpegAudioSource(test_file, sample_width=4)
+    assert audio_source.sw == 4
+    data = audio_source.read(None)
+    audio_source.close()
+    samples = np.frombuffer(data, dtype=np.float32)
+    assert 0 < np.abs(samples).max() <= 1.0
+
+    audio_source = FFmpegAudioSource(test_file, sample_width=2)
+    data_int16 = audio_source.read(None)
+    audio_source.close()
+    assert len(samples) == len(data_int16) // 2
 
 
 @requires_ffmpeg
@@ -723,13 +763,12 @@ class TestBufferAudioSource_SR16_SW2_CH1:
         assert tp == 0
 
 
-def test_BufferAudioSource_rejects_sample_width_4():
-    """auditok does not support 32-bit audio; see
-    WIP/32bit_audio_support_notes.md."""
-    with pytest.raises(AudioParameterError):
-        BufferAudioSource(
-            data=b"ABCDEFGH", sampling_rate=11, sample_width=4, channels=1
-        )
+def test_BufferAudioSource_accepts_sample_width_4():
+    """`sample_width=4` means 32-bit float audio."""
+    audio_source = BufferAudioSource(
+        data=b"ABCDEFGH", sampling_rate=11, sample_width=4, channels=1
+    )
+    assert audio_source.sw == 4
 
 
 class TestBufferAudioSourceCreationException:
@@ -740,9 +779,9 @@ class TestBufferAudioSourceCreationException:
             )
         assert (
             str(audio_param_err.value)
-            == "Sample width must be one of: 1 or 2 (bytes). "
-            "32-bit audio is not supported; "
-            "convert to 16-bit PCM first."
+            == "Sample width must be one of: 1, 2 or 4 (bytes). A width of "
+            "4 means 32-bit float; 32-bit integer audio is not "
+            "supported."
         )
 
     def test_wrong_data_buffer_size(self):
