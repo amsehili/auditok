@@ -11,6 +11,7 @@ import pytest
 from auditok.cmdline import (
     _AUDITOK_LOGGER,
     _build_split_command_kwargs,
+    _energy_threshold_value,
     _SplitCommandKwargs,
     initialize_workers,
     main,
@@ -86,6 +87,115 @@ class TestSubcommandDispatch:
     def test_explicit_split_with_file(self, capsys):
         ret = main(["split", WAV_FILE, "-q"])
         assert ret == 0
+
+
+# ── -e/--energy-threshold auto ─────────────────────────────────────
+
+
+class TestAutoEnergyThreshold:
+    def test_energy_threshold_value_parser(self):
+        from argparse import ArgumentTypeError
+
+        assert _energy_threshold_value("55") == 55.0
+        assert _energy_threshold_value("auto") == "auto"
+        assert _energy_threshold_value("AUTO") == "auto"
+        with pytest.raises(ArgumentTypeError):
+            _energy_threshold_value("foo")
+
+    def test_validator_name_parser(self):
+        from argparse import ArgumentTypeError
+
+        from auditok.cmdline import _validator_name
+
+        assert _validator_name("otsu") == "otsu"
+        assert _validator_name("percentile") == "percentile"
+        assert _validator_name("p15") == "p15"
+        assert _validator_name("P15") == "p15"  # CLI is case-insensitive
+        for bad in ("median", "p0", "p100", "px"):
+            with pytest.raises(ArgumentTypeError):
+                _validator_name(bad)
+
+    def test_split_validator_pxx_option(self, capsys):
+        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+        ret = main(["split", audio_file, "-V", "p25"])
+        assert ret == 0
+        assert "Auto energy threshold:" in capsys.readouterr().err
+
+    def test_split_auto_with_file(self, capsys):
+        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+        ret = main(["split", audio_file, "-e", "auto"])
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "Auto energy threshold:" in captured.err
+        assert len(captured.out.strip().splitlines()) > 1
+
+    def test_split_auto_quiet_suppresses_threshold_message(self, capsys):
+        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+        ret = main(["split", audio_file, "-e", "auto", "-q"])
+        assert ret == 0
+        assert "Auto energy threshold:" not in capsys.readouterr().err
+
+    def test_split_auto_rejects_stdin(self, capsys):
+        ret = main(
+            ["split", "-", "-e", "auto", "-r", "16000", "-w", "2", "-c", "1"]
+        )
+        assert ret == 1
+        assert "requires file input" in capsys.readouterr().err
+
+    def test_trim_auto_with_file(self):
+        with TemporaryDirectory() as tmpdir:
+            output = os.path.join(tmpdir, "trimmed.wav")
+            audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+            ret = main(["trim", audio_file, "-o", output, "-e", "auto"])
+            assert ret == 0
+            assert os.path.getsize(output) > 0
+
+    def test_fix_pauses_auto_with_file(self):
+        with TemporaryDirectory() as tmpdir:
+            output = os.path.join(tmpdir, "fixed.wav")
+            audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+            ret = main(
+                [
+                    "fix-pauses",
+                    audio_file,
+                    "-o",
+                    output,
+                    "-d",
+                    "0.5",
+                    "-e",
+                    "auto",
+                ]
+            )
+            assert ret == 0
+            assert os.path.getsize(output) > 0
+
+    @pytest.mark.parametrize("method", ["otsu", "percentile"])
+    def test_split_validator_option(self, method, capsys):
+        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+        ret = main(["split", audio_file, "-V", method])
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "Auto energy threshold:" in captured.err
+        assert len(captured.out.strip().splitlines()) > 1
+
+    def test_split_validator_rejects_unknown_method(self, capsys):
+        with pytest.raises(SystemExit):
+            main(["split", WAV_FILE, "-V", "median"])
+
+    def test_split_validator_rejects_stdin(self, capsys):
+        ret = main(
+            ["split", "-", "-V", "otsu", "-r", "16000", "-w", "2", "-c", "1"]
+        )
+        assert ret == 1
+        assert "requires file input" in capsys.readouterr().err
+
+    def test_trim_validator_option(self):
+        with TemporaryDirectory() as tmpdir:
+            output = os.path.join(tmpdir, "trimmed.wav")
+            audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+            ret = main(["trim", audio_file, "-o", output, "-V", "percentile"])
+            assert ret == 0
+            assert os.path.getsize(output) > 0
 
 
 # ── trim subcommand ────────────────────────────────────────────────
@@ -349,6 +459,7 @@ _ArgsNamespace = namedtuple(
         "drop_trailing_silence",
         "strict_min_duration",
         "energy_threshold",
+        "validator",
         "echo",
         "progress_bar",
         "command",
@@ -424,6 +535,7 @@ def test_build_split_command_kwargs(
         False,
         False,
         55,
+        None,  # validator
     )
     misc = (
         False,
@@ -464,6 +576,7 @@ def test_build_split_command_kwargs(
         "drop_trailing_silence": False,
         "strict_min_dur": False,
         "energy_threshold": 55,
+        "validator": None,
         "analysis_window": 0.01,
     }
 
@@ -509,6 +622,7 @@ def test_build_split_command_kwargs_error():
         False,
         False,
         55,
+        None,  # validator
         False,
         False,
         None,

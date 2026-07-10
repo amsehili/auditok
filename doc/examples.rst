@@ -188,6 +188,61 @@ To detect events of arbitrary length (no truncation), pass ``max_dur=None``:
     events = auditok.split("audio.wav", max_dur=None)
 
 
+Automatic energy threshold
+--------------------------
+
+Picking a good ``energy_threshold`` by hand requires knowing the
+recording's noise floor and level. Pass ``energy_threshold="auto"`` and
+:func:`split` estimates the threshold from the energy distribution of
+the input's analysis windows:
+
+.. code:: python
+
+    events = auditok.split("audio.wav", energy_threshold="auto")
+
+Two estimation methods are available, selected with the ``validator``
+parameter:
+
+.. code:: python
+
+    # "otsu" (the default behind "auto"): splits the energy histogram in
+    # two classes; a balanced choice for audio with clear pauses
+    events = auditok.split("audio.wav", validator="otsu")
+
+    # "percentile": noise floor (10th percentile) + 6 dB margin; more
+    # recall-oriented, works well for dense or far-field speech
+    events = auditok.split("audio.wav", validator="percentile")
+
+    # "pXX" is the percentile method reading the noise floor at the XXth
+    # percentile (XX in [1, 99]; "percentile" == "p10"). Useful to bias
+    # detection on material without a clear noise floor (e.g., music):
+    # higher percentiles give higher, more selective thresholds
+    events = auditok.split("audio.wav", validator="p20")
+
+``trim`` and ``fix_pauses`` accept the same values. Because the audio
+must be read before detection, automatic thresholding works with offline
+input only (a file, ``bytes`` or an :class:`AudioRegion`) — for
+microphone or standard input, provide a numeric threshold. Compressed
+input is decoded only once: the decoded audio is kept in memory and
+tokenized from there.
+
+For full control (e.g., a custom percentile or margin), estimate the
+threshold yourself and pass the resulting value:
+
+.. code:: python
+
+    from auditok.signal import compute_frame_energies, estimate_energy_threshold
+
+    region = auditok.load("audio.wav")
+    energies = compute_frame_energies(
+        region.data, region.sw, region.ch, frame_samples=int(0.05 * region.sr)
+    )
+    threshold = estimate_energy_threshold(
+        energies, method="percentile", percentile=20.0, margin=9.0
+    )
+    events = auditok.split(region, energy_threshold=threshold)
+
+
 Improving detection boundaries
 ------------------------------
 

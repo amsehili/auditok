@@ -1130,6 +1130,187 @@ def test_split_input_type(input, kwargs):
         assert bytes(reg) == exp_data
 
 
+AUDIO_FILE_1TO6 = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+
+
+def _resolved_auto_threshold(filename, analysis_window=0.05, method="otsu"):
+    from auditok.signal import compute_frame_energies, estimate_energy_threshold
+
+    region = load(filename)
+    energies = compute_frame_energies(
+        region.data,
+        region.sw,
+        region.ch,
+        int(analysis_window * region.sr),
+    )
+    return estimate_energy_threshold(energies, method=method)
+
+
+def test_split_auto_energy_threshold_matches_manual_estimate():
+    """split(..., energy_threshold='auto') must behave exactly as split()
+    called with the manually estimated threshold, for every offline input
+    type."""
+    threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6)
+    expected = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold=threshold)
+    ]
+    assert len(expected) > 1
+
+    region = load(AUDIO_FILE_1TO6)
+    inputs = [
+        (AUDIO_FILE_1TO6, {}),
+        (AUDIO_FILE_1TO6, {"large_file": True}),
+        (region, {}),
+        (bytes(region), {"sr": 16000, "sw": 2, "ch": 1}),
+    ]
+    for input_, kwargs in inputs:
+        result = [
+            (r.start, r.end)
+            for r in split(input_, energy_threshold="auto", **kwargs)
+        ]
+        assert result == expected, f"mismatch for input {type(input_)}"
+
+
+@requires_ffmpeg
+def test_split_auto_energy_threshold_ffmpeg_input():
+    """'auto' with compressed input must equal split() with the threshold
+    estimated from the (single-pass) decoded data."""
+    filename = "tests/data/DTMF_tones_16KHZ_mono.flac"
+    threshold = _resolved_auto_threshold(filename)
+    expected = [
+        (r.start, r.end) for r in split(filename, energy_threshold=threshold)
+    ]
+    result = [
+        (r.start, r.end) for r in split(filename, energy_threshold="auto")
+    ]
+    assert len(result) > 0
+    assert result == expected
+
+
+def test_split_auto_energy_threshold_max_read():
+    regions = list(split(AUDIO_FILE_1TO6, energy_threshold="auto", max_read=5))
+    assert len(regions) > 0
+    assert all(r.end <= 5.01 for r in regions)
+
+
+@pytest.mark.parametrize(
+    "input, kwargs",
+    [
+        (None, {"sr": 16000, "sw": 2, "ch": 1, "max_read": 1}),
+        ("-", {"sr": 16000, "sw": 2, "ch": 1}),
+    ],
+    ids=["microphone", "stdin"],
+)
+def test_split_auto_energy_threshold_rejects_live_input(input, kwargs):
+    with pytest.raises(ValueError, match="live sources"):
+        list(split(input, energy_threshold="auto", **kwargs))
+
+
+def test_split_auto_energy_threshold_rejects_audio_reader_input():
+    reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
+    with pytest.raises(ValueError, match="AudioReader"):
+        list(split(reader, energy_threshold="auto"))
+
+
+def test_split_invalid_energy_threshold_string():
+    with pytest.raises(ValueError, match="number or 'auto'"):
+        list(split(AUDIO_FILE_1TO6, energy_threshold="autox"))
+
+
+@pytest.mark.parametrize("method", ["otsu", "percentile"])
+def test_split_validator_string_selects_method(method):
+    """`validator="otsu"|"percentile"` must behave exactly as split()
+    called with the threshold estimated by that method."""
+    threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6, method=method)
+    expected = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold=threshold)
+    ]
+    result = [
+        (r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator=method)
+    ]
+    assert len(result) > 0
+    assert result == expected
+
+
+def test_split_validator_string_otsu_is_auto_default():
+    """energy_threshold='auto' and validator='otsu' are the same thing."""
+    auto = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold="auto")
+    ]
+    otsu = [(r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="otsu")]
+    assert auto == otsu
+
+
+def test_split_unknown_validator_string():
+    for bad in ("median", "p0", "p100", "P15", "p"):
+        with pytest.raises(ValueError, match="Unknown validator name"):
+            list(split(AUDIO_FILE_1TO6, validator=bad))
+
+
+def test_split_validator_pxx():
+    """`validator="pXX"` must behave exactly as split() called with the
+    threshold estimated with the percentile method at that percentile."""
+    from auditok.signal import compute_frame_energies, estimate_energy_threshold
+
+    region = load(AUDIO_FILE_1TO6)
+    energies = compute_frame_energies(
+        region.data, region.sw, region.ch, int(0.05 * region.sr)
+    )
+    threshold = estimate_energy_threshold(
+        energies, method="percentile", percentile=25.0
+    )
+    expected = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold=threshold)
+    ]
+    result = [(r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="p25")]
+    assert len(result) > 0
+    assert result == expected
+
+
+def test_split_validator_p10_is_percentile():
+    p10 = [(r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="p10")]
+    percentile = [
+        (r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="percentile")
+    ]
+    assert p10 == percentile
+
+
+def test_split_validator_string_rejects_live_input():
+    with pytest.raises(ValueError, match="live sources"):
+        list(
+            split(
+                None,
+                validator="percentile",
+                sr=16000,
+                sw=2,
+                ch=1,
+                max_read=1,
+            )
+        )
+
+
+def test_trim_validator_string():
+    from auditok import trim
+
+    threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6, method="percentile")
+    expected = trim(AUDIO_FILE_1TO6, energy_threshold=threshold)
+    result = trim(AUDIO_FILE_1TO6, validator="percentile")
+    assert bytes(result) == bytes(expected)
+
+
+def test_trim_auto_energy_threshold():
+    from auditok import trim
+
+    threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6)
+    expected = trim(AUDIO_FILE_1TO6, energy_threshold=threshold)
+    result = trim(AUDIO_FILE_1TO6, energy_threshold="auto")
+    assert bytes(result) == bytes(expected)
+
+
 def test_split_float32_equivalent_to_int16():
     """The same signal stored as int16 and as float32 must produce identical
     events with the same `energy_threshold` (float32 samples are scaled to

@@ -113,6 +113,36 @@ Example output:
     Event saved as: event_3.800-4.500.wav
     ...
 
+Automatic energy threshold
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of tuning ``energy_threshold`` by hand, let auditok estimate it
+from the audio itself:
+
+.. code:: python
+
+    import auditok
+
+    # estimate the threshold from the input's energy distribution
+    audio_events = auditok.split("audio.wav", energy_threshold="auto")
+
+    # or select the estimation method explicitly:
+    # "otsu" (default): balanced, suited to audio with clear pauses
+    # "percentile": noise floor + margin, suited to dense/far-field speech
+    audio_events = auditok.split("audio.wav", validator="percentile")
+
+    # "percentile" reads the noise floor at the 10th percentile of window
+    # energies; use "pXX" to read it elsewhere (e.g., "p20" for a higher,
+    # more selective threshold)
+    audio_events = auditok.split("audio.wav", validator="p20")
+
+Automatic thresholding adapts to each file's noise floor and level, so
+the same code works across recordings that would otherwise need
+different manual thresholds. It requires seeing the audio before
+detection and is therefore available for offline input only (files,
+bytes, ``AudioRegion``); compressed input is decoded only once. On the
+command line, use ``-e auto`` or ``-V otsu|percentile|pXX``.
+
 Trim silence
 ~~~~~~~~~~~~
 

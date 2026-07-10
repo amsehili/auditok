@@ -15,8 +15,10 @@ Module for high-level audio operations and data structures.
 
 from __future__ import annotations
 
+import logging
 import math
 import os
+import re
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,14 +29,25 @@ import numpy as np
 from .core import StreamTokenizer
 from .exceptions import AudioParameterError, TooSmallBlockDuration
 from .io import (
+    AudioDeviceSource,
     AudioSource,
+    BufferAudioSource,
+    RawAudioSource,
+    StdinAudioSource,
+    WaveAudioSource,
     check_audio_data,
     get_audio_source,
     player_for,
     to_file,
 )
 from .plotting import plot
-from .signal import to_array
+from .signal import (
+    _THRESHOLD_ESTIMATORS,
+    DEFAULT_THRESHOLD_METHOD,
+    compute_frame_energies,
+    estimate_energy_threshold,
+    to_array,
+)
 from .util import AudioEnergyValidator, AudioReader
 
 __all__ = [
@@ -126,6 +139,229 @@ def load(
     """
 
     return AudioRegion.load(input, skip, max_read, **kwargs)
+
+
+_AUTO_THRESHOLD_LIVE_INPUT_ERROR = (
+    "energy_threshold='auto' needs to read the input data before "
+    "tokenization and therefore requires offline input (a file path, "
+    "bytes, an AudioRegion or an offline AudioSource). For live sources "
+    "(microphone, stdin), provide a numeric energy threshold."
+)
+
+
+def _chunked_frame_energies(
+    source, frame_samples, use_channel, max_bytes, seconds_per_chunk=10.0
+):
+    """Compute per-window energies of `source` by reading large,
+    window-aligned chunks (low memory, few I/O calls). Any final partial
+    window is ignored."""
+    sample_size = source.sample_width * source.channels
+    frame_bytes = frame_samples * sample_size
+    frames_per_chunk = max(
+        1, round(seconds_per_chunk * source.sampling_rate / frame_samples)
+    )
+    chunk_samples = frames_per_chunk * frame_samples
+    energies = []
+    leftover = b""
+    bytes_read = 0
+    source.open()
+    try:
+        while True:
+            data = source.read(chunk_samples)
+            if not data:
+                break
+            if max_bytes is not None and bytes_read + len(data) > max_bytes:
+                data = data[: max_bytes - bytes_read]
+            bytes_read += len(data)
+            data = leftover + data
+            n_frames = len(data) // frame_bytes
+            usable = n_frames * frame_bytes
+            if n_frames > 0:
+                energies.append(
+                    compute_frame_energies(
+                        data[:usable],
+                        source.sample_width,
+                        source.channels,
+                        frame_samples,
+                        use_channel,
+                    )
+                )
+            leftover = data[usable:]
+            if max_bytes is not None and bytes_read >= max_bytes:
+                break
+    finally:
+        source.close()
+    if not energies:
+        return np.empty(0, dtype=np.float64)
+    return np.concatenate(energies)
+
+
+def _read_input_for_auto_threshold(input, analysis_window, params):
+    """Compute per-window energies of `input` for ``energy_threshold="auto"``.
+
+    Returns an (input, frame_energies) tuple where `input` may be replaced
+    by an in-memory `AudioSource` so that data decoded during estimation
+    (e.g., by ffmpeg) is not decoded a second time for tokenization. The
+    memory profile implied by the input type is preserved: in-memory inputs
+    are estimated from their existing buffer, and seekable PCM files opened
+    with ``large_file=True`` are estimated with a chunked pass, then re-read
+    from disk during tokenization.
+    """
+    if input is None or (isinstance(input, str) and input == "-"):
+        raise ValueError(_AUTO_THRESHOLD_LIVE_INPUT_ERROR)
+    if isinstance(input, AudioSource):
+        source = input
+    else:
+        source_params = dict(params)
+        source_params.pop("input", None)
+        source = get_audio_source(input, **source_params)
+    if isinstance(source, (AudioDeviceSource, StdinAudioSource)):
+        raise ValueError(_AUTO_THRESHOLD_LIVE_INPUT_ERROR)
+
+    frame_samples = int(analysis_window * source.sampling_rate)
+    if frame_samples == 0:
+        err_msg = "Too small block_dur ({0:f}) for sampling rate ({1}). "
+        err_msg += "block_dur should cover at least one sample "
+        err_msg += "(i.e. 1/{1})"
+        raise TooSmallBlockDuration(
+            err_msg.format(analysis_window, source.sampling_rate),
+            analysis_window,
+            source.sampling_rate,
+        )
+    use_channel = params.get("use_channel", params.get("uc"))
+    max_read = params.get("max_read", params.get("mr"))
+    max_bytes = None
+    if max_read is not None:
+        max_bytes = (
+            round(max_read * source.sampling_rate)
+            * source.sample_width
+            * source.channels
+        )
+
+    if isinstance(source, BufferAudioSource):
+        data = source.data if max_bytes is None else source.data[:max_bytes]
+        energies = compute_frame_energies(
+            data,
+            source.sample_width,
+            source.channels,
+            frame_samples,
+            use_channel,
+        )
+        return source, energies
+
+    if isinstance(source, (RawAudioSource, WaveAudioSource)):
+        # seekable PCM file (large_file=True): chunked estimation pass,
+        # the file is then re-read from disk during tokenization
+        energies = _chunked_frame_energies(
+            source, frame_samples, use_channel, max_bytes
+        )
+        return source, energies
+
+    # streaming source (e.g., FFmpegAudioSource): read the decoded data
+    # once, estimate from it and tokenize it from memory — never decode
+    # the same input twice
+    source.open()
+    try:
+        if max_bytes is None:
+            data = source.read(None) or b""
+        else:
+            max_samples = max_bytes // (source.sample_width * source.channels)
+            data = source.read(max_samples) or b""
+    finally:
+        source.close()
+    energies = compute_frame_energies(
+        data, source.sample_width, source.channels, frame_samples, use_channel
+    )
+    buffer_source = BufferAudioSource(
+        data, source.sampling_rate, source.sample_width, source.channels
+    )
+    return buffer_source, energies
+
+
+_PERCENTILE_VALIDATOR_RE = re.compile(r"^p([1-9][0-9]?)$")
+
+
+def _parse_validator_name(name):
+    """Parse a validator name into an (method, method_args) pair for
+    :func:`auditok.signal.estimate_energy_threshold`. Accepted names:
+    "otsu", "percentile" (an alias for "p10") and "pXX" with XX in
+    [1, 99] (percentile method reading the noise floor at the XXth
+    percentile). Raises ValueError for anything else."""
+    match = _PERCENTILE_VALIDATOR_RE.match(name)
+    if match:
+        return "percentile", {"percentile": float(match.group(1))}
+    if name in _THRESHOLD_ESTIMATORS:
+        return name, {}
+    raise ValueError(
+        f"Unknown validator name {name!r}. Available: "
+        f"{sorted(_THRESHOLD_ESTIMATORS)} or 'pXX' (custom percentile, "
+        "e.g. 'p15')"
+    )
+
+
+def _resolve_auto_threshold(input, analysis_window, params, method=None):
+    """Resolve an automatic energy threshold for `input` using `method` —
+    a validator name accepted by :func:`_parse_validator_name` (default:
+    the default method of
+    :func:`auditok.signal.estimate_energy_threshold`).
+
+    Returns an (input, energy_threshold) tuple; see
+    :func:`_read_input_for_auto_threshold` for how `input` may be replaced.
+    """
+    input, frame_energies = _read_input_for_auto_threshold(
+        input, analysis_window, params
+    )
+    if method is None:
+        method = DEFAULT_THRESHOLD_METHOD
+    estimator, method_args = _parse_validator_name(method)
+    energy_threshold = estimate_energy_threshold(
+        frame_energies, estimator, **method_args
+    )
+    logging.getLogger("auditok").info(
+        "auto energy threshold (%s) resolved to %.3f dB",
+        method,
+        energy_threshold,
+    )
+    return input, energy_threshold
+
+
+def _validate_split_durations(min_dur, max_dur, max_silence):
+    """Validate `split` duration parameters and return the normalized
+    `max_dur` (None becomes infinity)."""
+    if min_dur <= 0:
+        raise ValueError(f"'min_dur' ({min_dur}) must be > 0")
+    if max_dur is None or max_dur == float("inf"):
+        max_dur = float("inf")
+    elif max_dur <= 0:
+        raise ValueError(f"'max_dur' ({max_dur}) must be > 0")
+    if max_silence < 0:
+        raise ValueError(f"'max_silence' ({max_silence}) must be >= 0")
+    return max_dur
+
+
+def _parse_energy_threshold(kwargs):
+    """Extract the threshold configuration from `kwargs` and return an
+    (energy_threshold, is_auto, method) tuple, validating string values.
+
+    A string `validator` names a threshold estimation method ("otsu" or
+    "percentile") and implies automatic thresholding; `energy_threshold`
+    is ignored in that case. `is_auto` is False when a custom validator
+    object is given.
+    """
+    validator = kwargs.get("validator", kwargs.get("val"))
+    if isinstance(validator, str):
+        _parse_validator_name(validator)  # validate the name early
+        return "auto", True, validator
+    energy_threshold = kwargs.get(
+        "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
+    )
+    is_auto = validator is None and isinstance(energy_threshold, str)
+    if is_auto and energy_threshold.lower() != "auto":
+        raise ValueError(
+            "'energy_threshold' must be a number or 'auto', given: "
+            f"{energy_threshold!r}"
+        )
+    return energy_threshold, is_auto, DEFAULT_THRESHOLD_METHOD
 
 
 def _make_region_gen(token_gen, source):
@@ -272,12 +508,19 @@ def split(
     max_read, mr : float, default=None
         Maximum data read from source in seconds. Default is to read to end.
 
-    validator, val : callable or DataValidator, default=None
-        Custom validator for audio data. If None, uses `AudioEnergyValidator`
-        with the given `energy_threshold`. Should be callable or an instance of
+    validator, val : callable, DataValidator or str, default=None
+        Frame validation strategy. If None, uses `AudioEnergyValidator`
+        with the given `energy_threshold`. A string names a built-in
+        strategy: "otsu", "percentile" (an alias for "p10") or "pXX"
+        (XX in [1, 99]) select the corresponding automatic threshold
+        estimation method (see
+        :func:`auditok.signal.estimate_energy_threshold`; "pXX" reads
+        the noise floor at the XXth percentile of window energies and
+        adds a 6 dB margin). `energy_threshold` is ignored in that case.
+        Otherwise, should be a callable or an instance of
         `DataValidator` implementing `is_valid`.
 
-    energy_threshold, eth : float, default=50
+    energy_threshold, eth : float or "auto", default=50
         Energy threshold for audio activity detection. Audio regions with
         sufficient signal energy above this threshold are considered valid.
         Calculated as the log energy: `20 * log10(sqrt(dot(x, x) / len(x)))`,
@@ -286,22 +529,38 @@ def split(
         threshold works for all sample widths. Ignored if `validator` is
         specified.
 
+        If "auto", the threshold is estimated from the energy distribution
+        of the input's analysis windows with the default method (otsu);
+        pass ``validator="otsu"`` or ``validator="percentile"`` to choose
+        the estimation method explicitly. Automatic thresholding requires
+        reading the input before tokenization and is therefore not
+        available for live sources (microphone, stdin) or `AudioReader`
+        input. Compressed input is decoded only once: the decoded data is
+        kept in memory for tokenization. For full control (method
+        parameters such as the percentile or margin), use
+        :func:`auditok.signal.compute_frame_energies` and
+        :func:`auditok.signal.estimate_energy_threshold` directly and pass
+        the resulting value as `energy_threshold`.
+
     Yields
     ------
     AudioRegion
         Generator yielding detected :class:`AudioRegion` instances.
     """
 
-    if min_dur <= 0:
-        raise ValueError(f"'min_dur' ({min_dur}) must be > 0")
-    if max_dur is None or max_dur == float("inf"):
-        max_dur = float("inf")
-    elif max_dur <= 0:
-        raise ValueError(f"'max_dur' ({max_dur}) must be > 0")
-    if max_silence < 0:
-        raise ValueError(f"'max_silence' ({max_silence}) must be >= 0")
+    max_dur = _validate_split_durations(min_dur, max_dur, max_silence)
+
+    energy_threshold, auto_threshold, threshold_method = (
+        _parse_energy_threshold(kwargs)
+    )
 
     if isinstance(input, AudioReader):
+        if auto_threshold:
+            raise ValueError(
+                "Automatic energy thresholding is not supported for "
+                "AudioReader input; pass the file, bytes, AudioRegion or "
+                "AudioSource directly, or provide a numeric threshold."
+            )
         source = input
     else:
         analysis_window = kwargs.get(
@@ -321,6 +580,10 @@ def split(
             params["channels"] = input.ch
             input = bytes(input)
         try:
+            if auto_threshold:
+                input, energy_threshold = _resolve_auto_threshold(
+                    input, analysis_window, params, threshold_method
+                )
             source = AudioReader(input, block_dur=analysis_window, **params)
         except TooSmallBlockDuration as exc:
             err_msg = f"Too small 'analysis_window' ({exc.block_dur}) for "
@@ -331,10 +594,9 @@ def split(
     analysis_window = source.block_dur
 
     validator = kwargs.get("validator", kwargs.get("val"))
-    if validator is None:
-        energy_threshold = kwargs.get(
-            "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
-        )
+    if validator is None or isinstance(validator, str):
+        # a string validator names a threshold estimation method, already
+        # resolved above into a numeric `energy_threshold`
         use_channel = kwargs.get("use_channel", kwargs.get("uc"))
         validator = AudioEnergyValidator(
             energy_threshold, source.sw, source.ch, use_channel=use_channel
@@ -645,6 +907,22 @@ def trim(
         analysis_window = kwargs.get(
             "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
         )
+        # automatic thresholding must be resolved before the input is
+        # wrapped in an AudioReader (it needs to read the data first)
+        _, auto_threshold, threshold_method = _parse_energy_threshold(kwargs)
+        if auto_threshold:
+            params = kwargs.copy()
+            params["max_read"] = params.get("max_read", params.get("mr"))
+            params["audio_format"] = params.get(
+                "audio_format", params.get("fmt")
+            )
+            input, resolved = _resolve_auto_threshold(
+                input, analysis_window, params, threshold_method
+            )
+            kwargs["energy_threshold"] = resolved
+            kwargs["validator"] = None
+            kwargs.pop("eth", None)
+            kwargs.pop("val", None)
         reader = AudioReader(
             input, block_dur=analysis_window, record=True, **kwargs
         )

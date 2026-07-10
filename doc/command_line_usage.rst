@@ -37,6 +37,19 @@ where:
 - ``-m``, ``--max-duration``: maximum duration of a valid audio event in seconds, default: 5
 - ``-s``, ``--max-silence``: maximum duration of continuous silence within a valid audio event in seconds, default: 0.3
 
+Instead of a fixed threshold, the threshold can be estimated from the
+input itself (file input only):
+
+.. code:: bash
+
+    auditok audio.wav -e auto        # default estimation method (otsu)
+    auditok audio.wav -V percentile  # noise floor + margin, recall-oriented
+    auditok audio.wav -V p20         # noise floor read at the 20th percentile
+
+The resolved threshold is printed to standard error (suppress with
+``-q``). Both options also work with the ``trim`` and ``fix-pauses``
+subcommands.
+
 Save detected events to individual files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -238,7 +251,11 @@ Common options reference
 
 .. code:: text
 
-    -e, --energy-threshold     Detection threshold [default: 50]
+    -e, --energy-threshold     Detection threshold, a number or 'auto'
+                               ('auto' uses the otsu method) [default: 50]
+    -V, --validator            Frame validation strategy: 'otsu',
+                               'percentile' or 'pXX' (auto threshold
+                               estimation method; 'percentile' == 'p10')
     -n, --min-duration         Minimum event duration in seconds [default: 0.2]
     -m, --max-duration         Maximum event duration (split only) [default: 5]
     -s, --max-silence          Max silence within an event [default: 0.3]

@@ -19,7 +19,7 @@ import sys
 import tempfile
 import threading
 import time
-from argparse import Action, ArgumentParser, HelpFormatter
+from argparse import Action, ArgumentParser, ArgumentTypeError, HelpFormatter
 from collections import namedtuple
 
 from auditok import AudioRegion, __version__
@@ -82,6 +82,68 @@ class _StoreOnce(Action):
             parser.error(f"argument {option_string} appears more than once")
         self._seen = True
         setattr(namespace, self.dest, values)
+
+
+def _energy_threshold_value(value):
+    """Parse -e/--energy-threshold: a float or the literal 'auto'."""
+    if value.strip().lower() == "auto":
+        return "auto"
+    try:
+        return float(value)
+    except ValueError:
+        raise ArgumentTypeError(
+            f"must be a number or 'auto', given: {value!r}"
+        ) from None
+
+
+def _validator_name(value):
+    """Parse -V/--validator: 'otsu', 'percentile' or 'pXX'."""
+    from .audio import _parse_validator_name
+
+    value = value.strip().lower()
+    try:
+        _parse_validator_name(value)
+    except ValueError:
+        raise ArgumentTypeError(
+            "must be 'otsu', 'percentile' or 'pXX' (custom percentile, "
+            f"e.g. p15), given: {value!r}"
+        ) from None
+    return value
+
+
+def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
+    """Resolve ``-e auto`` / ``-V otsu|percentile`` to a numeric threshold
+    before workers are built.
+
+    Reads the input once (single decode), replaces the CLI input with the
+    in-memory audio so it is not decoded a second time for tokenization,
+    and stores the resolved value where the workers and the plotting code
+    expect a number.
+    """
+    method = split_kw.get("validator")
+    if method is None and split_kw.get("energy_threshold") != "auto":
+        return
+    if args.input in (None, "-"):
+        raise ArgumentError(
+            "automatic energy thresholding (-e auto, -V) requires file "
+            "input; provide a numeric threshold for microphone or "
+            "standard input."
+        )
+    from .audio import _resolve_auto_threshold
+
+    new_input, resolved = _resolve_auto_threshold(
+        args.input, split_kw["analysis_window"], audio_kw, method
+    )
+    split_kw["energy_threshold"] = resolved
+    split_kw["validator"] = None
+    args.energy_threshold = resolved
+    if "input" in audio_kw:
+        audio_kw["input"] = new_input
+    if not getattr(args, "quiet", False):
+        print(
+            f"Auto energy threshold: {resolved:.2f} dB",
+            file=sys.stderr,
+        )
 
 
 def _add_input_source_args(group):
@@ -250,12 +312,31 @@ def _add_detection_args(group):
         "-e",
         "--energy-threshold",
         dest="energy_threshold",
-        type=float,
+        type=_energy_threshold_value,
         default=50,
         action=_StoreOnce,
-        help="Set the log energy threshold for detection. "
+        help="Set the log energy threshold for detection. Use 'auto' to "
+        "estimate the threshold from the input using the default method "
+        "(otsu; see -V to select a method). File input only. "
         "[Default: %(default)s]",
         metavar="FLOAT",
+    )
+    group.add_argument(
+        "-V",
+        "--validator",
+        dest="validator",
+        type=_validator_name,
+        default=None,
+        action=_StoreOnce,
+        help="Frame validation strategy: 'otsu', 'percentile' or 'pXX' "
+        "(XX in [1, 99]). These select the automatic energy threshold "
+        "estimation method (file input only): 'otsu' finds the best "
+        "split of the energy histogram; 'percentile' (alias of 'p10') "
+        "and 'pXX' read the noise floor at the given percentile and add "
+        "a 6 dB margin. -e/--energy-threshold is ignored when this "
+        "option is given; when omitted, detection uses the "
+        "-e/--energy-threshold value.",
+        metavar="STRATEGY",
     )
 
 
@@ -725,6 +806,7 @@ def _build_split_kwargs(args):
         "max_leading_silence": args.max_leading_silence,
         "max_trailing_silence": args.max_trailing_silence,
         "energy_threshold": args.energy_threshold,
+        "validator": args.validator,
         "analysis_window": args.analysis_window,
     }
 
@@ -871,7 +953,8 @@ def _run_split(args):
     """Execute the split subcommand (original auditok behavior)."""
     try:
         kwargs = _build_split_command_kwargs(args)
-    except ArgumentError as exc:
+        _resolve_auto_energy_threshold(args, kwargs.split, kwargs.io)
+    except (ArgumentError, ValueError) as exc:
         print(exc, file=sys.stderr)
         return 1
 
@@ -939,8 +1022,20 @@ def _run_trim(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
+    if args.input is None and (
+        split_kw["energy_threshold"] == "auto"
+        or split_kw["validator"] is not None
+    ):
+        print(
+            "automatic energy thresholding (-e auto, -V) requires file "
+            "input; provide a numeric threshold for microphone input.",
+            file=sys.stderr,
+        )
+        return 1
+
     if args.input is not None:
-        # File input: call trim() directly
+        # File input: call trim() directly; energy_threshold='auto' is
+        # handled by the library
         result = trim(args.input, **split_kw, **audio_kw)
         if result:
             result.save(args.output, audio_format=args.output_format)
@@ -1015,8 +1110,20 @@ def _run_fix_pauses(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
+    if args.input is None and (
+        split_kw["energy_threshold"] == "auto"
+        or split_kw["validator"] is not None
+    ):
+        print(
+            "automatic energy thresholding (-e auto, -V) requires file "
+            "input; provide a numeric threshold for microphone input.",
+            file=sys.stderr,
+        )
+        return 1
+
     if args.input is not None:
-        # File input: call fix_pauses() directly
+        # File input: call fix_pauses() directly; energy_threshold='auto'
+        # is handled by the library
         result = fix_pauses(
             args.input, args.pause_duration, **split_kw, **audio_kw
         )
