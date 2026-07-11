@@ -138,10 +138,27 @@ from the audio itself:
 
 Automatic thresholding adapts to each file's noise floor and level, so
 the same code works across recordings that would otherwise need
-different manual thresholds. It requires seeing the audio before
-detection and is therefore available for offline input only (files,
-bytes, ``AudioRegion``); compressed input is decoded only once. On the
-command line, use ``-e auto`` or ``-V otsu|percentile|pXX``.
+different manual thresholds. For offline input (files, bytes,
+``AudioRegion``), the whole signal is used for estimation (compressed
+input is decoded only once). For live input (microphone, stdin), the
+threshold is calibrated on the first seconds of the stream
+(``calibration_dur``, default 3 s) and guarded by a lower bound
+(``min_energy_threshold``, default 40 dB): the resolved threshold is
+``max(min_energy_threshold, estimate)``, so a calibration window
+containing only background noise — a PC fan, air conditioning, or a
+muted microphone — cannot produce a meaningless threshold. The calibration audio is
+replayed, so nothing is lost:
+
+.. code:: python
+
+    # detect events from the microphone with a calibrated threshold
+    events = auditok.split(None, sr=16000, sw=2, ch=1, max_read=60,
+                           energy_threshold="auto")
+
+On the command line, use ``-e auto`` or ``-V otsu|percentile|pXX``.
+Automatic estimation is optional — if you know a threshold that works
+for your audio and setup, pass it explicitly (``energy_threshold=55`` /
+``-e 55``) and no estimation takes place.
 
 Using the WebRTC VAD as frame decider
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

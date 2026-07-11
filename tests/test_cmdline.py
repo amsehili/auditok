@@ -137,12 +137,29 @@ class TestAutoEnergyThreshold:
         assert ret == 0
         assert "Auto energy threshold:" not in capsys.readouterr().err
 
-    def test_split_auto_rejects_stdin(self, capsys):
+    def test_split_auto_calibrates_on_stdin(self, capsys, monkeypatch):
+        """Live input (stdin): the threshold is calibrated on the first
+        seconds of the stream instead of being rejected."""
+        import io
+        from types import SimpleNamespace
+
+        import auditok
+
+        raw = bytes(
+            auditok.load("tests/data/1to6arabic_16000_mono_bc_noise.wav")
+        )
+        monkeypatch.setattr(
+            "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
+        )
         ret = main(
             ["split", "-", "-e", "auto", "-r", "16000", "-w", "2", "-c", "1"]
         )
-        assert ret == 1
-        assert "requires file input" in capsys.readouterr().err
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "Calibrating energy threshold" in captured.err
+        # the resolved threshold is echoed once calibration completes
+        assert "auto energy threshold" in captured.err
+        assert len(captured.out.strip().splitlines()) >= 1
 
     def test_trim_auto_with_file(self):
         with TemporaryDirectory() as tmpdir:
@@ -184,12 +201,94 @@ class TestAutoEnergyThreshold:
         with pytest.raises(SystemExit):
             main(["split", WAV_FILE, "-V", "median"])
 
-    def test_split_validator_rejects_stdin(self, capsys):
-        ret = main(
-            ["split", "-", "-V", "otsu", "-r", "16000", "-w", "2", "-c", "1"]
+    def test_split_calibration_flags(self, capsys, monkeypatch):
+        """--calibration-duration and --min-energy-threshold shape the
+        live calibration; the echoed message reflects both."""
+        import io
+        from types import SimpleNamespace
+
+        import auditok
+
+        raw = bytes(
+            auditok.load("tests/data/1to6arabic_16000_mono_bc_noise.wav")
         )
-        assert ret == 1
-        assert "requires file input" in capsys.readouterr().err
+        monkeypatch.setattr(
+            "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
+        )
+        ret = main(
+            [
+                "split",
+                "-",
+                "-e",
+                "auto",
+                "--calibration-duration",
+                "1",
+                "-y",
+                "80",
+                "-r",
+                "16000",
+                "-w",
+                "2",
+                "-c",
+                "1",
+            ]
+        )
+        assert ret == 0
+        err = capsys.readouterr().err
+        assert "first 1 s" in err
+        assert "auto energy threshold" in err
+        # the estimate on this file is far below 80: the floor must win
+        assert "using the minimum: 80.000 dB" in err
+
+    def test_split_auto_muted_input_resolves_to_floor(
+        self, capsys, monkeypatch
+    ):
+        """All-zero live input (e.g., muted microphone): the estimate is
+        the -200 dB sentinel and the floor must win."""
+        import io
+        from types import SimpleNamespace
+
+        raw = b"\x00" * (16000 * 2 * 6)  # 6 s of digital silence
+        monkeypatch.setattr(
+            "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
+        )
+        ret = main(
+            ["split", "-", "-e", "auto", "-r", "16000", "-w", "2", "-c", "1"]
+        )
+        assert ret == 0
+        err = capsys.readouterr().err
+        assert "using the minimum: 40.000 dB" in err
+
+    def test_split_validator_method_calibrates_on_stdin(
+        self, capsys, monkeypatch
+    ):
+        import io
+        from types import SimpleNamespace
+
+        import auditok
+
+        raw = bytes(
+            auditok.load("tests/data/1to6arabic_16000_mono_bc_noise.wav")
+        )
+        monkeypatch.setattr(
+            "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
+        )
+        ret = main(
+            [
+                "split",
+                "-",
+                "-V",
+                "percentile",
+                "-r",
+                "16000",
+                "-w",
+                "2",
+                "-c",
+                "1",
+            ]
+        )
+        assert ret == 0
+        assert len(capsys.readouterr().out.strip().splitlines()) >= 1
 
     def test_trim_validator_option(self):
         with TemporaryDirectory() as tmpdir:
@@ -462,6 +561,8 @@ _ArgsNamespace = namedtuple(
         "strict_min_duration",
         "energy_threshold",
         "validator",
+        "calibration_duration",
+        "min_energy_threshold",
         "echo",
         "progress_bar",
         "command",
@@ -538,6 +639,8 @@ def test_build_split_command_kwargs(
         False,
         55,
         None,  # validator
+        3.0,  # calibration_duration
+        40.0,  # min_energy_threshold
     )
     misc = (
         False,
@@ -579,6 +682,8 @@ def test_build_split_command_kwargs(
         "strict_min_dur": False,
         "energy_threshold": 55,
         "validator": None,
+        "calibration_dur": 3.0,
+        "min_energy_threshold": 40.0,
         "analysis_window": 0.01,
     }
 
@@ -625,6 +730,8 @@ def test_build_split_command_kwargs_error():
         False,
         55,
         None,  # validator
+        3.0,  # calibration_duration
+        40.0,  # min_energy_threshold
         False,
         False,
         None,

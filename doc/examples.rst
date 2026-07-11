@@ -219,12 +219,49 @@ parameter:
     # higher percentiles give higher, more selective thresholds
     events = auditok.split("audio.wav", validator="p20")
 
-``trim`` and ``fix_pauses`` accept the same values. Because the audio
-must be read before detection, automatic thresholding works with offline
-input only (a file, ``bytes`` or an :class:`AudioRegion`) — for
-microphone or standard input, provide a numeric threshold. Compressed
-input is decoded only once: the decoded audio is kept in memory and
-tokenized from there.
+``trim`` and ``fix_pauses`` accept the same values. For offline input
+(a file, ``bytes`` or an :class:`AudioRegion`), the whole signal is used
+for estimation; compressed input is decoded only once (the decoded audio
+is kept in memory and tokenized from there).
+
+For live input (microphone, standard input), the threshold is
+*calibrated* on the first ``calibration_dur`` seconds of the stream
+(default 3) and then kept unchanged. The calibration audio is buffered
+and replayed to the detector, so events starting during calibration are
+not lost:
+
+.. code:: python
+
+    # calibrated threshold on microphone input
+    events = auditok.split(
+        None, sr=16000, sw=2, ch=1, max_read=60, energy_threshold="auto"
+    )
+
+    # longer calibration, custom guardrail
+    events = auditok.split(
+        None, sr=16000, sw=2, ch=1, max_read=60,
+        validator="percentile", calibration_dur=5, min_energy_threshold=45,
+    )
+
+Live calibration is guarded by ``min_energy_threshold`` (default 40 dB):
+if the calibration window contains only background noise — a PC fan, air
+conditioning, a fridge — an unguarded estimator would place the
+threshold *inside* the noise and turn it into detections. The guardrail
+clamps the estimate from below:
+``threshold = max(min_energy_threshold, estimate)``. The 40 dB default
+sits above common background noise at typical microphone gains; raise
+it for noisy environments or hot microphones, lower it for quiet setups
+where speech itself is faint. The parameter only applies when
+calibrating on live input — offline estimation is protected differently
+(digitally silent windows are excluded from the estimate).
+
+Automatic estimation is entirely optional. If you know a threshold that
+works for your audio and setup — for example, one you found by
+experimenting — pass it explicitly and no estimation takes place:
+
+.. code:: python
+
+    events = auditok.split("audio.wav", energy_threshold=55)
 
 For full control (e.g., a custom percentile or margin), estimate the
 threshold yourself and pass the resulting value:

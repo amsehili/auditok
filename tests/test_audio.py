@@ -1194,23 +1194,95 @@ def test_split_auto_energy_threshold_max_read():
     assert all(r.end <= 5.01 for r in regions)
 
 
-@pytest.mark.parametrize(
-    "input, kwargs",
-    [
-        (None, {"sr": 16000, "sw": 2, "ch": 1, "max_read": 1}),
-        ("-", {"sr": 16000, "sw": 2, "ch": 1}),
-    ],
-    ids=["microphone", "stdin"],
-)
-def test_split_auto_energy_threshold_rejects_live_input(input, kwargs):
-    with pytest.raises(ValueError, match="live sources"):
-        list(split(input, energy_threshold="auto", **kwargs))
+def _expected_calibration_threshold(
+    filename, analysis_window, calibration_dur, method="otsu", floor=40.0
+):
+    """Reference implementation of online calibration: estimate from the
+    first `calibration_dur` seconds, clamp to `floor`."""
+    import math
+
+    from auditok.signal import compute_frame_energies, estimate_energy_threshold
+
+    region = load(filename)
+    frame_samples = int(analysis_window * region.sr)
+    n_blocks = max(1, math.ceil(calibration_dur / analysis_window))
+    data = bytes(region)[: n_blocks * frame_samples * region.sw * region.ch]
+    energies = compute_frame_energies(data, region.sw, region.ch, frame_samples)
+    return max(estimate_energy_threshold(energies, method=method), floor)
 
 
-def test_split_auto_energy_threshold_rejects_audio_reader_input():
+def test_split_auto_threshold_calibrates_on_audio_reader_input():
+    """AudioReader input (the live-input code path): the threshold must be
+    estimated from the first `calibration_dur` seconds (clamped to the
+    floor), and the calibration audio must be replayed — events in the
+    calibration window must not be lost."""
+    expected_threshold = _expected_calibration_threshold(
+        AUDIO_FILE_1TO6, analysis_window=0.05, calibration_dur=3.0
+    )
+    expected = [
+        (r.start, r.end)
+        for r in split(
+            AUDIO_FILE_1TO6,
+            energy_threshold=expected_threshold,
+            analysis_window=0.05,
+        )
+    ]
     reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
-    with pytest.raises(ValueError, match="AudioReader"):
-        list(split(reader, energy_threshold="auto"))
+    result = [(r.start, r.end) for r in split(reader, energy_threshold="auto")]
+    assert len(result) > 0
+    assert result == expected
+    # the first event of this file starts inside the calibration window:
+    # seeing it proves the calibration audio was replayed, not consumed
+    assert result[0][0] < 3.0
+
+
+def test_split_auto_threshold_calibration_dur_and_floor():
+    """calibration_dur and min_energy_threshold must shape the resolved
+    threshold on the live-input code path."""
+    calibration_dur = 1.0
+    floor = 80.0  # far above any estimate on this file: the floor must win
+    reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
+    result = [
+        (r.start, r.end)
+        for r in split(
+            reader,
+            energy_threshold="auto",
+            calibration_dur=calibration_dur,
+            min_energy_threshold=floor,
+        )
+    ]
+    expected = [
+        (r.start, r.end)
+        for r in split(
+            AUDIO_FILE_1TO6, energy_threshold=floor, analysis_window=0.05
+        )
+    ]
+    assert result == expected
+
+
+def test_split_auto_threshold_invalid_calibration_dur():
+    reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
+    with pytest.raises(ValueError, match="calibration_dur"):
+        list(split(reader, energy_threshold="auto", calibration_dur=0))
+
+
+def test_split_offline_auto_threshold_ignores_floor():
+    """min_energy_threshold is calibration-only: offline auto estimation
+    must not be affected by it (offline estimation is protected by
+    digital-silence exclusion instead)."""
+    auto = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold="auto")
+    ]
+    with_floor = [
+        (r.start, r.end)
+        for r in split(
+            AUDIO_FILE_1TO6,
+            energy_threshold="auto",
+            min_energy_threshold=99.0,
+        )
+    ]
+    assert with_floor == auto
 
 
 def test_split_invalid_energy_threshold_string():
@@ -1279,18 +1351,26 @@ def test_split_validator_p10_is_percentile():
     assert p10 == percentile
 
 
-def test_split_validator_string_rejects_live_input():
-    with pytest.raises(ValueError, match="live sources"):
-        list(
-            split(
-                None,
-                validator="percentile",
-                sr=16000,
-                sw=2,
-                ch=1,
-                max_read=1,
-            )
+def test_split_validator_string_calibrates_on_reader_input():
+    """Validator strings (method selection) work with the online
+    calibration path too."""
+    expected_threshold = _expected_calibration_threshold(
+        AUDIO_FILE_1TO6,
+        analysis_window=0.05,
+        calibration_dur=3.0,
+        method="percentile",
+    )
+    expected = [
+        (r.start, r.end)
+        for r in split(
+            AUDIO_FILE_1TO6,
+            energy_threshold=expected_threshold,
+            analysis_window=0.05,
         )
+    ]
+    reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
+    result = [(r.start, r.end) for r in split(reader, validator="percentile")]
+    assert result == expected
 
 
 def test_trim_validator_string():

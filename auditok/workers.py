@@ -85,12 +85,15 @@ class TokenizerWorker(Worker, AudioReader):
     def __init__(self, reader, observers=None, logger=None, **kwargs):
         self._observers = observers if observers is not None else []
         self._reader = reader
+        # initialize the Worker machinery (message inbox) before split():
+        # with automatic thresholding on live input, split() calibrates by
+        # reading from this object right away, and read() checks the inbox
+        super().__init__(timeout=0.2, logger=logger)
         kwargs["input"] = self
         self._audio_region_gen = split(**kwargs)
         self._detections = []
         self._log_format = "[DET]: Detection {0.id} (start: {0.start:.3f}, "
         self._log_format += "end: {0.end:.3f}, duration: {0.duration:.3f})"
-        super().__init__(timeout=0.2, logger=logger)
 
     def _process_message(self):
         pass

@@ -10,7 +10,7 @@ microphones, and standard input.
 @copyright:  2015-2026 Mohamed El Amine SEHILI
 @license:    MIT
 @contact:    amine.sehili@gmail.com
-@deffield    updated: 10 May 2026
+@deffield    updated: 12 July 2026
 """
 
 import logging
@@ -32,7 +32,7 @@ from .util import AudioReader
 
 __all__ = []  # type: ignore[var-annotated]
 __date__ = "2015-11-23"
-__updated__ = "2026-05-10"
+__updated__ = "2026-07-12"
 
 _SUBCOMMANDS = {"split", "trim", "fix-pauses"}
 
@@ -117,15 +117,54 @@ def _validator_name(value):
     return value
 
 
-def _needs_offline_input(split_kw):
-    """True when the detection configuration requires reading the input
-    before tokenization (automatic energy thresholding)."""
-    from .audio import _parse_webrtc_validator
+def _terminal_italic():
+    """Return the italic SGR sequence if the terminal declares italics
+    support (terminfo 'sitm'), else dim as a graceful fallback.
+    Terminals without italics (e.g., GNU screen, tmux with a plain
+    'screen' TERM) often render SGR 3 as reverse video, which is worse
+    than no styling at all; dim is rendered correctly nearly
+    everywhere."""
+    try:
+        import curses
 
+        curses.setupterm()
+        return _ITALIC if curses.tigetstr("sitm") is not None else _DIM
+    except Exception:
+        return ""
+
+
+def _announce_live_calibration(args, split_kw):
+    """For live input with automatic thresholding: print the calibration
+    notice and echo the resolved threshold, which the library logs on the
+    'auditok' logger once calibration completes."""
+    if getattr(args, "quiet", False):
+        return
     validator = split_kw.get("validator")
     if validator is not None:
-        return _parse_webrtc_validator(validator) is None
-    return split_kw.get("energy_threshold") == "auto"
+        from .audio import _parse_webrtc_validator
+
+        is_auto = _parse_webrtc_validator(validator) is None
+    else:
+        is_auto = split_kw.get("energy_threshold") == "auto"
+    if not is_auto:
+        return
+    italic = _terminal_italic()
+    print(
+        f"{italic}Calibrating energy threshold on the first "
+        f"{split_kw['calibration_dur']:g} s of audio...{_RESET}",
+        file=sys.stderr,
+    )
+    logger = logging.getLogger("auditok")
+    for handler in list(logger.handlers):
+        if getattr(handler, "_auditok_cli", False):
+            logger.removeHandler(handler)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter(f"{italic}%(message)s{_RESET}"))
+    handler.setLevel(logging.INFO)
+    handler._auditok_cli = True
+    logger.addHandler(handler)
+    if logger.level > logging.INFO or logger.level == logging.NOTSET:
+        logger.setLevel(logging.INFO)
 
 
 def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
@@ -146,11 +185,10 @@ def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
     if method is None and split_kw.get("energy_threshold") != "auto":
         return
     if args.input in (None, "-"):
-        raise ArgumentError(
-            "automatic energy thresholding (-e auto, -V) requires file "
-            "input; provide a numeric threshold for microphone or "
-            "standard input."
-        )
+        # live input: split() calibrates on the first seconds of the
+        # stream (guardrailed); nothing to pre-resolve here
+        _announce_live_calibration(args, split_kw)
+        return
     from .audio import _resolve_auto_threshold
 
     new_input, resolved = _resolve_auto_threshold(
@@ -339,8 +377,10 @@ def _add_detection_args(group):
         action=_StoreOnce,
         help="Set the log energy threshold for detection. Use 'auto' to "
         "estimate the threshold from the input using the default method "
-        "(otsu; see -V to select a method). File input only. "
-        "[Default: %(default)s]",
+        "(otsu; see -V to select a method). For live input (microphone, "
+        "stdin), the threshold is calibrated on the first seconds of "
+        "audio, with a lower bound of 40 dB; pass an explicit numeric "
+        "threshold to override. [Default: %(default)s]",
         metavar="FLOAT",
     )
     group.add_argument(
@@ -352,7 +392,8 @@ def _add_detection_args(group):
         action=_StoreOnce,
         help="Frame validation strategy: 'otsu', 'percentile', 'pXX' or "
         "'webrtc[:MODE]'. The first three select the automatic energy "
-        "threshold estimation method (file input only): 'otsu' finds "
+        "threshold estimation method (calibrated on the first seconds "
+        "of audio for live input): 'otsu' finds "
         "the best split of the energy histogram; 'percentile' (alias of "
         "'p10') and 'pXX' read the noise floor at the given percentile "
         "and add a 6 dB margin. 'webrtc' uses the WebRTC voice activity "
@@ -362,6 +403,34 @@ def _add_detection_args(group):
         "ignored when this option is given; when omitted, detection "
         "uses the -e/--energy-threshold value.",
         metavar="STRATEGY",
+    )
+    group.add_argument(
+        "-U",
+        "--calibration-duration",
+        dest="calibration_duration",
+        type=float,
+        default=3.0,
+        action=_StoreOnce,
+        help="Duration (in seconds) of audio used to calibrate the "
+        "automatic energy threshold on live input (microphone, stdin). "
+        "Only used with -e auto or -V otsu|percentile|pXX. "
+        "[Default: %(default)s]",
+        metavar="FLOAT",
+    )
+    group.add_argument(
+        "-y",
+        "--min-energy-threshold",
+        dest="min_energy_threshold",
+        type=float,
+        default=40.0,
+        action=_StoreOnce,
+        help="Lower bound for the automatically estimated energy "
+        "threshold: the calibrated threshold is "
+        "max(this value, estimate). Protects against calibration "
+        "windows that contain only background noise or silence. Only "
+        "used for live input (microphone, stdin) with -e auto or "
+        "-V otsu|percentile|pXX. [Default: %(default)s]",
+        metavar="FLOAT",
     )
 
 
@@ -835,6 +904,8 @@ def _build_split_kwargs(args):
         "max_trailing_silence": args.max_trailing_silence,
         "energy_threshold": args.energy_threshold,
         "validator": args.validator,
+        "calibration_dur": args.calibration_duration,
+        "min_energy_threshold": args.min_energy_threshold,
         "analysis_window": args.analysis_window,
     }
 
@@ -1054,15 +1125,6 @@ def _run_trim(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
-    if args.input is None and _needs_offline_input(split_kw):
-        print(
-            "automatic energy thresholding (-e auto, -V "
-            "otsu|percentile|pXX) requires file input; provide a numeric "
-            "threshold, or use -V webrtc, for microphone input.",
-            file=sys.stderr,
-        )
-        return 1
-
     if args.input is not None:
         # File input: call trim() directly; energy_threshold='auto' is
         # handled by the library
@@ -1078,6 +1140,7 @@ def _run_trim(args):
         return 0
 
     # Mic input: worker-based approach
+    _announce_live_calibration(args, split_kw)
     from . import workers
     from .util import AudioReader
 
@@ -1144,15 +1207,6 @@ def _run_fix_pauses(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
-    if args.input is None and _needs_offline_input(split_kw):
-        print(
-            "automatic energy thresholding (-e auto, -V "
-            "otsu|percentile|pXX) requires file input; provide a numeric "
-            "threshold, or use -V webrtc, for microphone input.",
-            file=sys.stderr,
-        )
-        return 1
-
     if args.input is not None:
         # File input: call fix_pauses() directly; energy_threshold='auto'
         # is handled by the library
@@ -1170,6 +1224,7 @@ def _run_fix_pauses(args):
         return 0
 
     # Mic input: worker-based approach with AudioEventsJoinerWorker
+    _announce_live_calibration(args, split_kw)
     from . import workers
     from .util import AudioReader
 

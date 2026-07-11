@@ -38,13 +38,33 @@ where:
 - ``-s``, ``--max-silence``: maximum duration of continuous silence within a valid audio event in seconds, default: 0.3
 
 Instead of a fixed threshold, the threshold can be estimated from the
-input itself (file input only):
+input itself:
 
 .. code:: bash
 
     auditok audio.wav -e auto        # default estimation method (otsu)
     auditok audio.wav -V percentile  # noise floor + margin, recall-oriented
     auditok audio.wav -V p20         # noise floor read at the 20th percentile
+    auditok -e auto                  # microphone: calibrated on the first 3 s
+
+For file input the whole file is used for estimation. For live input
+(microphone or standard input), the threshold is calibrated on the
+first seconds of the stream — buffered and replayed, so nothing is
+lost — and clamped to a lower bound so that background noise alone
+(PC fan, air conditioning) cannot produce a threshold inside the
+noise. Both are adjustable:
+
+.. code:: bash
+
+    # calibrate on the first 5 s, don't accept a threshold below 45 dB
+    auditok -e auto --calibration-duration 5 -y 45
+
+If you already know a good threshold for your setup, skip estimation
+entirely and pass it with ``-e``:
+
+.. code:: bash
+
+    auditok -e 50                    # explicit threshold, no estimation
 
 To detect *speech* specifically rather than any audio activity, use the
 WebRTC voice activity detector as the frame decider (requires
@@ -275,6 +295,10 @@ Common options reference
                                estimation; 'percentile' == 'p10') or
                                'webrtc[:MODE]' (WebRTC VAD as frame
                                decider)
+    --calibration-duration     Seconds of audio used to calibrate the
+                               auto threshold on live input [default: 3]
+    -y, --min-energy-threshold Lower bound for the auto threshold
+                               calibrated on live input [default: 40]
     -n, --min-duration         Minimum event duration in seconds [default: 0.2]
     -m, --max-duration         Maximum event duration (split only) [default: 5]
     -s, --max-silence          Max silence within an event [default: 0.3]

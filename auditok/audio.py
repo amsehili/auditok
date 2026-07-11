@@ -63,6 +63,8 @@ __all__ = [
 
 DEFAULT_ANALYSIS_WINDOW = 0.05
 DEFAULT_ENERGY_THRESHOLD = 50
+DEFAULT_CALIBRATION_DUR = 3.0
+DEFAULT_LIVE_ENERGY_FLOOR = 40.0
 _EPSILON = 1e-10
 
 _DROP_TRAILING_SILENCE_DEPRECATION = (
@@ -317,6 +319,72 @@ def _parse_validator_name(name):
     )
 
 
+def _is_live_input(input):
+    """True for input read live (microphone, standard input), where data
+    cannot be read ahead of tokenization."""
+    return (
+        input is None
+        or (isinstance(input, str) and input == "-")
+        or isinstance(input, (AudioDeviceSource, StdinAudioSource))
+    )
+
+
+class _ReplayAudioReader:
+    """Delegate to an opened `AudioReader`, replaying pre-read calibration
+    blocks before continuing with the underlying stream."""
+
+    def __init__(self, reader, blocks):
+        self._reader = reader
+        self._blocks = list(blocks)
+
+    def read(self):
+        if self._blocks:
+            return self._blocks.pop(0)
+        return self._reader.read()
+
+    def __getattr__(self, name):
+        return getattr(self._reader, name)
+
+
+def _calibrate_on_reader(source, method, calibration_dur, floor, use_channel):
+    """Estimate an energy threshold from the first `calibration_dur`
+    seconds read from `source` (an opened `AudioReader`), clamped to
+    `floor` when given.
+
+    Returns a (source, energy_threshold) tuple where `source` replays the
+    calibration audio before continuing with the stream, so no data is
+    lost to calibration.
+    """
+    if calibration_dur <= 0:
+        raise ValueError(f"'calibration_dur' ({calibration_dur}) must be > 0")
+    source.open()
+    n_blocks = max(1, math.ceil(calibration_dur / source.block_dur))
+    blocks = []
+    for _ in range(n_blocks):
+        block = source.read()
+        if block is None:
+            break
+        blocks.append(block)
+    if not blocks:
+        raise ValueError(
+            "No audio data could be read for energy threshold calibration"
+        )
+    frame_samples = int(source.block_dur * source.sr)
+    energies = compute_frame_energies(
+        b"".join(blocks), source.sw, source.ch, frame_samples, use_channel
+    )
+    if method is None:
+        method = DEFAULT_THRESHOLD_METHOD
+    estimator, method_args = _parse_validator_name(method)
+    estimate = estimate_energy_threshold(energies, estimator, **method_args)
+    energy_threshold = max(estimate, floor)
+    message = f"auto energy threshold ({method}): {estimate:.3f} dB"
+    if energy_threshold > estimate:
+        message += f", using the minimum: {energy_threshold:.3f} dB"
+    logging.getLogger("auditok").info(message)
+    return _ReplayAudioReader(source, blocks), energy_threshold
+
+
 def _resolve_auto_threshold(input, analysis_window, params, method=None):
     """Resolve an automatic energy threshold for `input` using `method` —
     a validator name accepted by :func:`_parse_validator_name` (default:
@@ -559,18 +627,48 @@ def split(
         threshold works for all sample widths. Ignored if `validator` is
         specified.
 
-        If "auto", the threshold is estimated from the energy distribution
-        of the input's analysis windows with the default method (otsu);
-        pass ``validator="otsu"`` or ``validator="percentile"`` to choose
-        the estimation method explicitly. Automatic thresholding requires
-        reading the input before tokenization and is therefore not
-        available for live sources (microphone, stdin) or `AudioReader`
-        input. Compressed input is decoded only once: the decoded data is
-        kept in memory for tokenization. For full control (method
-        parameters such as the percentile or margin), use
+        If "auto", the threshold is estimated from the input's energy
+        distribution with the default method (otsu); pass
+        ``validator="otsu"``, ``"percentile"`` or ``"pXX"`` to choose the
+        estimation method explicitly.
+
+        For offline input (a file, bytes or an `AudioRegion`), the whole
+        signal is used for estimation; compressed input is decoded only
+        once (the decoded data is kept in memory for tokenization). For
+        live input (microphone, stdin) or `AudioReader` input, the
+        threshold is *calibrated* on the first `calibration_dur` seconds
+        of the stream and then kept unchanged; the calibration audio is
+        replayed to the tokenizer, so no data is lost. Live calibration
+        is guarded by `min_energy_threshold`: with a calibration window
+        containing only background noise, an unguarded estimate would
+        land inside the noise itself.
+
+        Automatic estimation is a convenience, not an obligation: if you
+        know a threshold that works for your audio and setup, pass it
+        explicitly as `energy_threshold` (or ``-e`` on the command line)
+        and no estimation takes place. For full control over estimation
+        (e.g., a custom percentile or margin), use
         :func:`auditok.signal.compute_frame_energies` and
         :func:`auditok.signal.estimate_energy_threshold` directly and pass
         the resulting value as `energy_threshold`.
+
+    calibration_dur : float, default=3.0
+        Duration in seconds of audio used to calibrate the automatic
+        energy threshold on live input (microphone, stdin) or
+        `AudioReader` input. Only used with automatic thresholding.
+
+    min_energy_threshold : float, default=40.0
+        Lower bound for the energy threshold calibrated on live input:
+        the resolved threshold is ``max(min_energy_threshold,
+        estimate)``. This protects against calibration windows that
+        contain only background noise or silence (e.g., a muted
+        microphone), where the estimate would be meaningless. The
+        default sits above common background noise (PC fans, air
+        conditioning, fridge) at typical microphone gains; raise or
+        lower it to match your setup. Only used when calibrating (live
+        or `AudioReader` input with automatic thresholding); offline
+        estimation is instead protected by excluding digitally silent
+        windows from the estimate.
 
     Yields
     ------
@@ -585,12 +683,6 @@ def split(
     )
 
     if isinstance(input, AudioReader):
-        if auto_threshold:
-            raise ValueError(
-                "Automatic energy thresholding is not supported for "
-                "AudioReader input; pass the file, bytes, AudioRegion or "
-                "AudioSource directly, or provide a numeric threshold."
-            )
         source = input
     else:
         analysis_window = kwargs.get(
@@ -610,7 +702,7 @@ def split(
             params["channels"] = input.ch
             input = bytes(input)
         try:
-            if auto_threshold:
+            if auto_threshold and not _is_live_input(input):
                 input, energy_threshold = _resolve_auto_threshold(
                     input, analysis_window, params, threshold_method
                 )
@@ -622,6 +714,21 @@ def split(
             err_msg += "one data sample"
             raise ValueError(err_msg) from exc
     analysis_window = source.block_dur
+
+    if auto_threshold and isinstance(energy_threshold, str):
+        # live input (microphone, stdin) or AudioReader input: calibrate
+        # on the first `calibration_dur` seconds of the stream, clamped
+        # to `min_energy_threshold`, and replay the calibration audio
+        floor = kwargs.get("min_energy_threshold")
+        if floor is None:
+            floor = DEFAULT_LIVE_ENERGY_FLOOR
+        source, energy_threshold = _calibrate_on_reader(
+            source,
+            threshold_method,
+            kwargs.get("calibration_dur", DEFAULT_CALIBRATION_DUR),
+            floor,
+            kwargs.get("use_channel", kwargs.get("uc")),
+        )
 
     validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None or isinstance(validator, str):
@@ -961,9 +1068,10 @@ def trim(
             "analysis_window", kwargs.get("aw", DEFAULT_ANALYSIS_WINDOW)
         )
         # automatic thresholding must be resolved before the input is
-        # wrapped in an AudioReader (it needs to read the data first)
+        # wrapped in an AudioReader (it needs to read the data first);
+        # for live input, split() calibrates on the stream instead
         _, auto_threshold, threshold_method = _parse_energy_threshold(kwargs)
-        if auto_threshold:
+        if auto_threshold and not _is_live_input(input):
             params = kwargs.copy()
             params["max_read"] = params.get("max_read", params.get("mr"))
             params["audio_format"] = params.get(
