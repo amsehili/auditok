@@ -20,9 +20,11 @@
     :target: http://auditok.readthedocs.org/en/latest/?badge=latest
     :alt: Documentation Status
 
-**auditok** is a lightweight, dependency-free audio activity detection library
-for Python. It splits audio streams into events by thresholding signal energy
-(no models or training data required).
+**auditok** is a lightweight audio activity detection library for Python
+with a numpy-only core. It splits audio streams into events by
+thresholding signal energy — the threshold can be set manually or
+estimated automatically from the audio — and can optionally use the
+WebRTC voice activity detector to target speech specifically.
 
 Use it for voice activity detection, silence removal, audio segmentation,
 or any task where you need to find "where the sound is" in an audio stream.
@@ -31,52 +33,35 @@ multi-channel audio, and runs from a few lines of Python or the command line.
 
 Full documentation is available on `Read the Docs <https://auditok.readthedocs.io/en/latest/>`_.
 
+.. contents:: Contents
+    :depth: 2
+    :backlinks: none
+
 Installation
 ------------
 
 ``auditok`` requires Python 3.8 or higher. The core library depends only on
-``numpy``.
+``numpy``:
 
 .. code:: bash
 
     pip install auditok
 
-For plotting, audio playback, and progress bars:
+Optional features are installed via extras:
 
 .. code:: bash
 
-    pip install auditok[all]
+    pip install auditok[plot]       # plotting (matplotlib)
+    pip install auditok[device-io]  # microphone input and playback
+                                    # (sounddevice, tqdm)
+    pip install auditok[webrtcvad]  # WebRTC VAD as frame decider
+                                    # (webrtcvad-wheels)
+    pip install auditok[all]        # all of the above
 
 **Note:** Processing non-WAV formats (MP3, OGG, FLAC, video files, etc.)
 requires `ffmpeg <https://ffmpeg.org/>`_ to be installed on your system.
 
-API at a glance
----------------
-
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-| Function            | Purpose                                         | Key parameters                                  |
-+=====================+=================================================+=================================================+
-| ``split()``         | Detect and yield audio events as a generator    | ``min_dur``, ``max_dur``, ``max_silence``,      |
-|                     |                                                 | ``energy_threshold``                            |
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-| ``trim()``          | Remove leading and trailing silence             | ``min_dur``, ``max_silence``,                   |
-|                     |                                                 | ``energy_threshold``                            |
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-| ``fix_pauses()``    | Normalize pauses between events to a fixed      | ``silence_duration``, ``min_dur``,              |
-|                     | duration                                        | ``max_silence``, ``energy_threshold``           |
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-| ``split_and_plot()``| Split and visualize results (matplotlib or      | split params + ``interactive``,                 |
-|                     | interactive Jupyter widget)                     | ``save_as``                                     |
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-| ``load()``          | Load audio from file, bytes, or mic into an     | ``sr``, ``sw``, ``ch``                          |
-|                     | ``AudioRegion``                                 |                                                 |
-+---------------------+-------------------------------------------------+-------------------------------------------------+
-
-All functions accept file paths, raw bytes, ``AudioRegion`` objects, or ``None``
-(to read from the microphone). ``split()``, ``trim()``, ``fix_pauses()``, and
-``split_and_plot()`` are also available as ``AudioRegion`` methods.
-
-Basic usage
+Quick start
 -----------
 
 .. code:: python
@@ -113,8 +98,34 @@ Example output:
     Event saved as: event_3.800-4.500.wav
     ...
 
+API at a glance
+---------------
+
++---------------------+-------------------------------------------------+-------------------------------------------------+
+| Function            | Purpose                                         | Key parameters                                  |
++=====================+=================================================+=================================================+
+| ``split()``         | Detect and yield audio events as a generator    | ``min_dur``, ``max_dur``, ``max_silence``,      |
+|                     |                                                 | ``energy_threshold``, ``validator``             |
++---------------------+-------------------------------------------------+-------------------------------------------------+
+| ``trim()``          | Remove leading and trailing silence             | ``min_dur``, ``max_silence``,                   |
+|                     |                                                 | ``energy_threshold``                            |
++---------------------+-------------------------------------------------+-------------------------------------------------+
+| ``fix_pauses()``    | Normalize pauses between events to a fixed      | ``silence_duration``, ``min_dur``,              |
+|                     | duration                                        | ``max_silence``, ``energy_threshold``           |
++---------------------+-------------------------------------------------+-------------------------------------------------+
+| ``split_and_plot()``| Split and visualize results (matplotlib or      | split params + ``interactive``,                 |
+|                     | interactive Jupyter widget)                     | ``save_as``                                     |
++---------------------+-------------------------------------------------+-------------------------------------------------+
+| ``load()``          | Load audio from file, bytes, or mic into an     | ``sr``, ``sw``, ``ch``                          |
+|                     | ``AudioRegion``                                 |                                                 |
++---------------------+-------------------------------------------------+-------------------------------------------------+
+
+All functions accept file paths, raw bytes, ``AudioRegion`` objects, or ``None``
+(to read from the microphone). ``split()``, ``trim()``, ``fix_pauses()``, and
+``split_and_plot()`` are also available as ``AudioRegion`` methods.
+
 Automatic energy threshold
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 Instead of tuning ``energy_threshold`` by hand, let auditok estimate it
 from the audio itself:
@@ -140,14 +151,15 @@ Automatic thresholding adapts to each file's noise floor and level, so
 the same code works across recordings that would otherwise need
 different manual thresholds. For offline input (files, bytes,
 ``AudioRegion``), the whole signal is used for estimation (compressed
-input is decoded only once). For live input (microphone, stdin), the
-threshold is calibrated on the first seconds of the stream
-(``calibration_dur``, default 3 s) and guarded by a lower bound
-(``min_energy_threshold``, default 40 dB): the resolved threshold is
-``max(min_energy_threshold, estimate)``, so a calibration window
-containing only background noise — a PC fan, air conditioning, or a
-muted microphone — cannot produce a meaningless threshold. The calibration audio is
-replayed, so nothing is lost:
+input is decoded only once).
+
+For live input (microphone, stdin), the threshold is calibrated on the
+first seconds of the stream (``calibration_dur``, default 3 s) and
+guarded by a lower bound (``min_energy_threshold``, default 40 dB): the
+resolved threshold is ``max(min_energy_threshold, estimate)``, so a
+calibration window containing only background noise — a PC fan, air
+conditioning, or a muted microphone — cannot produce a meaningless
+threshold. The calibration audio is replayed, so nothing is lost:
 
 .. code:: python
 
@@ -155,19 +167,25 @@ replayed, so nothing is lost:
     events = auditok.split(None, sr=16000, sw=2, ch=1, max_read=60,
                            energy_threshold="auto")
 
-On the command line, use ``-e auto`` or ``-V otsu|percentile|pXX``.
-Automatic estimation is optional — if you know a threshold that works
-for your audio and setup, pass it explicitly (``energy_threshold=55`` /
-``-e 55``) and no estimation takes place.
+On the command line, use ``-e auto`` or ``-V otsu|percentile|pXX``
+(``--calibration-duration`` and ``-y``/``--min-energy-threshold``
+control live calibration). Automatic estimation is optional — if you
+know a threshold that works for your audio and setup, pass it
+explicitly (``energy_threshold=55`` / ``-e 55``) and no estimation
+takes place.
 
-Using the WebRTC VAD as frame decider
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Detecting speech with the WebRTC VAD
+------------------------------------
 
 Energy thresholding accepts any sufficiently loud audio. To detect
 *speech* specifically, auditok can use the WebRTC voice activity
 detector as its frame-level decider, while keeping auditok's event
 machinery (``min_dur``, ``max_silence``, leading/trailing silence
-handling) on top (requires ``pip install auditok[webrtcvad]``):
+handling) on top. This requires the ``webrtcvad`` extra:
+
+.. code:: bash
+
+    pip install auditok[webrtcvad]
 
 .. code:: python
 
@@ -182,9 +200,14 @@ handling) on top (requires ``pip install auditok[webrtcvad]``):
     validator = WebRTCVADValidator(16000, 2, 1, mode=2, aggregation="any")
     speech_events = auditok.split("audio.wav", validator=validator)
 
-Unlike automatic thresholding, this also works with live input
-(microphone, stdin). On the command line, use ``-V webrtc`` or
-``-V webrtc:2``.
+This also works with live input (microphone, stdin). On the command
+line, use ``-V webrtc`` or ``-V webrtc:2``. The WebRTC VAD requires a
+sampling rate of 8000, 16000, 32000 or 48000 Hz; for files with other
+rates, pass ``sr=16000`` (``-r 16000``) to have ffmpeg resample the
+audio on the fly.
+
+Trimming, pauses, and event boundaries
+--------------------------------------
 
 Trim silence
 ~~~~~~~~~~~~
@@ -267,16 +290,16 @@ keeps events tight, while a larger ``max_trailing_silence`` adds the fade-out:
 Split and plot
 --------------
 
-Visualize the audio signal with detected events:
+Visualize the audio signal with detected events (requires the ``plot``
+extra):
 
 .. code:: python
 
     import auditok
 
-    import auditok
     audio = auditok.load("audio.wav")
     events = audio.split_and_plot(max_leading_silence=0.1,
-                                  max_trailing_silence=0.1) # or region.splitp(...)
+                                  max_trailing_silence=0.1) # or audio.splitp(...)
 
 .. image:: https://raw.githubusercontent.com/amsehili/auditok/refs/heads/main/doc/figures/tokenization-result.png
     :align: center
@@ -351,11 +374,18 @@ Split audio into events
     # Or simply
     auditok audio.wav -e 55 -n 0.5 -m 10 -s 0.3
 
+    # Estimate the threshold from the file instead of fixing it
+    auditok audio.wav -e auto
+
     # Save detected events to individual files
     auditok audio.wav -o "event_{id}_{start:.3f}-{end:.3f}.wav"
 
     # Stream from microphone
     auditok
+
+    # Stream from microphone with a threshold calibrated on the
+    # first 3 seconds of audio
+    auditok -e auto
 
 Trim silence
 ~~~~~~~~~~~~
@@ -384,24 +414,36 @@ Common options
 
 .. code:: text
 
-    -e, --energy-threshold   Detection threshold [default: 50]
-    -n, --min-duration       Minimum event duration in seconds [default: 0.2]
-    -m, --max-duration       Maximum event duration in seconds (split only) [default: 5]
-    -s, --max-silence        Max silence within an event [default: 0.3]
+    -e, --energy-threshold     Detection threshold, a number or 'auto'
+                               [default: 50]
+    -V, --validator            Detection strategy: 'otsu', 'percentile',
+                               'pXX' (threshold estimation method) or
+                               'webrtc[:MODE]' (WebRTC VAD)
+    -y, --min-energy-threshold Lower bound for the threshold calibrated
+                               on live input [default: 40]
+    --calibration-duration     Seconds of live audio used for threshold
+                               calibration [default: 3]
+    -n, --min-duration         Minimum event duration in seconds [default: 0.2]
+    -m, --max-duration         Maximum event duration in seconds (split only) [default: 5]
+    -s, --max-silence          Max silence within an event [default: 0.3]
     -l, --max-leading-silence  Silence to retain before events [default: 0]
     -g, --max-trailing-silence Trailing silence to keep [default: all]
 
 Limitations
 -----------
 
-``auditok`` uses energy-based detection. It works well in low-noise environments
--- podcasts, language lessons, recordings in quiet rooms -- where the signal is
-clearly above the background noise.
+``auditok``'s core is energy-based: it detects any sufficiently loud audio,
+not speech specifically. It works best in low-noise environments --
+podcasts, language lessons, recordings in quiet rooms -- where the signal
+is clearly above the background noise.
 
-It does not distinguish speech from other sounds (music, claps, environmental
-noise), and the energy threshold is static. Manual tuning per recording may be
-needed for best results.
-
+Automatic thresholding removes the need to tune the threshold per
+recording, and the WebRTC validator adds frame-level speech detection,
+but neither turns auditok into a neural voice activity detector: in
+noisy, far-field, or music-heavy audio, a model-based VAD will be more
+accurate (at a much higher computational cost). auditok's trade-off is
+speed and footprint: a numpy-only core that processes audio orders of
+magnitude faster than real time.
 
 License
 -------
