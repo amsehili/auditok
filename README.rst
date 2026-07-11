@@ -143,6 +143,32 @@ detection and is therefore available for offline input only (files,
 bytes, ``AudioRegion``); compressed input is decoded only once. On the
 command line, use ``-e auto`` or ``-V otsu|percentile|pXX``.
 
+Using the WebRTC VAD as frame decider
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Energy thresholding accepts any sufficiently loud audio. To detect
+*speech* specifically, auditok can use the WebRTC voice activity
+detector as its frame-level decider, while keeping auditok's event
+machinery (``min_dur``, ``max_silence``, leading/trailing silence
+handling) on top (requires ``pip install auditok[webrtcvad]``):
+
+.. code:: python
+
+    import auditok
+
+    # webrtc as frame decider; mode (0-3) sets the aggressiveness:
+    # 0/1 for far-field or noisy audio, 2 for clean close-talk audio
+    speech_events = auditok.split("audio.wav", validator="webrtc:1")
+
+    # full control via the validator object
+    from auditok.validators import WebRTCVADValidator
+    validator = WebRTCVADValidator(16000, 2, 1, mode=2, aggregation="any")
+    speech_events = auditok.split("audio.wav", validator=validator)
+
+Unlike automatic thresholding, this also works with live input
+(microphone, stdin). On the command line, use ``-V webrtc`` or
+``-V webrtc:2``.
+
 Trim silence
 ~~~~~~~~~~~~
 

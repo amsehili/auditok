@@ -1245,7 +1245,7 @@ def test_split_validator_string_otsu_is_auto_default():
 
 
 def test_split_unknown_validator_string():
-    for bad in ("median", "p0", "p100", "P15", "p"):
+    for bad in ("median", "p0", "p100", "P15", "p", "webrtc:4", "webrtc:x"):
         with pytest.raises(ValueError, match="Unknown validator name"):
             list(split(AUDIO_FILE_1TO6, validator=bad))
 

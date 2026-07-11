@@ -75,12 +75,16 @@ def _recording_loop(quiet=False):
 
 
 class _StoreOnce(Action):
-    """Argparse action that rejects an option if it appears more than once."""
+    """Argparse action that rejects an option if it appears more than once
+    and records explicitly-given options in ``namespace._explicit``."""
 
     def __call__(self, parser, namespace, values, option_string=None):
         if getattr(self, "_seen", False):
             parser.error(f"argument {option_string} appears more than once")
         self._seen = True
+        if not hasattr(namespace, "_explicit"):
+            namespace._explicit = set()
+        namespace._explicit.add(self.dest)
         setattr(namespace, self.dest, values)
 
 
@@ -97,18 +101,31 @@ def _energy_threshold_value(value):
 
 
 def _validator_name(value):
-    """Parse -V/--validator: 'otsu', 'percentile' or 'pXX'."""
-    from .audio import _parse_validator_name
+    """Parse -V/--validator: 'otsu', 'percentile', 'pXX' or
+    'webrtc[:MODE]'."""
+    from .audio import _validate_validator_string
 
     value = value.strip().lower()
     try:
-        _parse_validator_name(value)
+        _validate_validator_string(value)
     except ValueError:
         raise ArgumentTypeError(
-            "must be 'otsu', 'percentile' or 'pXX' (custom percentile, "
-            f"e.g. p15), given: {value!r}"
+            "must be 'otsu', 'percentile', 'pXX' (custom percentile, "
+            "e.g. p15) or 'webrtc[:MODE]' (MODE in [0, 3]), given: "
+            f"{value!r}"
         ) from None
     return value
+
+
+def _needs_offline_input(split_kw):
+    """True when the detection configuration requires reading the input
+    before tokenization (automatic energy thresholding)."""
+    from .audio import _parse_webrtc_validator
+
+    validator = split_kw.get("validator")
+    if validator is not None:
+        return _parse_webrtc_validator(validator) is None
+    return split_kw.get("energy_threshold") == "auto"
 
 
 def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
@@ -121,6 +138,11 @@ def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
     expect a number.
     """
     method = split_kw.get("validator")
+    if method is not None:
+        from .audio import _parse_webrtc_validator
+
+        if _parse_webrtc_validator(method) is not None:
+            return  # backend validator: no threshold estimation involved
     if method is None and split_kw.get("energy_threshold") != "auto":
         return
     if args.input in (None, "-"):
@@ -328,14 +350,17 @@ def _add_detection_args(group):
         type=_validator_name,
         default=None,
         action=_StoreOnce,
-        help="Frame validation strategy: 'otsu', 'percentile' or 'pXX' "
-        "(XX in [1, 99]). These select the automatic energy threshold "
-        "estimation method (file input only): 'otsu' finds the best "
-        "split of the energy histogram; 'percentile' (alias of 'p10') "
-        "and 'pXX' read the noise floor at the given percentile and add "
-        "a 6 dB margin. -e/--energy-threshold is ignored when this "
-        "option is given; when omitted, detection uses the "
-        "-e/--energy-threshold value.",
+        help="Frame validation strategy: 'otsu', 'percentile', 'pXX' or "
+        "'webrtc[:MODE]'. The first three select the automatic energy "
+        "threshold estimation method (file input only): 'otsu' finds "
+        "the best split of the energy histogram; 'percentile' (alias of "
+        "'p10') and 'pXX' read the noise floor at the given percentile "
+        "and add a 6 dB margin. 'webrtc' uses the WebRTC voice activity "
+        "detector as the frame decider (MODE = aggressiveness in "
+        "[0, 3], default 1; requires 'pip install auditok[webrtcvad]'; "
+        "also works with microphone input). -e/--energy-threshold is "
+        "ignored when this option is given; when omitted, detection "
+        "uses the -e/--energy-threshold value.",
         metavar="STRATEGY",
     )
 
@@ -772,9 +797,11 @@ def _parse_use_channel(value):
 def _build_audio_kwargs(args):
     """Build the audio-source keyword dict from parsed CLI args.
 
-    Audio parameters (-r, -w, -c) are only forwarded for microphone,
-    stdin, and raw input.  For audio files they are set to None so
-    that FFmpegAudioSource preserves the original data.
+    Audio parameters (-r, -w, -c) are always forwarded for microphone,
+    stdin, and raw input.  For audio files, only *explicitly given*
+    parameters are forwarded (ffmpeg then converts the audio on the
+    fly); default values are set to None so that FFmpegAudioSource
+    preserves the original data.
     """
     use_channel = _parse_use_channel(args.use_channel)
     if args.input is None or args.input == "-" or args.input_format == "raw":
@@ -782,9 +809,10 @@ def _build_audio_kwargs(args):
         sw = args.sample_width
         ch = args.channels
     else:
-        sr = None
-        sw = None
-        ch = None
+        explicit = getattr(args, "_explicit", set())
+        sr = args.sampling_rate if "sampling_rate" in explicit else None
+        sw = args.sample_width if "sample_width" in explicit else None
+        ch = args.channels if "channels" in explicit else None
     return {
         "sampling_rate": sr,
         "sample_width": sw,
@@ -980,6 +1008,10 @@ def _run_split(args):
             if sum(not t.daemon for t in threading.enumerate()) == 1:
                 raise EndOfProcessing
 
+    except (ValueError, ImportError) as exc:
+        print(exc, file=sys.stderr)
+        return 1
+
     except (KeyboardInterrupt, EndOfProcessing):
         if tokenizer_worker is not None:
             try:
@@ -1022,13 +1054,11 @@ def _run_trim(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
-    if args.input is None and (
-        split_kw["energy_threshold"] == "auto"
-        or split_kw["validator"] is not None
-    ):
+    if args.input is None and _needs_offline_input(split_kw):
         print(
-            "automatic energy thresholding (-e auto, -V) requires file "
-            "input; provide a numeric threshold for microphone input.",
+            "automatic energy thresholding (-e auto, -V "
+            "otsu|percentile|pXX) requires file input; provide a numeric "
+            "threshold, or use -V webrtc, for microphone input.",
             file=sys.stderr,
         )
         return 1
@@ -1036,7 +1066,11 @@ def _run_trim(args):
     if args.input is not None:
         # File input: call trim() directly; energy_threshold='auto' is
         # handled by the library
-        result = trim(args.input, **split_kw, **audio_kw)
+        try:
+            result = trim(args.input, **split_kw, **audio_kw)
+        except (ValueError, ImportError) as exc:
+            print(exc, file=sys.stderr)
+            return 1
         if result:
             result.save(args.output, audio_format=args.output_format)
         else:
@@ -1110,13 +1144,11 @@ def _run_fix_pauses(args):
     split_kw = _build_split_kwargs(args)
     audio_kw = _build_audio_kwargs(args)
 
-    if args.input is None and (
-        split_kw["energy_threshold"] == "auto"
-        or split_kw["validator"] is not None
-    ):
+    if args.input is None and _needs_offline_input(split_kw):
         print(
-            "automatic energy thresholding (-e auto, -V) requires file "
-            "input; provide a numeric threshold for microphone input.",
+            "automatic energy thresholding (-e auto, -V "
+            "otsu|percentile|pXX) requires file input; provide a numeric "
+            "threshold, or use -V webrtc, for microphone input.",
             file=sys.stderr,
         )
         return 1
@@ -1124,9 +1156,13 @@ def _run_fix_pauses(args):
     if args.input is not None:
         # File input: call fix_pauses() directly; energy_threshold='auto'
         # is handled by the library
-        result = fix_pauses(
-            args.input, args.pause_duration, **split_kw, **audio_kw
-        )
+        try:
+            result = fix_pauses(
+                args.input, args.pause_duration, **split_kw, **audio_kw
+            )
+        except (ValueError, ImportError) as exc:
+            print(exc, file=sys.stderr)
+            return 1
         if result:
             result.save(args.output, audio_format=args.output_format)
         else:

@@ -243,6 +243,51 @@ threshold yourself and pass the resulting value:
     events = auditok.split(region, energy_threshold=threshold)
 
 
+Using the WebRTC VAD as frame decider
+-------------------------------------
+
+The energy validator accepts any audio with enough energy — including
+music, keyboard noise or hums. To detect *speech* specifically, use the
+WebRTC voice activity detector as the frame-level decider
+(``pip install auditok[webrtcvad]``); auditok's event machinery
+(``min_dur``, ``max_silence`` bridging, leading/trailing silence
+handling) still shapes the frame decisions into events:
+
+.. code:: python
+
+    # aggressiveness mode in [0, 3]; "webrtc" alone means mode 1.
+    # 0/1 are recommended for far-field or noisy audio, 2 for clean
+    # close-talk audio; higher modes reject more audio as non-speech
+    speech_events = auditok.split("audio.wav", validator="webrtc:1")
+
+Because the WebRTC VAD decides frame by frame (adapting its noise model
+as audio streams in), this validator also works with live input —
+unlike automatic energy thresholding:
+
+.. code:: python
+
+    # detect speech from the microphone
+    speech_events = auditok.split(
+        None, sr=16000, sw=2, ch=1, max_read=30, validator="webrtc"
+    )
+
+For full control (subframe duration, decision aggregation, channel
+selection), construct the validator explicitly:
+
+.. code:: python
+
+    from auditok.validators import WebRTCVADValidator
+
+    validator = WebRTCVADValidator(
+        16000, 2, 1, mode=2, subframe_dur=0.03, aggregation="any"
+    )
+    speech_events = auditok.split("audio.wav", validator=validator)
+
+Note that the WebRTC VAD requires a sampling rate of 8000, 16000, 32000
+or 48000 Hz, and that a validator instance is stateful: create a new
+one per stream or file.
+
+
 Improving detection boundaries
 ------------------------------
 

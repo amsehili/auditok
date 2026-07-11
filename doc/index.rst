@@ -43,6 +43,7 @@ or any task where you need to find "where the sound is" in an audio stream.
 
     audio
     core
+    validators
 
 
 License

@@ -46,6 +46,23 @@ input itself (file input only):
     auditok audio.wav -V percentile  # noise floor + margin, recall-oriented
     auditok audio.wav -V p20         # noise floor read at the 20th percentile
 
+To detect *speech* specifically rather than any audio activity, use the
+WebRTC voice activity detector as the frame decider (requires
+``pip install auditok[webrtcvad]``; also works with microphone input):
+
+.. code:: bash
+
+    auditok audio.wav -V webrtc      # aggressiveness mode 1
+    auditok -V webrtc:2              # microphone input, mode 2
+
+The WebRTC VAD requires a sampling rate of 8000, 16000, 32000 or
+48000 Hz. For files with other rates, pass ``-r`` to have ffmpeg
+resample the audio on the fly:
+
+.. code:: bash
+
+    auditok audio.mp3 -r 16000 -V webrtc
+
 The resolved threshold is printed to standard error (suppress with
 ``-q``). Both options also work with the ``trim`` and ``fix-pauses``
 subcommands.
@@ -254,8 +271,10 @@ Common options reference
     -e, --energy-threshold     Detection threshold, a number or 'auto'
                                ('auto' uses the otsu method) [default: 50]
     -V, --validator            Frame validation strategy: 'otsu',
-                               'percentile' or 'pXX' (auto threshold
-                               estimation method; 'percentile' == 'p10')
+                               'percentile', 'pXX' (auto threshold
+                               estimation; 'percentile' == 'p10') or
+                               'webrtc[:MODE]' (WebRTC VAD as frame
+                               decider)
     -n, --min-duration         Minimum event duration in seconds [default: 0.2]
     -m, --max-duration         Maximum event duration (split only) [default: 5]
     -s, --max-silence          Max silence within an event [default: 0.3]

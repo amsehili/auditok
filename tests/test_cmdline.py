@@ -111,7 +111,9 @@ class TestAutoEnergyThreshold:
         assert _validator_name("percentile") == "percentile"
         assert _validator_name("p15") == "p15"
         assert _validator_name("P15") == "p15"  # CLI is case-insensitive
-        for bad in ("median", "p0", "p100", "px"):
+        assert _validator_name("webrtc") == "webrtc"
+        assert _validator_name("WEBRTC:2") == "webrtc:2"
+        for bad in ("median", "p0", "p100", "px", "webrtc:4", "webrtc:"):
             with pytest.raises(ArgumentTypeError):
                 _validator_name(bad)
 
@@ -316,13 +318,13 @@ class TestAudioParamsNotForcedOnFileInput:
         assert cap["sw"] is None
         assert cap["ch"] is None
 
-    def test_split_mp3_explicit_rate_ignored(self):
-        """split with explicit -r on a file: ignored, original format
-        is preserved."""
+    def test_split_mp3_explicit_rate_forwarded(self):
+        """split with explicit -r on a file: forwarded to ffmpeg for
+        on-the-fly conversion; unspecified params stay None."""
         cap = self._capture_ffmpeg_init_args(
             ["split", MP3_FILE_STEREO_44K, "-q", "-r", "8000"]
         )
-        assert cap["sr"] is None
+        assert cap["sr"] == 8000
         assert cap["sw"] is None
         assert cap["ch"] is None
 

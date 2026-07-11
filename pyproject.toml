@@ -51,8 +51,9 @@ dependencies = [
 [project.optional-dependencies]
 device-io = ["sounddevice", "tqdm"]
 plot = ["matplotlib"]
-test = ["pytest", "pytest-cov", "matplotlib"]
-all = ["matplotlib", "sounddevice", "tqdm"]
+webrtcvad = ["webrtcvad-wheels"]
+test = ["pytest", "pytest-cov", "matplotlib", "webrtcvad-wheels"]
+all = ["matplotlib", "sounddevice", "tqdm", "webrtcvad-wheels"]
 
 
 [project.urls]

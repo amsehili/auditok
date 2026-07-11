@@ -279,6 +279,23 @@ def _read_input_for_auto_threshold(input, analysis_window, params):
 
 
 _PERCENTILE_VALIDATOR_RE = re.compile(r"^p([1-9][0-9]?)$")
+_WEBRTC_VALIDATOR_RE = re.compile(r"^webrtc(?::([0-3]))?$")
+
+
+def _parse_webrtc_validator(name):
+    """Return the WebRTC VAD mode if `name` is "webrtc" (mode 1) or
+    "webrtc:N" with N in [0, 3], else None."""
+    match = _WEBRTC_VALIDATOR_RE.match(name)
+    if match is None:
+        return None
+    return int(match.group(1) or 1)
+
+
+def _validate_validator_string(name):
+    """Raise ValueError if `name` is not a valid validator name (a
+    threshold estimation method or a webrtc backend)."""
+    if _parse_webrtc_validator(name) is None:
+        _parse_validator_name(name)
 
 
 def _parse_validator_name(name):
@@ -294,8 +311,9 @@ def _parse_validator_name(name):
         return name, {}
     raise ValueError(
         f"Unknown validator name {name!r}. Available: "
-        f"{sorted(_THRESHOLD_ESTIMATORS)} or 'pXX' (custom percentile, "
-        "e.g. 'p15')"
+        f"{sorted(_THRESHOLD_ESTIMATORS)}, 'pXX' (custom percentile, "
+        "e.g. 'p15') or 'webrtc[:MODE]' (WebRTC VAD backend, MODE in "
+        "[0, 3])"
     )
 
 
@@ -350,6 +368,9 @@ def _parse_energy_threshold(kwargs):
     """
     validator = kwargs.get("validator", kwargs.get("val"))
     if isinstance(validator, str):
+        if _parse_webrtc_validator(validator) is not None:
+            # backend validator: no threshold estimation involved
+            return DEFAULT_ENERGY_THRESHOLD, False, DEFAULT_THRESHOLD_METHOD
         _parse_validator_name(validator)  # validate the name early
         return "auto", True, validator
     energy_threshold = kwargs.get(
@@ -511,12 +532,21 @@ def split(
     validator, val : callable, DataValidator or str, default=None
         Frame validation strategy. If None, uses `AudioEnergyValidator`
         with the given `energy_threshold`. A string names a built-in
-        strategy: "otsu", "percentile" (an alias for "p10") or "pXX"
-        (XX in [1, 99]) select the corresponding automatic threshold
-        estimation method (see
-        :func:`auditok.signal.estimate_energy_threshold`; "pXX" reads
-        the noise floor at the XXth percentile of window energies and
-        adds a 6 dB margin). `energy_threshold` is ignored in that case.
+        strategy; `energy_threshold` is ignored in that case:
+
+        - "otsu", "percentile" (an alias for "p10") or "pXX" (XX in
+          [1, 99]) select the corresponding automatic threshold
+          estimation method (see
+          :func:`auditok.signal.estimate_energy_threshold`; "pXX" reads
+          the noise floor at the XXth percentile of window energies and
+          adds a 6 dB margin).
+        - "webrtc" or "webrtc:N" (N = aggressiveness in [0, 3],
+          default 1) uses the WebRTC voice activity detector as the
+          frame decider (see
+          :class:`auditok.validators.WebRTCVADValidator`; requires the
+          ``auditok[webrtcvad]`` extra). Unlike the threshold estimation
+          methods, it also works with live input (microphone, stdin).
+
         Otherwise, should be a callable or an instance of
         `DataValidator` implementing `is_valid`.
 
@@ -595,12 +625,35 @@ def split(
 
     validator = kwargs.get("validator", kwargs.get("val"))
     if validator is None or isinstance(validator, str):
-        # a string validator names a threshold estimation method, already
-        # resolved above into a numeric `energy_threshold`
         use_channel = kwargs.get("use_channel", kwargs.get("uc"))
-        validator = AudioEnergyValidator(
-            energy_threshold, source.sw, source.ch, use_channel=use_channel
+        webrtc_mode = (
+            _parse_webrtc_validator(validator)
+            if isinstance(validator, str)
+            else None
         )
+        if webrtc_mode is not None:
+            from .validators import WebRTCVADValidator
+
+            validator = WebRTCVADValidator(
+                source.sr,
+                source.sw,
+                source.ch,
+                mode=webrtc_mode,
+                # webrtc runs one stateful VAD instance, so the energy
+                # validator's default "any channel" semantics don't apply
+                use_channel=(
+                    "mix" if use_channel in (None, "any") else use_channel
+                ),
+            )
+        else:
+            # a threshold-method name was already resolved above into a
+            # numeric `energy_threshold`
+            validator = AudioEnergyValidator(
+                energy_threshold,
+                source.sw,
+                source.ch,
+                use_channel=use_channel,
+            )
     # Handle deprecated drop_trailing_silence
     if drop_trailing_silence is not None:
         warnings.warn(
