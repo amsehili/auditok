@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="520"
+   height="150"
+   viewBox="0 0 520 150"
+   version="1.1"
+   id="svg53"
+   sodipodi:docname="auditok-logo-v3.3.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <defs
+     id="defs57">
+    <rect
+       x="354.61283"
+       y="124.56834"
+       width="326.27147"
+       height="85.425692"
+       id="rect636" />
+  </defs>
+  <sodipodi:namedview
+     id="namedview55"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="256"
+     inkscape:cx="1.6777344"
+     inkscape:cy="1.0097656"
+     inkscape:window-width="1854"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="background" />
+  <title
+     id="title2">auditok logo — concept 3, two trailing silence dots (dark)</title>
+  <!-- Background: delete or hide this layer for a transparent logo -->
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="background"
+     id="background">
+    <rect
+       x="0.0053125173"
+       y="0.0033502132"
+       width="520.21326"
+       height="150.16533"
+       fill="#121017"
+       id="rect4"
+       style="fill:#000000;fill-opacity:1;stroke-width:0.999764" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="mark"
+     id="mark">
+    <g
+       id="chevrons"
+       fill="none"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       transform="matrix(0.86815737,0,0,0.80541145,7.213281,16.657103)">
+      <path
+         d="m 30,66 9,9 -9,9"
+         stroke="#9d85ff"
+         stroke-width="4.5"
+         opacity="0.4"
+         id="path7" />
+      <path
+         d="m 17.683963,65.670976 9,9 -9,9"
+         stroke="#9d85ff"
+         stroke-width="4.5"
+         opacity="0.4"
+         id="path7-7"
+         style="stroke:#9d85ff;stroke-opacity:0.37599114" />
+      <path
+         d="m 41,66 9,9 -9,9"
+         stroke="#9d85ff"
+         stroke-width="4.5"
+         opacity="0.85"
+         id="path9" />
+    </g>
+    <g
+       id="event-1"
+       fill="#9d85ff"
+       transform="matrix(0.86815737,0,0,0.80541145,7.213281,16.657103)">
+      <rect
+         x="62"
+         y="67.5"
+         width="2"
+         height="15"
+         rx="1"
+         id="rect12" />
+      <rect
+         x="57.929443"
+         y="71.215591"
+         width="2"
+         height="7.8929505"
+         rx="1"
+         id="rect12-9"
+         style="stroke-width:0.725394" />
+      <rect
+         x="81.558159"
+         y="72.158318"
+         width="2"
+         height="5.789742"
+         rx="1"
+         id="rect12-9-1"
+         style="stroke-width:0.621275" />
+      <rect
+         x="66"
+         y="62"
+         width="2"
+         height="26"
+         rx="1"
+         id="rect14" />
+      <rect
+         x="70"
+         y="58.568405"
+         width="2"
+         height="32.58564"
+         rx="1"
+         id="rect16"
+         style="stroke-width:0.951397" />
+      <rect
+         x="74"
+         y="64"
+         width="2"
+         height="22"
+         rx="1"
+         id="rect18" />
+      <rect
+         x="78"
+         y="69"
+         width="2"
+         height="12"
+         rx="1"
+         id="rect20" />
+    </g>
+    <rect
+       id="event-1-underline"
+       x="59.302727"
+       y="94.782013"
+       width="19.099461"
+       height="1.6108229"
+       rx="0.86815739"
+       fill="#9d85ff"
+       opacity="0.5"
+       style="stroke-width:0.836196" />
+    <g
+       id="silence-between"
+       fill="none"
+       stroke="#5d5775"
+       stroke-width="1.2"
+       transform="matrix(0.86815737,0,0,0.80541145,9.444599,16.657103)">
+      <rect
+         x="86"
+         y="73"
+         width="4"
+         height="4"
+         rx="1"
+         id="rect24" />
+      <rect
+         x="93"
+         y="73"
+         width="4"
+         height="4"
+         rx="1"
+         id="rect26" />
+    </g>
+    <g
+       id="event-2"
+       fill="#2dd4bf"
+       transform="matrix(0.86815737,0,0,0.80541145,8.949595,16.657103)">
+      <rect
+         x="102"
+         y="69.5"
+         width="2"
+         height="11"
+         rx="1"
+         id="rect29" />
+      <rect
+         x="106"
+         y="65"
+         width="2"
+         height="20"
+         rx="1"
+         id="rect31" />
+      <rect
+         x="110"
+         y="59"
+         width="2"
+         height="32"
+         rx="1"
+         id="rect33" />
+      <rect
+         x="114"
+         y="57"
+         width="2"
+         height="36"
+         rx="1"
+         id="rect35" />
+      <rect
+         x="118"
+         y="62.5"
+         width="2"
+         height="25"
+         rx="1"
+         id="rect37" />
+      <rect
+         x="122"
+         y="68"
+         width="2"
+         height="14"
+         rx="1"
+         id="rect39" />
+      <rect
+         x="125.50001"
+         y="71.679863"
+         width="2"
+         height="6.6324549"
+         rx="1"
+         id="rect39-2"
+         style="stroke-width:0.688293" />
+    </g>
+    <rect
+       id="event-2-underline"
+       x="95.765343"
+       y="94.782013"
+       width="22.572092"
+       height="1.6108229"
+       rx="0.86815739"
+       fill="#2dd4bf"
+       opacity="0.55"
+       style="stroke-width:0.836196" />
+    <g
+       id="silence-trailing"
+       fill="none"
+       stroke="#5d5775"
+       stroke-width="1.2"
+       transform="matrix(0.86815737,0,0,0.80541145,9.307461,16.657103)">
+      <rect
+         x="130.24548"
+         y="73"
+         width="4"
+         height="4"
+         rx="1"
+         id="rect43" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="wordmark"
+     id="wordmark">
+    <text
+       id="word-audi"
+       x="134"
+       y="89.381676"
+       font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+       font-size="50px"
+       font-weight="600"
+       letter-spacing="-1"
+       fill="#f2f0fa">audi</text>
+    <rect
+       id="split-cursor"
+       x="240.58777"
+       y="53.381676"
+       width="4"
+       height="40"
+       rx="2"
+       fill="#9d85ff" />
+    <text
+       id="word-tok"
+       x="250"
+       y="89.381676"
+       font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif"
+       font-size="50px"
+       font-weight="700"
+       letter-spacing="-1"
+       fill="#9d85ff">tok</text>
+    <text
+       xml:space="preserve"
+       id="text634"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:'Asana Math';-inkscape-font-specification:'Asana Math Bold';white-space:pre;shape-inside:url(#rect636);display:inline;fill:#000000" />
+  </g>
+  <metadata
+     id="metadata1617">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>auditok logo — concept 3, two trailing silence dots (dark)</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

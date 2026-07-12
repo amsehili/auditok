@@ -1,4 +1,4 @@
-.. image:: https://raw.githubusercontent.com/amsehili/auditok/0cef3df7e8064707a7f3624669b3b838cb60523b/doc/figures/auditok-logo.png
+.. image:: https://raw.githubusercontent.com/amsehili/auditok/refs/heads/main/doc/figures/auditok-logo.svg
     :align: center
 
 .. image:: https://img.shields.io/pypi/v/auditok.svg
