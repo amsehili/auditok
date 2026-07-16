@@ -1,6 +1,103 @@
 auditok Changelog
 =================
 
+Version 0.5.0
+-------------
+
+Breaking changes:
+
+- ``sample_width=4`` now means 32-bit *float* audio (see below). Previous
+  versions interpreted it as 32-bit integer, which never worked correctly:
+  energies computed on int32 amplitudes made the default threshold pass
+  everywhere and detection collapsed into one giant event. 32-bit integer
+  audio is now rejected explicitly; load such files through ffmpeg (with
+  ``sw=2`` or ``sw=4``) to convert.
+
+New features:
+
+- Add 32-bit float audio support (``sample_width=4``) across the library:
+  loading and saving float32 WAV files (``WAVE_FORMAT_IEEE_FLOAT`` and
+  ``WAVE_FORMAT_EXTENSIBLE`` headers), ffmpeg I/O via ``pcm_f32le``,
+  microphone capture and playback via sounddevice's native float32, and the
+  CLI (``-w 4``). Float32 samples are scaled to the int16 amplitude
+  reference internally, so ``energy_threshold`` keeps exactly the same
+  meaning for all sample widths — no retuning needed.
+
+- Add a minimal RIFF/WAVE header parser used for all WAV reading: fixes
+  reading ``WAVE_FORMAT_EXTENSIBLE`` files (e.g., WAVs produced by ffmpeg)
+  on Python < 3.12, where the stdlib ``wave`` module raises
+  ``wave.Error: unknown format: 65534``.
+
+- Add automatic energy thresholding: estimate the energy threshold from the
+  input's energy distribution instead of using a fixed value. Use
+  ``energy_threshold="auto"`` for the default method, or name the method
+  with ``validator="otsu"`` (balanced, histogram-based),
+  ``validator="percentile"`` (noise floor + margin, recall-oriented) or
+  ``validator="pXX"`` (noise floor read at the XXth percentile;
+  ``"percentile"`` is an alias for ``"p10"``). Available in ``split``,
+  ``trim`` and ``fix_pauses``, and on the CLI as ``-e auto`` /
+  ``-V otsu|percentile|pXX`` (the resolved value is printed to stderr).
+  For offline input the whole signal is used for estimation and is never
+  decoded twice: compressed audio is decoded once and tokenized from
+  memory; ``large_file`` (wav/raw) inputs are estimated with a chunked
+  low-memory pass and re-read from disk. The building blocks are public:
+  ``auditok.signal.compute_frame_energies`` and
+  ``auditok.signal.estimate_energy_threshold`` (with per-method parameters
+  such as ``percentile`` and ``margin``).
+
+- Automatic thresholding works with live input (microphone, standard
+  input) and ``AudioReader`` input too: the threshold is calibrated on the
+  first ``calibration_dur`` seconds of the stream (default 3) and kept
+  unchanged afterwards; the calibration audio is buffered and replayed, so
+  events starting during calibration are not lost. The calibrated
+  threshold is ``max(min_energy_threshold, estimate)`` (default 40 dB;
+  live input only — offline estimation is protected by excluding digitally
+  silent windows instead), so a calibration window containing only
+  background noise or silence cannot yield a meaningless threshold. Both
+  knobs are exposed on the CLI as ``-U``/``--calibration-duration`` and
+  ``-y``/``--min-energy-threshold``, and the resolved threshold is echoed
+  after calibration. Passing an explicit numeric ``energy_threshold`` (or
+  ``-e``) bypasses estimation entirely.
+
+- Add ``WebRTCVADValidator`` (``auditok.validators``): use the WebRTC
+  voice activity detector as the frame-level decider inside auditok's
+  event machinery, to detect *speech* specifically rather than any audio
+  activity. Available as ``validator="webrtc"`` / ``"webrtc:N"`` (N =
+  aggressiveness in [0, 3]) on ``split``, ``trim`` and ``fix_pauses``, on
+  the CLI as ``-V webrtc[:N]``, or as a class for full control (subframe
+  duration, decision aggregation, channel selection). Works with live
+  input. Requires the new optional dependency group ``auditok[webrtcvad]``
+  (the ``webrtcvad-wheels`` package); the core stays numpy-only.
+
+- CLI: explicitly given ``-r``/``-w``/``-c`` are now forwarded for
+  compressed file input, letting ffmpeg convert the audio on the fly
+  (e.g., ``auditok audio.mp3 -r 16000 -V webrtc``). Default values are
+  still ignored for file input, preserving the original format.
+
+Improvements:
+
+- Make plotting tests independent of matplotlib/numpy versions (assert on
+  figure contents instead of comparing pixel-exact images).
+
+Documentation:
+
+- Overhaul the README: table of contents, restructured sections, and a
+  fact-check pass.
+- Switch the documentation theme to shibuya, with dark (monokai) code
+  blocks.
+- Refresh the project logo.
+
+Bug fixes:
+
+- Fix a potential deadlock in ``FFmpegAudioSource`` error handling: when
+  reading the decoder's output fails, ffmpeg is now killed before its
+  stderr is read, so it cannot block on a full stdout pipe.
+
+Packaging and metadata:
+
+- Add Python 3.15 to the CI test matrix.
+
+
 Version 0.4.2
 -------------
 
