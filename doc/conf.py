@@ -108,7 +108,12 @@ exclude_patterns = ["_build"]
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = "native"
+# Code highlighting: shibuya renders dark code blocks in both page
+# modes (dark_code option below); use monokai as the dark style. The
+# dark style name is not a public shibuya option, hence the attribute.
+from shibuya import _pygments  # noqa: E402
+
+_pygments.ShibuyaPygmentsBridge.dark_style_name = "monokai"
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
@@ -124,12 +129,12 @@ todo_include_todos = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "sphinx_rtd_theme"
+html_theme = "shibuya"
 
 
 html_theme_options = {
-    "logo_only": True,
-    "style_nav_header_background": "#000000",
+    "github_url": "https://github.com/amsehili/auditok",
+    "dark_code": True,
 }
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -149,7 +154,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "figures/auditok-logo-rtd.png"
+html_logo = "figures/auditok-logo-rtd.svg"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -159,8 +164,7 @@ html_logo = "figures/auditok-logo-rtd.png"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
-html_css_files = ["css/custom_style.css"]
+html_static_path = []
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
