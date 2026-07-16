@@ -14,6 +14,7 @@ The following are optional and can be installed as needed:
 - `sounddevice <https://python-sounddevice.readthedocs.io/>`_: to read audio data from a microphone and play audio back.
 - `tqdm <https://github.com/tqdm/tqdm>`_: to display a progress bar while playing audio clips.
 - `matplotlib <https://matplotlib.org/stable/index.html>`_: to plot audio signals and detections.
+- `webrtcvad-wheels <https://pypi.org/project/webrtcvad-wheels/>`_: to use the WebRTC voice activity detector as the frame decider (detect *speech* specifically, ``validator="webrtc"``).
 
 For non-WAV audio formats (MP3, OGG, FLAC, etc.) or video files,
 `ffmpeg <https://ffmpeg.org/>`_ must be installed and available on your
@@ -39,6 +40,7 @@ You can also install specific optional groups:
 
     pip install auditok[plot]       # matplotlib
     pip install auditok[device-io]  # sounddevice + tqdm
+    pip install auditok[webrtcvad]  # WebRTC VAD as frame decider (webrtcvad-wheels)
 
 **Install from GitHub**
 

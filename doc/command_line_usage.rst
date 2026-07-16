@@ -57,7 +57,7 @@ noise. Both are adjustable:
 .. code:: bash
 
     # calibrate on the first 5 s, don't accept a threshold below 45 dB
-    auditok -e auto --calibration-duration 5 -y 45
+    auditok -e auto -U 5 -y 45
 
 If you already know a good threshold for your setup, skip estimation
 entirely and pass it with ``-e``:
@@ -74,6 +74,9 @@ WebRTC voice activity detector as the frame decider (requires
 
     auditok audio.wav -V webrtc      # aggressiveness mode 1
     auditok -V webrtc:2              # microphone input, mode 2
+
+As a frame validator, the WebRTC VAD may work better with a smaller
+``max_silence`` value than the default 0.3 s — typically ``-s 0.1``.
 
 The WebRTC VAD requires a sampling rate of 8000, 16000, 32000 or
 48000 Hz. For files with other rates, pass ``-r`` to have ffmpeg
@@ -295,7 +298,7 @@ Common options reference
                                estimation; 'percentile' == 'p10') or
                                'webrtc[:MODE]' (WebRTC VAD as frame
                                decider)
-    --calibration-duration     Seconds of audio used to calibrate the
+    -U, --calibration-duration Seconds of audio used to calibrate the
                                auto threshold on live input [default: 3]
     -y, --min-energy-threshold Lower bound for the auto threshold
                                calibrated on live input [default: 40]

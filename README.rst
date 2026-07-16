@@ -201,10 +201,12 @@ handling) on top. This requires the ``webrtcvad`` extra:
     speech_events = auditok.split("audio.wav", validator=validator)
 
 This also works with live input (microphone, stdin). On the command
-line, use ``-V webrtc`` or ``-V webrtc:2``. The WebRTC VAD requires a
-sampling rate of 8000, 16000, 32000 or 48000 Hz; for files with other
-rates, pass ``sr=16000`` (``-r 16000``) to have ffmpeg resample the
-audio on the fly.
+line, use ``-V webrtc`` or ``-V webrtc:2``. As a frame validator, the
+WebRTC VAD may work better with a smaller ``max_silence`` value than
+the default 0.3 s — typically ``max_silence=0.1`` (``-s 0.1``). The
+WebRTC VAD requires a sampling rate of 8000, 16000, 32000 or 48000 Hz;
+for files with other rates, pass ``sr=16000`` (``-r 16000``) to have
+ffmpeg resample the audio on the fly.
 
 Trimming, pauses, and event boundaries
 --------------------------------------
@@ -421,7 +423,7 @@ Common options
                                'webrtc[:MODE]' (WebRTC VAD)
     -y, --min-energy-threshold Lower bound for the threshold calibrated
                                on live input [default: 40]
-    --calibration-duration     Seconds of live audio used for threshold
+    -U, --calibration-duration Seconds of live audio used for threshold
                                calibration [default: 3]
     -n, --min-duration         Minimum event duration in seconds [default: 0.2]
     -m, --max-duration         Maximum event duration in seconds (split only) [default: 5]

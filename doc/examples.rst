@@ -297,9 +297,14 @@ handling) still shapes the frame decisions into events:
     # close-talk audio; higher modes reject more audio as non-speech
     speech_events = auditok.split("audio.wav", validator="webrtc:1")
 
-Because the WebRTC VAD decides frame by frame (adapting its noise model
-as audio streams in), this validator also works with live input —
-unlike automatic energy thresholding:
+As a frame validator, the WebRTC VAD may work better with a smaller
+``max_silence`` value than the default (0.3 s) — typically
+``max_silence=0.1`` (``-s 0.1`` on the command line).
+
+The WebRTC VAD also works with live input. Unlike automatic energy
+thresholding, which calibrates a threshold on the first seconds of the
+stream and then keeps it, the VAD needs no calibration phase: it
+decides frame by frame, adapting its noise model as audio streams in:
 
 .. code:: python
 

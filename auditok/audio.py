@@ -481,7 +481,7 @@ def split(
     **kwargs: Any,
 ) -> Generator[AudioRegion, None, None]:
     """
-    Split audio data and return a generator of :class:`AudioRegion`s.
+    Split audio data and return a generator of :class:`AudioRegion` objects.
 
     Parameters
     ----------
@@ -612,8 +612,11 @@ def split(
           default 1) uses the WebRTC voice activity detector as the
           frame decider (see
           :class:`auditok.validators.WebRTCVADValidator`; requires the
-          ``auditok[webrtcvad]`` extra). Unlike the threshold estimation
-          methods, it also works with live input (microphone, stdin).
+          ``auditok[webrtcvad]`` extra). Works with live input too,
+          with no calibration phase: the VAD adapts its noise model
+          continuously as audio streams in. As a frame validator it
+          may work better with a smaller `max_silence` value than the
+          default 0.3 s — typically ``max_silence=0.1``.
 
         Otherwise, should be a callable or an instance of
         `DataValidator` implementing `is_valid`.
@@ -954,6 +957,8 @@ def fix_pauses(
         ``max_silence`` extend collection beyond the event boundary.
         See :func:`split` for full semantics.
 
+    Notes
+    -----
     See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
     energy threshold, analysis window, etc.).
 
@@ -1037,6 +1042,8 @@ def trim(
         ``max_silence`` extend collection beyond the event boundary.
         See :func:`split` for full semantics.
 
+    Notes
+    -----
     See :func:`split` for descriptions of ``**kwargs`` (audio parameters,
     energy threshold, analysis window, etc.).
 
@@ -1708,6 +1715,8 @@ class AudioRegion(object):
             larger than ``max_silence`` extend collection beyond the event
             boundary. See :func:`split` for full semantics.
 
+        Notes
+        -----
         See :func:`split` for descriptions of ``**kwargs`` (energy
         threshold, analysis window, etc.).
 
@@ -1821,6 +1830,8 @@ class AudioRegion(object):
             interactive HTML/Canvas/WebAudio widget instead of a matplotlib
             plot.  Falls back to matplotlib when not in a notebook.
 
+        Notes
+        -----
         Refer to :func:`split` for a detailed description of split
         parameters, and to :meth:`plot` for plot-specific parameters.
         """
