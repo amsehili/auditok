@@ -144,7 +144,7 @@ def load(
 
 
 _AUTO_THRESHOLD_LIVE_INPUT_ERROR = (
-    "energy_threshold='auto' needs to read the input data before "
+    "Automatic threshold estimation needs to read the input data before "
     "tokenization and therefore requires offline input (a file path, "
     "bytes, an AudioRegion or an offline AudioSource). For live sources "
     "(microphone, stdin), provide a numeric energy threshold."
@@ -199,7 +199,8 @@ def _chunked_frame_energies(
 
 
 def _read_input_for_auto_threshold(input, analysis_window, params):
-    """Compute per-window energies of `input` for ``energy_threshold="auto"``.
+    """Compute per-window energies of `input` for automatic threshold
+    estimation.
 
     Returns an (input, frame_energies) tuple where `input` may be replaced
     by an in-memory `AudioSource` so that data decoded during estimation
@@ -427,12 +428,14 @@ def _validate_split_durations(min_dur, max_dur, max_silence):
 
 def _parse_energy_threshold(kwargs):
     """Extract the threshold configuration from `kwargs` and return an
-    (energy_threshold, is_auto, method) tuple, validating string values.
+    (energy_threshold, estimate, method) tuple.
 
-    A string `validator` names a threshold estimation method ("otsu" or
-    "percentile") and implies automatic thresholding; `energy_threshold`
-    is ignored in that case. `is_auto` is False when a custom validator
-    object is given.
+    If `validator` is given it is the whole story and `energy_threshold`
+    is overlooked: a string names either a threshold estimation method
+    ("otsu", "percentile" or "pXX") — `estimate` is then True and
+    `energy_threshold` is None until estimation resolves it — or the
+    webrtc backend, which uses no energy threshold at all. Without a
+    validator, `energy_threshold` (a number, default 50) is used as is.
     """
     validator = kwargs.get("validator", kwargs.get("val"))
     if isinstance(validator, str):
@@ -440,17 +443,11 @@ def _parse_energy_threshold(kwargs):
             # backend validator: no threshold estimation involved
             return DEFAULT_ENERGY_THRESHOLD, False, DEFAULT_THRESHOLD_METHOD
         _parse_validator_name(validator)  # validate the name early
-        return "auto", True, validator
+        return None, True, validator
     energy_threshold = kwargs.get(
         "energy_threshold", kwargs.get("eth", DEFAULT_ENERGY_THRESHOLD)
     )
-    is_auto = validator is None and isinstance(energy_threshold, str)
-    if is_auto and energy_threshold.lower() != "auto":
-        raise ValueError(
-            "'energy_threshold' must be a number or 'auto', given: "
-            f"{energy_threshold!r}"
-        )
-    return energy_threshold, is_auto, DEFAULT_THRESHOLD_METHOD
+    return energy_threshold, False, DEFAULT_THRESHOLD_METHOD
 
 
 def _make_region_gen(token_gen, source):
@@ -618,42 +615,38 @@ def split(
           may work better with a smaller `max_silence` value than the
           default 0.3 s — typically ``max_silence=0.1``.
 
+        With an estimation method, offline input (a file, bytes or an
+        `AudioRegion`) is read as a whole for estimation; compressed
+        input is decoded only once (the decoded data is kept in memory
+        for tokenization). For live input (microphone, stdin) or
+        `AudioReader` input, the threshold is *calibrated* on the first
+        `calibration_dur` seconds of the stream and then kept unchanged;
+        the calibration audio is replayed to the tokenizer, so no data
+        is lost. Live calibration is guarded by `min_energy_threshold`:
+        with a calibration window containing only background noise, an
+        unguarded estimate would land inside the noise itself.
+
+        Automatic estimation is a convenience, not an obligation: if you
+        know a threshold that works for your audio and setup, pass it as
+        `energy_threshold` (or ``-e`` on the command line) and no
+        estimation takes place. For full control over estimation (e.g.,
+        a custom percentile or margin), use
+        :func:`auditok.signal.compute_frame_energies` and
+        :func:`auditok.signal.estimate_energy_threshold` directly and
+        pass the resulting value as `energy_threshold`.
+
         Otherwise, should be a callable or an instance of
         `DataValidator` implementing `is_valid`.
 
-    energy_threshold, eth : float or "auto", default=50
-        Energy threshold for audio activity detection. Audio regions with
-        sufficient signal energy above this threshold are considered valid.
-        Calculated as the log energy: `20 * log10(sqrt(dot(x, x) / len(x)))`,
-        with samples on the int16 amplitude scale regardless of the storage
-        format (32-bit float samples are scaled by 32768), so the same
-        threshold works for all sample widths. Ignored if `validator` is
+    energy_threshold, eth : float, default=50
+        Energy threshold for audio activity detection, used when no
+        `validator` is given. Audio regions with sufficient signal energy
+        above this threshold are considered valid. Calculated as the log
+        energy: `20 * log10(sqrt(dot(x, x) / len(x)))`, with samples on
+        the int16 amplitude scale regardless of the storage format
+        (32-bit float samples are scaled by 32768), so the same threshold
+        works for all sample widths. Overlooked if `validator` is
         specified.
-
-        If "auto", the threshold is estimated from the input's energy
-        distribution with the default method (otsu); pass
-        ``validator="otsu"``, ``"percentile"`` or ``"pXX"`` to choose the
-        estimation method explicitly.
-
-        For offline input (a file, bytes or an `AudioRegion`), the whole
-        signal is used for estimation; compressed input is decoded only
-        once (the decoded data is kept in memory for tokenization). For
-        live input (microphone, stdin) or `AudioReader` input, the
-        threshold is *calibrated* on the first `calibration_dur` seconds
-        of the stream and then kept unchanged; the calibration audio is
-        replayed to the tokenizer, so no data is lost. Live calibration
-        is guarded by `min_energy_threshold`: with a calibration window
-        containing only background noise, an unguarded estimate would
-        land inside the noise itself.
-
-        Automatic estimation is a convenience, not an obligation: if you
-        know a threshold that works for your audio and setup, pass it
-        explicitly as `energy_threshold` (or ``-e`` on the command line)
-        and no estimation takes place. For full control over estimation
-        (e.g., a custom percentile or margin), use
-        :func:`auditok.signal.compute_frame_energies` and
-        :func:`auditok.signal.estimate_energy_threshold` directly and pass
-        the resulting value as `energy_threshold`.
 
     calibration_dur : float, default=3.0
         Duration in seconds of audio used to calibrate the automatic
@@ -718,7 +711,7 @@ def split(
             raise ValueError(err_msg) from exc
     analysis_window = source.block_dur
 
-    if auto_threshold and isinstance(energy_threshold, str):
+    if auto_threshold and energy_threshold is None:
         # live input (microphone, stdin) or AudioReader input: calibrate
         # on the first `calibration_dur` seconds of the stream, clamped
         # to `min_energy_threshold`, and replay the calibration audio

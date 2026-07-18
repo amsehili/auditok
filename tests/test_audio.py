@@ -1147,8 +1147,8 @@ def _resolved_auto_threshold(filename, analysis_window=0.05, method="otsu"):
 
 
 def test_split_auto_energy_threshold_matches_manual_estimate():
-    """split(..., energy_threshold='auto') must behave exactly as split()
-    called with the manually estimated threshold, for every offline input
+    """split(..., validator='otsu') must behave exactly as split() called
+    with the manually estimated threshold, for every offline input
     type."""
     threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6)
     expected = [
@@ -1166,30 +1166,27 @@ def test_split_auto_energy_threshold_matches_manual_estimate():
     ]
     for input_, kwargs in inputs:
         result = [
-            (r.start, r.end)
-            for r in split(input_, energy_threshold="auto", **kwargs)
+            (r.start, r.end) for r in split(input_, validator="otsu", **kwargs)
         ]
         assert result == expected, f"mismatch for input {type(input_)}"
 
 
 @requires_ffmpeg
 def test_split_auto_energy_threshold_ffmpeg_input():
-    """'auto' with compressed input must equal split() with the threshold
-    estimated from the (single-pass) decoded data."""
+    """Automatic thresholding with compressed input must equal split()
+    with the threshold estimated from the (single-pass) decoded data."""
     filename = "tests/data/DTMF_tones_16KHZ_mono.flac"
     threshold = _resolved_auto_threshold(filename)
     expected = [
         (r.start, r.end) for r in split(filename, energy_threshold=threshold)
     ]
-    result = [
-        (r.start, r.end) for r in split(filename, energy_threshold="auto")
-    ]
+    result = [(r.start, r.end) for r in split(filename, validator="otsu")]
     assert len(result) > 0
     assert result == expected
 
 
 def test_split_auto_energy_threshold_max_read():
-    regions = list(split(AUDIO_FILE_1TO6, energy_threshold="auto", max_read=5))
+    regions = list(split(AUDIO_FILE_1TO6, validator="otsu", max_read=5))
     assert len(regions) > 0
     assert all(r.end <= 5.01 for r in regions)
 
@@ -1228,7 +1225,7 @@ def test_split_auto_threshold_calibrates_on_audio_reader_input():
         )
     ]
     reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
-    result = [(r.start, r.end) for r in split(reader, energy_threshold="auto")]
+    result = [(r.start, r.end) for r in split(reader, validator="otsu")]
     assert len(result) > 0
     assert result == expected
     # the first event of this file starts inside the calibration window:
@@ -1246,7 +1243,7 @@ def test_split_auto_threshold_calibration_dur_and_floor():
         (r.start, r.end)
         for r in split(
             reader,
-            energy_threshold="auto",
+            validator="otsu",
             calibration_dur=calibration_dur,
             min_energy_threshold=floor,
         )
@@ -1263,31 +1260,23 @@ def test_split_auto_threshold_calibration_dur_and_floor():
 def test_split_auto_threshold_invalid_calibration_dur():
     reader = AudioReader(AUDIO_FILE_1TO6, block_dur=0.05)
     with pytest.raises(ValueError, match="calibration_dur"):
-        list(split(reader, energy_threshold="auto", calibration_dur=0))
+        list(split(reader, validator="otsu", calibration_dur=0))
 
 
 def test_split_offline_auto_threshold_ignores_floor():
     """min_energy_threshold is calibration-only: offline auto estimation
     must not be affected by it (offline estimation is protected by
     digital-silence exclusion instead)."""
-    auto = [
-        (r.start, r.end)
-        for r in split(AUDIO_FILE_1TO6, energy_threshold="auto")
-    ]
+    auto = [(r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="otsu")]
     with_floor = [
         (r.start, r.end)
         for r in split(
             AUDIO_FILE_1TO6,
-            energy_threshold="auto",
+            validator="otsu",
             min_energy_threshold=99.0,
         )
     ]
     assert with_floor == auto
-
-
-def test_split_invalid_energy_threshold_string():
-    with pytest.raises(ValueError, match="number or 'auto'"):
-        list(split(AUDIO_FILE_1TO6, energy_threshold="autox"))
 
 
 @pytest.mark.parametrize("method", ["otsu", "percentile"])
@@ -1306,14 +1295,20 @@ def test_split_validator_string_selects_method(method):
     assert result == expected
 
 
-def test_split_validator_string_otsu_is_auto_default():
-    """energy_threshold='auto' and validator='otsu' are the same thing."""
-    auto = [
-        (r.start, r.end)
-        for r in split(AUDIO_FILE_1TO6, energy_threshold="auto")
+def test_split_validator_precedence_over_energy_threshold():
+    """A `validator`, when given, is the whole story: `energy_threshold`
+    is overlooked."""
+    otsu_only = [
+        (r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="otsu")
     ]
-    otsu = [(r.start, r.end) for r in split(AUDIO_FILE_1TO6, validator="otsu")]
-    assert auto == otsu
+    with_both = [
+        (r.start, r.end)
+        for r in split(AUDIO_FILE_1TO6, energy_threshold=99.0, validator="otsu")
+    ]
+    assert len(otsu_only) > 0
+    assert with_both == otsu_only
+    # sanity: 99 dB alone detects nothing on this file
+    assert list(split(AUDIO_FILE_1TO6, energy_threshold=99.0)) == []
 
 
 def test_split_unknown_validator_string():
@@ -1387,7 +1382,7 @@ def test_trim_auto_energy_threshold():
 
     threshold = _resolved_auto_threshold(AUDIO_FILE_1TO6)
     expected = trim(AUDIO_FILE_1TO6, energy_threshold=threshold)
-    result = trim(AUDIO_FILE_1TO6, energy_threshold="auto")
+    result = trim(AUDIO_FILE_1TO6, validator="otsu")
     assert bytes(result) == bytes(expected)
 
 

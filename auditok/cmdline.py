@@ -88,18 +88,6 @@ class _StoreOnce(Action):
         setattr(namespace, self.dest, values)
 
 
-def _energy_threshold_value(value):
-    """Parse -e/--energy-threshold: a float or the literal 'auto'."""
-    if value.strip().lower() == "auto":
-        return "auto"
-    try:
-        return float(value)
-    except ValueError:
-        raise ArgumentTypeError(
-            f"must be a number or 'auto', given: {value!r}"
-        ) from None
-
-
 def _validator_name(value):
     """Parse -V/--validator: 'otsu', 'percentile', 'pXX' or
     'webrtc[:MODE]'."""
@@ -140,13 +128,11 @@ def _announce_live_calibration(args, split_kw):
     if getattr(args, "quiet", False):
         return
     validator = split_kw.get("validator")
-    if validator is not None:
-        from .audio import _parse_webrtc_validator
+    if validator is None:
+        return
+    from .audio import _parse_webrtc_validator
 
-        is_auto = _parse_webrtc_validator(validator) is None
-    else:
-        is_auto = split_kw.get("energy_threshold") == "auto"
-    if not is_auto:
+    if _parse_webrtc_validator(validator) is not None:
         return
     italic = _terminal_italic()
     print(
@@ -168,8 +154,8 @@ def _announce_live_calibration(args, split_kw):
 
 
 def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
-    """Resolve ``-e auto`` / ``-V otsu|percentile`` to a numeric threshold
-    before workers are built.
+    """Resolve ``-V otsu|percentile|pXX`` to a numeric threshold before
+    workers are built.
 
     Reads the input once (single decode), replaces the CLI input with the
     in-memory audio so it is not decoded a second time for tokenization,
@@ -182,7 +168,7 @@ def _resolve_auto_energy_threshold(args, split_kw, audio_kw):
 
         if _parse_webrtc_validator(method) is not None:
             return  # backend validator: no threshold estimation involved
-    if method is None and split_kw.get("energy_threshold") != "auto":
+    if method is None:
         return
     if args.input in (None, "-"):
         # live input: split() calibrates on the first seconds of the
@@ -372,15 +358,13 @@ def _add_detection_args(group):
         "-e",
         "--energy-threshold",
         dest="energy_threshold",
-        type=_energy_threshold_value,
+        type=float,
         default=50,
         action=_StoreOnce,
-        help="Set the log energy threshold for detection. Use 'auto' to "
-        "estimate the threshold from the input using the default method "
-        "(otsu; see -V to select a method). For live input (microphone, "
-        "stdin), the threshold is calibrated on the first seconds of "
-        "audio, with a lower bound of 40 dB; pass an explicit numeric "
-        "threshold to override. [Default: %(default)s]",
+        help="Set the log energy threshold for detection (in dB). Used "
+        "when no -V/--validator is given; to estimate the threshold "
+        "from the input instead, use -V otsu|percentile|pXX. "
+        "[Default: %(default)s]",
         metavar="FLOAT",
     )
     group.add_argument(
@@ -413,7 +397,7 @@ def _add_detection_args(group):
         action=_StoreOnce,
         help="Duration (in seconds) of audio used to calibrate the "
         "automatic energy threshold on live input (microphone, stdin). "
-        "Only used with -e auto or -V otsu|percentile|pXX. "
+        "Only used with -V otsu|percentile|pXX. "
         "[Default: %(default)s]",
         metavar="FLOAT",
     )
@@ -428,7 +412,7 @@ def _add_detection_args(group):
         "threshold: the calibrated threshold is "
         "max(this value, estimate). Protects against calibration "
         "windows that contain only background noise or silence. Only "
-        "used for live input (microphone, stdin) with -e auto or "
+        "used for live input (microphone, stdin) with "
         "-V otsu|percentile|pXX. [Default: %(default)s]",
         metavar="FLOAT",
     )
@@ -1126,8 +1110,8 @@ def _run_trim(args):
     audio_kw = _build_audio_kwargs(args)
 
     if args.input is not None:
-        # File input: call trim() directly; energy_threshold='auto' is
-        # handled by the library
+        # File input: call trim() directly; automatic thresholding
+        # (a -V estimation method) is handled by the library
         try:
             result = trim(args.input, **split_kw, **audio_kw)
         except (ValueError, ImportError) as exc:
@@ -1208,8 +1192,8 @@ def _run_fix_pauses(args):
     audio_kw = _build_audio_kwargs(args)
 
     if args.input is not None:
-        # File input: call fix_pauses() directly; energy_threshold='auto'
-        # is handled by the library
+        # File input: call fix_pauses() directly; automatic thresholding
+        # (a -V estimation method) is handled by the library
         try:
             result = fix_pauses(
                 args.input, args.pause_duration, **split_kw, **audio_kw

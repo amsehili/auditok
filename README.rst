@@ -135,10 +135,9 @@ from the audio itself:
     import auditok
 
     # estimate the threshold from the input's energy distribution
-    audio_events = auditok.split("audio.wav", energy_threshold="auto")
+    # "otsu": balanced, suited to audio with clear pauses
+    audio_events = auditok.split("audio.wav", validator="otsu")
 
-    # or select the estimation method explicitly:
-    # "otsu" (default): balanced, suited to audio with clear pauses
     # "percentile": noise floor + margin, suited to dense/far-field speech
     audio_events = auditok.split("audio.wav", validator="percentile")
 
@@ -165,9 +164,9 @@ threshold. The calibration audio is replayed, so nothing is lost:
 
     # detect events from the microphone with a calibrated threshold
     events = auditok.split(None, sr=16000, sw=2, ch=1, max_read=60,
-                           energy_threshold="auto")
+                           validator="otsu")
 
-On the command line, use ``-e auto`` or ``-V otsu|percentile|pXX``
+On the command line, use ``-V otsu|percentile|pXX``
 (``--calibration-duration`` and ``-y``/``--min-energy-threshold``
 control live calibration). Automatic estimation is optional — if you
 know a threshold that works for your audio and setup, pass it
@@ -377,7 +376,7 @@ Split audio into events
     auditok audio.wav -e 55 -n 0.5 -m 10 -s 0.3
 
     # Estimate the threshold from the file instead of fixing it
-    auditok audio.wav -e auto
+    auditok audio.wav -V otsu
 
     # Save detected events to individual files
     auditok audio.wav -o "event_{id}_{start:.3f}-{end:.3f}.wav"
@@ -387,7 +386,7 @@ Split audio into events
 
     # Stream from microphone with a threshold calibrated on the
     # first 3 seconds of audio
-    auditok -e auto
+    auditok -V otsu
 
 Trim silence
 ~~~~~~~~~~~~
@@ -416,8 +415,8 @@ Common options
 
 .. code:: text
 
-    -e, --energy-threshold     Detection threshold, a number or 'auto'
-                               [default: 50]
+    -e, --energy-threshold     Detection threshold, in dB; overlooked
+                               when -V is given [default: 50]
     -V, --validator            Detection strategy: 'otsu', 'percentile',
                                'pXX' (threshold estimation method) or
                                'webrtc[:MODE]' (WebRTC VAD)

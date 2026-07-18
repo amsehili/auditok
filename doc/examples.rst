@@ -192,21 +192,14 @@ Automatic energy threshold
 --------------------------
 
 Picking a good ``energy_threshold`` by hand requires knowing the
-recording's noise floor and level. Pass ``energy_threshold="auto"`` and
-:func:`split` estimates the threshold from the energy distribution of
-the input's analysis windows:
+recording's noise floor and level. Pass an estimation method as the
+``validator`` parameter and :func:`split` estimates the threshold from
+the energy distribution of the input's analysis windows:
 
 .. code:: python
 
-    events = auditok.split("audio.wav", energy_threshold="auto")
-
-Two estimation methods are available, selected with the ``validator``
-parameter:
-
-.. code:: python
-
-    # "otsu" (the default behind "auto"): splits the energy histogram in
-    # two classes; a balanced choice for audio with clear pauses
+    # "otsu": splits the energy histogram in two classes; a balanced
+    # choice for audio with clear pauses
     events = auditok.split("audio.wav", validator="otsu")
 
     # "percentile": noise floor (10th percentile) + 6 dB margin; more
@@ -234,7 +227,7 @@ not lost:
 
     # calibrated threshold on microphone input
     events = auditok.split(
-        None, sr=16000, sw=2, ch=1, max_read=60, energy_threshold="auto"
+        None, sr=16000, sw=2, ch=1, max_read=60, validator="otsu"
     )
 
     # longer calibration, custom guardrail

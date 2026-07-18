@@ -42,10 +42,10 @@ input itself:
 
 .. code:: bash
 
-    auditok audio.wav -e auto        # default estimation method (otsu)
+    auditok audio.wav -V otsu        # splits the energy histogram (balanced)
     auditok audio.wav -V percentile  # noise floor + margin, recall-oriented
     auditok audio.wav -V p20         # noise floor read at the 20th percentile
-    auditok -e auto                  # microphone: calibrated on the first 3 s
+    auditok -V otsu                  # microphone: calibrated on the first 3 s
 
 For file input the whole file is used for estimation. For live input
 (microphone or standard input), the threshold is calibrated on the
@@ -57,7 +57,7 @@ noise. Both are adjustable:
 .. code:: bash
 
     # calibrate on the first 5 s, don't accept a threshold below 45 dB
-    auditok -e auto -U 5 -y 45
+    auditok -V otsu -U 5 -y 45
 
 If you already know a good threshold for your setup, skip estimation
 entirely and pass it with ``-e``:
@@ -291,8 +291,8 @@ Common options reference
 
 .. code:: text
 
-    -e, --energy-threshold     Detection threshold, a number or 'auto'
-                               ('auto' uses the otsu method) [default: 50]
+    -e, --energy-threshold     Detection threshold, in dB; overlooked
+                               when -V is given [default: 50]
     -V, --validator            Frame validation strategy: 'otsu',
                                'percentile', 'pXX' (auto threshold
                                estimation; 'percentile' == 'p10') or

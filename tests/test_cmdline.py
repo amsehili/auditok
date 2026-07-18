@@ -11,7 +11,6 @@ import pytest
 from auditok.cmdline import (
     _AUDITOK_LOGGER,
     _build_split_command_kwargs,
-    _energy_threshold_value,
     _SplitCommandKwargs,
     initialize_workers,
     main,
@@ -89,19 +88,10 @@ class TestSubcommandDispatch:
         assert ret == 0
 
 
-# ── -e/--energy-threshold auto ─────────────────────────────────────
+# ── automatic energy threshold (-V) ────────────────────────────────
 
 
 class TestAutoEnergyThreshold:
-    def test_energy_threshold_value_parser(self):
-        from argparse import ArgumentTypeError
-
-        assert _energy_threshold_value("55") == 55.0
-        assert _energy_threshold_value("auto") == "auto"
-        assert _energy_threshold_value("AUTO") == "auto"
-        with pytest.raises(ArgumentTypeError):
-            _energy_threshold_value("foo")
-
     def test_validator_name_parser(self):
         from argparse import ArgumentTypeError
 
@@ -123,17 +113,9 @@ class TestAutoEnergyThreshold:
         assert ret == 0
         assert "Auto energy threshold:" in capsys.readouterr().err
 
-    def test_split_auto_with_file(self, capsys):
-        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
-        ret = main(["split", audio_file, "-e", "auto"])
-        assert ret == 0
-        captured = capsys.readouterr()
-        assert "Auto energy threshold:" in captured.err
-        assert len(captured.out.strip().splitlines()) > 1
-
     def test_split_auto_quiet_suppresses_threshold_message(self, capsys):
         audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
-        ret = main(["split", audio_file, "-e", "auto", "-q"])
+        ret = main(["split", audio_file, "-V", "otsu", "-q"])
         assert ret == 0
         assert "Auto energy threshold:" not in capsys.readouterr().err
 
@@ -152,7 +134,7 @@ class TestAutoEnergyThreshold:
             "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
         )
         ret = main(
-            ["split", "-", "-e", "auto", "-r", "16000", "-w", "2", "-c", "1"]
+            ["split", "-", "-V", "otsu", "-r", "16000", "-w", "2", "-c", "1"]
         )
         assert ret == 0
         captured = capsys.readouterr()
@@ -165,7 +147,7 @@ class TestAutoEnergyThreshold:
         with TemporaryDirectory() as tmpdir:
             output = os.path.join(tmpdir, "trimmed.wav")
             audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
-            ret = main(["trim", audio_file, "-o", output, "-e", "auto"])
+            ret = main(["trim", audio_file, "-o", output, "-V", "otsu"])
             assert ret == 0
             assert os.path.getsize(output) > 0
 
@@ -181,8 +163,8 @@ class TestAutoEnergyThreshold:
                     output,
                     "-d",
                     "0.5",
-                    "-e",
-                    "auto",
+                    "-V",
+                    "otsu",
                 ]
             )
             assert ret == 0
@@ -195,6 +177,16 @@ class TestAutoEnergyThreshold:
         assert ret == 0
         captured = capsys.readouterr()
         assert "Auto energy threshold:" in captured.err
+        assert len(captured.out.strip().splitlines()) > 1
+
+    def test_split_validator_wins_over_energy_threshold(self, capsys):
+        """-V, when given, is the whole story: -e is overlooked."""
+        audio_file = "tests/data/1to6arabic_16000_mono_bc_noise.wav"
+        ret = main(["split", audio_file, "-e", "99", "-V", "otsu"])
+        assert ret == 0
+        captured = capsys.readouterr()
+        assert "Auto energy threshold:" in captured.err
+        # -e 99 alone would detect nothing on this file
         assert len(captured.out.strip().splitlines()) > 1
 
     def test_split_validator_rejects_unknown_method(self, capsys):
@@ -219,8 +211,8 @@ class TestAutoEnergyThreshold:
             [
                 "split",
                 "-",
-                "-e",
-                "auto",
+                "-V",
+                "otsu",
                 "--calibration-duration",
                 "1",
                 "-y",
@@ -253,7 +245,7 @@ class TestAutoEnergyThreshold:
             "sys.stdin", SimpleNamespace(buffer=io.BytesIO(raw))
         )
         ret = main(
-            ["split", "-", "-e", "auto", "-r", "16000", "-w", "2", "-c", "1"]
+            ["split", "-", "-V", "otsu", "-r", "16000", "-w", "2", "-c", "1"]
         )
         assert ret == 0
         err = capsys.readouterr().err

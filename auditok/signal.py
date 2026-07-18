@@ -239,8 +239,9 @@ def estimate_energy_threshold(
 ):
     """Estimate an energy threshold from analysis-window energies.
 
-    This is what ``energy_threshold="auto"`` uses under the hood (with the
-    default method). Energies are typically obtained with
+    This is what automatic thresholding (``validator="otsu"``,
+    ``"percentile"`` or ``"pXX"``) uses under the hood (with the default
+    method). Energies are typically obtained with
     :func:`compute_frame_energies`; the returned value is on the same dB
     scale as ``energy_threshold`` and can be passed to :func:`split`
     directly.
