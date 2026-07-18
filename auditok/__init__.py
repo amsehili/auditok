@@ -16,4 +16,4 @@ from .io import *  # noqa: F401
 from .util import *  # noqa: F401
 from .validators import *  # noqa: F401
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"

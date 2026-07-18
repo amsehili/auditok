@@ -1,6 +1,25 @@
 auditok Changelog
 =================
 
+Version 0.5.1
+-------------
+
+- ``energy_threshold`` (``-e``) takes a number. Automatic threshold
+  estimation is selected with ``validator`` (``-V``): ``"otsu"``,
+  ``"percentile"`` or ``"pXX"``. A ``validator``, when given, takes
+  precedence and ``energy_threshold`` is overlooked.
+
+- Fix automatic thresholding on digitally silent input: estimation on an
+  input with no non-silent windows now yields no events (previously the
+  whole input was returned as one event). On live input, a silent
+  calibration window falls back to ``min_energy_threshold`` and
+  detection continues.
+
+- Document which modes stream: a fixed ``energy_threshold`` and the
+  webrtc validator emit events from the first frame (with compressed
+  input, while ffmpeg is still decoding); offline estimation reads the
+  whole input before detection starts.
+
 Version 0.5.0
 -------------
 

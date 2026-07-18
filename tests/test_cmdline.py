@@ -39,14 +39,18 @@ MP3_FILE_STEREO_44K = "tests/data/DTMF_tones_44.1KHZ_stereo.mp3"
 
 class TestSubcommandDispatch:
     def test_version(self, capsys):
+        from auditok import __version__
+
         ret = main(["--version"])
         assert ret == 0
-        assert "0.5.0" in capsys.readouterr().out
+        assert __version__ in capsys.readouterr().out
 
     def test_version_short(self, capsys):
+        from auditok import __version__
+
         ret = main(["-v"])
         assert ret == 0
-        assert "0.5.0" in capsys.readouterr().out
+        assert __version__ in capsys.readouterr().out
 
     def test_help_shows_subcommands(self, capsys):
         with pytest.raises(SystemExit) as exc_info:
