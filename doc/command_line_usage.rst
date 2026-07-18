@@ -66,6 +66,11 @@ entirely and pass it with ``-e``:
 
     auditok -e 50                    # explicit threshold, no estimation
 
+With ``-e`` (or ``-V webrtc``) detection starts at the first frame and
+events stream out while the input is still being read or decoded;
+estimation (``-V otsu|percentile|pXX``) instead reads the whole file
+before detection starts.
+
 To detect *speech* specifically rather than any audio activity, use the
 WebRTC voice activity detector as the frame decider (requires
 ``pip install auditok[webrtcvad]``; also works with microphone input):

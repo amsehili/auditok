@@ -217,6 +217,13 @@ the energy distribution of the input's analysis windows:
 for estimation; compressed input is decoded only once (the decoded audio
 is kept in memory and tokenized from there).
 
+Offline estimation is the one mode that cannot stream: it needs the
+whole input before tokenization starts. With a fixed
+``energy_threshold`` or the webrtc validator, tokenization starts at
+the first frame and :func:`split` yields events while the input is
+still being read — for compressed input, while ffmpeg is still
+decoding.
+
 For live input (microphone, standard input), the threshold is
 *calibrated* on the first ``calibration_dur`` seconds of the stream
 (default 3) and then kept unchanged. The calibration audio is buffered
