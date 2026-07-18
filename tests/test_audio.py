@@ -1279,6 +1279,33 @@ def test_split_offline_auto_threshold_ignores_floor():
     assert with_floor == auto
 
 
+def test_split_all_silent_input_yields_no_events():
+    """Automatic thresholding on digitally silent input must detect
+    nothing (there is no energy distribution to estimate from)."""
+    silence = b"\x00" * (16000 * 2 * 5)  # 5 s of digital silence
+    result = list(split(silence, sr=16000, sw=2, ch=1, validator="otsu"))
+    assert result == []
+
+
+def test_split_live_calibration_silent_window_falls_back_to_floor():
+    """A calibration window that is entirely silent (e.g., a muted
+    microphone) must fall back to `min_energy_threshold` and keep
+    detecting events after the calibration window."""
+    region = load(AUDIO_FILE_1TO6)
+    silence = b"\x00" * (region.sr * region.sw * 3)  # 3 s, = calibration_dur
+    reader = AudioReader(
+        silence + bytes(region),
+        sampling_rate=region.sr,
+        sample_width=region.sw,
+        channels=1,
+        block_dur=0.05,
+    )
+    result = list(split(reader, validator="otsu"))
+    assert len(result) > 0
+    # nothing can be detected inside the silent calibration window
+    assert result[0].start >= 3.0
+
+
 @pytest.mark.parametrize("method", ["otsu", "percentile"])
 def test_split_validator_string_selects_method(method):
     """`validator="otsu"|"percentile"` must behave exactly as split()

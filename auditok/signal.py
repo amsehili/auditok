@@ -287,8 +287,11 @@ def estimate_energy_threshold(
     # studio recordings with digitally silent edits or padding).
     silence_sentinel = 20 * np.log10(EPSILON)
     non_silent = energies[energies > silence_sentinel]
-    if non_silent.size > 0:
-        energies = non_silent
+    if non_silent.size == 0:
+        # the input is entirely digitally silent: there is no energy
+        # distribution to estimate from and nothing to detect
+        return float("inf")
+    energies = non_silent
     if energies.min() == energies.max():
         return float(energies[0])
     estimator = _THRESHOLD_ESTIMATORS.get(method)

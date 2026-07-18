@@ -378,10 +378,19 @@ def _calibrate_on_reader(source, method, calibration_dur, floor, use_channel):
         method = DEFAULT_THRESHOLD_METHOD
     estimator, method_args = _parse_validator_name(method)
     estimate = estimate_energy_threshold(energies, estimator, **method_args)
-    energy_threshold = max(estimate, floor)
-    message = f"auto energy threshold ({method}): {estimate:.3f} dB"
-    if energy_threshold > estimate:
-        message += f", using the minimum: {energy_threshold:.3f} dB"
+    if math.isinf(estimate):
+        # calibration window entirely (digitally) silent, e.g. a muted
+        # microphone: fall back to the floor and keep listening
+        energy_threshold = floor
+        message = (
+            f"auto energy threshold ({method}): calibration audio is "
+            f"digitally silent, using the minimum: {floor:.3f} dB"
+        )
+    else:
+        energy_threshold = max(estimate, floor)
+        message = f"auto energy threshold ({method}): {estimate:.3f} dB"
+        if energy_threshold > estimate:
+            message += f", using the minimum: {energy_threshold:.3f} dB"
     logging.getLogger("auditok").info(message)
     return _ReplayAudioReader(source, blocks), energy_threshold
 
@@ -664,7 +673,8 @@ def split(
         lower it to match your setup. Only used when calibrating (live
         or `AudioReader` input with automatic thresholding); offline
         estimation is instead protected by excluding digitally silent
-        windows from the estimate.
+        windows from the estimate (an entirely silent input yields no
+        events).
 
     Yields
     ------

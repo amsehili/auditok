@@ -219,9 +219,10 @@ def test_estimate_energy_threshold_ignores_digital_silence():
 def test_estimate_energy_threshold_degenerate_input():
     # constant energies: nothing to separate, return the single value
     assert signal.estimate_energy_threshold([42.0] * 10) == 42.0
-    # all digitally silent: the sentinel is all there is, return it
+    # entirely digitally silent: there is nothing to detect, so no
+    # finite threshold — every window must fail validation
     silence = 20 * np.log10(signal.EPSILON)
-    assert signal.estimate_energy_threshold([silence] * 10) == silence
+    assert signal.estimate_energy_threshold([silence] * 10) == float("inf")
     with pytest.raises(ValueError):
         signal.estimate_energy_threshold([])
     with pytest.raises(ValueError):
