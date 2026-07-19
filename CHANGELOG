@@ -20,6 +20,20 @@ Version 0.5.1
   input, while ffmpeg is still decoding); offline estimation reads the
   whole input before detection starts.
 
+- Rename the ``frame_samples`` parameter of
+  ``signal.compute_frame_energies`` to ``n_samples_analysis_window``.
+  The old name read like a sampling rate next to ``sample_width`` and
+  ``channels``; the parameter is the number of samples per analysis
+  window.
+
+- ``AudioRegion`` and ``BufferAudioSource`` now reject non-bytes
+  ``data`` with a ``TypeError`` at creation. Previously a ``str``
+  was accepted and crashed later at numpy conversion, and a numpy
+  array was accepted and silently corrupted bytes semantics
+  (``region * 2`` doubled the amplitudes instead of the duration,
+  and durations were computed from the sample count instead of the
+  byte count).
+
 Version 0.5.0
 -------------
 
