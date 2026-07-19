@@ -152,14 +152,14 @@ def test_compute_frame_energies_matches_validator(channels, use_channel):
     sample_width = 2
     samples = (rng.randn(16000 * channels) * 5000).astype(np.int16)
     data = samples.tobytes()
-    frame_samples = 777  # not a divisor: final partial window is dropped
+    n_samples_analysis_window = 777  # not a divisor: partial window dropped
 
     result = signal.compute_frame_energies(
-        data, sample_width, channels, frame_samples, use_channel
+        data, sample_width, channels, n_samples_analysis_window, use_channel
     )
 
     selector = make_channel_selector(sample_width, channels, use_channel)
-    frame_bytes = frame_samples * sample_width * channels
+    frame_bytes = n_samples_analysis_window * sample_width * channels
     expected = [
         float(np.max(signal.calculate_energy(selector(frame))))
         for frame in (

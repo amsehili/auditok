@@ -1201,10 +1201,13 @@ def _expected_calibration_threshold(
     from auditok.signal import compute_frame_energies, estimate_energy_threshold
 
     region = load(filename)
-    frame_samples = int(analysis_window * region.sr)
+    n_samples_analysis_window = int(analysis_window * region.sr)
     n_blocks = max(1, math.ceil(calibration_dur / analysis_window))
-    data = bytes(region)[: n_blocks * frame_samples * region.sw * region.ch]
-    energies = compute_frame_energies(data, region.sw, region.ch, frame_samples)
+    n_bytes = n_blocks * n_samples_analysis_window * region.sw * region.ch
+    data = bytes(region)[:n_bytes]
+    energies = compute_frame_energies(
+        data, region.sw, region.ch, n_samples_analysis_window
+    )
     return max(estimate_energy_threshold(energies, method=method), floor)
 
 

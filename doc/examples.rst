@@ -272,7 +272,10 @@ threshold yourself and pass the resulting value:
 
     region = auditok.load("audio.wav")
     energies = compute_frame_energies(
-        region.data, region.sw, region.ch, frame_samples=int(0.05 * region.sr)
+        region.data,
+        region.sw,
+        region.ch,
+        n_samples_analysis_window=int(0.05 * region.sr),
     )
     threshold = estimate_energy_threshold(
         energies, method="percentile", percentile=20.0, margin=9.0

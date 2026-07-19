@@ -152,17 +152,24 @@ _AUTO_THRESHOLD_LIVE_INPUT_ERROR = (
 
 
 def _chunked_frame_energies(
-    source, frame_samples, use_channel, max_bytes, seconds_per_chunk=10.0
+    source,
+    n_samples_analysis_window,
+    use_channel,
+    max_bytes,
+    seconds_per_chunk=10.0,
 ):
     """Compute per-window energies of `source` by reading large,
     window-aligned chunks (low memory, few I/O calls). Any final partial
     window is ignored."""
     sample_size = source.sample_width * source.channels
-    frame_bytes = frame_samples * sample_size
+    frame_bytes = n_samples_analysis_window * sample_size
     frames_per_chunk = max(
-        1, round(seconds_per_chunk * source.sampling_rate / frame_samples)
+        1,
+        round(
+            seconds_per_chunk * source.sampling_rate / n_samples_analysis_window
+        ),
     )
-    chunk_samples = frames_per_chunk * frame_samples
+    chunk_samples = frames_per_chunk * n_samples_analysis_window
     energies = []
     leftover = b""
     bytes_read = 0
@@ -184,7 +191,7 @@ def _chunked_frame_energies(
                         data[:usable],
                         source.sample_width,
                         source.channels,
-                        frame_samples,
+                        n_samples_analysis_window,
                         use_channel,
                     )
                 )
@@ -221,8 +228,8 @@ def _read_input_for_auto_threshold(input, analysis_window, params):
     if isinstance(source, (AudioDeviceSource, StdinAudioSource)):
         raise ValueError(_AUTO_THRESHOLD_LIVE_INPUT_ERROR)
 
-    frame_samples = int(analysis_window * source.sampling_rate)
-    if frame_samples == 0:
+    n_samples_analysis_window = int(analysis_window * source.sampling_rate)
+    if n_samples_analysis_window == 0:
         err_msg = "Too small block_dur ({0:f}) for sampling rate ({1}). "
         err_msg += "block_dur should cover at least one sample "
         err_msg += "(i.e. 1/{1})"
@@ -247,7 +254,7 @@ def _read_input_for_auto_threshold(input, analysis_window, params):
             data,
             source.sample_width,
             source.channels,
-            frame_samples,
+            n_samples_analysis_window,
             use_channel,
         )
         return source, energies
@@ -256,7 +263,7 @@ def _read_input_for_auto_threshold(input, analysis_window, params):
         # seekable PCM file (large_file=True): chunked estimation pass,
         # the file is then re-read from disk during tokenization
         energies = _chunked_frame_energies(
-            source, frame_samples, use_channel, max_bytes
+            source, n_samples_analysis_window, use_channel, max_bytes
         )
         return source, energies
 
@@ -273,7 +280,11 @@ def _read_input_for_auto_threshold(input, analysis_window, params):
     finally:
         source.close()
     energies = compute_frame_energies(
-        data, source.sample_width, source.channels, frame_samples, use_channel
+        data,
+        source.sample_width,
+        source.channels,
+        n_samples_analysis_window,
+        use_channel,
     )
     buffer_source = BufferAudioSource(
         data, source.sampling_rate, source.sample_width, source.channels
@@ -370,9 +381,13 @@ def _calibrate_on_reader(source, method, calibration_dur, floor, use_channel):
         raise ValueError(
             "No audio data could be read for energy threshold calibration"
         )
-    frame_samples = int(source.block_dur * source.sr)
+    n_samples_analysis_window = int(source.block_dur * source.sr)
     energies = compute_frame_energies(
-        b"".join(blocks), source.sw, source.ch, frame_samples, use_channel
+        b"".join(blocks),
+        source.sw,
+        source.ch,
+        n_samples_analysis_window,
+        use_channel,
     )
     if method is None:
         method = DEFAULT_THRESHOLD_METHOD

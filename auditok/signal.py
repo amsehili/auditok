@@ -116,6 +116,11 @@ def calculate_energy(x, agg_fn=None):
     `to_array` for all sample widths), so energy values are comparable across
     storage formats.
 
+    For multi-dimensional input the average runs along the **last** axis, so
+    an array of shape ``(n_windows, n_samples_analysis_window)`` yields one
+    energy value per analysis window (this is how `compute_frame_energies`
+    computes per-window energies), never one value per sample.
+
     Parameters
     ----------
     x : array
@@ -141,7 +146,7 @@ def calculate_energy(x, agg_fn=None):
 
 
 def compute_frame_energies(
-    data, sample_width, channels, frame_samples, use_channel=None
+    data, sample_width, channels, n_samples_analysis_window, use_channel=None
 ):
     """Compute the energy of each analysis window of `data`, vectorized.
 
@@ -159,8 +164,9 @@ def compute_frame_energies(
         The sample width (in bytes) of each audio sample.
     channels : int
         The number of audio channels.
-    frame_samples : int
-        Number of samples per analysis window.
+    n_samples_analysis_window : int
+        Number of samples per analysis window (i.e.,
+        ``analysis_window * sampling_rate``), **not** the sampling rate.
     use_channel : {None, "any", "mix", "avg", "average"} or int
         Channel used for energy computation, with the same semantics as in
         :class:`auditok.util.AudioEnergyValidator`.
@@ -169,15 +175,15 @@ def compute_frame_energies(
     -------
     numpy.ndarray
         1-D array of window energies, of length
-        ``len(samples) // frame_samples``.
+        ``len(samples) // n_samples_analysis_window``.
     """
 
     arr = to_array(data, sample_width, channels)
-    n_frames = arr.shape[-1] // frame_samples
+    n_frames = arr.shape[-1] // n_samples_analysis_window
     if n_frames == 0:
         return np.empty(0, dtype=np.float64)
-    arr = arr[..., : n_frames * frame_samples]
-    arr = arr.reshape(channels, n_frames, frame_samples)
+    arr = arr[..., : n_frames * n_samples_analysis_window]
+    arr = arr.reshape(channels, n_frames, n_samples_analysis_window)
     if channels == 1:
         return calculate_energy(arr[0])
     if use_channel in (None, "any"):
