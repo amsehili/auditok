@@ -95,6 +95,26 @@ DEFAULT_NB_CHANNELS = 1
 
 
 def check_audio_data(data, sample_width, channels):
+    if not isinstance(data, bytes):
+        err_msg = "Audio data must be bytes, not '{}'.".format(
+            type(data).__name__
+        )
+        if isinstance(data, str):
+            err_msg += (
+                " To load audio from a file, use `auditok.load(filename)`."
+            )
+        elif hasattr(data, "tobytes"):
+            # e.g., a numpy array: accepting it would corrupt every bytes
+            # operation downstream (`data * n` multiplies amplitudes,
+            # `len(data)` counts samples instead of bytes)
+            err_msg += (
+                " Convert with `data.tobytes()` (for a numpy array, use a "
+                "dtype consistent with `sample_width`: int16 for "
+                "sample_width=2, float32 for sample_width=4)."
+            )
+        elif isinstance(data, bytearray):
+            err_msg += " Convert with `bytes(data)`."
+        raise TypeError(err_msg)
     sample_size_bytes = int(sample_width * channels)
     nb_samples = len(data) // sample_size_bytes
     if nb_samples * sample_size_bytes != len(data):

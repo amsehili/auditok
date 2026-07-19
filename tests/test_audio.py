@@ -1936,6 +1936,26 @@ def test_creation_invalid_data_exception():
     )
 
 
+@pytest.mark.parametrize(
+    "data, hint",
+    [
+        ("ABCD", "auditok.load"),  # str
+        (np.zeros(160, dtype=np.int16), "tobytes"),  # numpy_array
+        (bytearray(b"ABCD"), "bytes(data)"),  # bytearray
+    ],
+    ids=["str", "numpy_array", "bytearray"],
+)
+def test_creation_non_bytes_data_exception(data, hint):
+    """Non-bytes data must be rejected at creation. A str would crash
+    later at numpy conversion; a numpy array would silently corrupt bytes
+    semantics (`region * 2` would double amplitudes, not duration, and
+    `len(data)` counts samples, not bytes)."""
+    with pytest.raises(TypeError) as type_err:
+        _ = AudioRegion(data, sampling_rate=8000, sample_width=2, channels=1)
+    assert "Audio data must be bytes" in str(type_err.value)
+    assert hint in str(type_err.value)
+
+
 def test_repr_html():
     """_repr_html_ returns an HTML audio player for Jupyter notebooks."""
     import base64

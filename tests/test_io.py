@@ -67,6 +67,23 @@ def test_check_audio_data(data, sample_width, channels, valid):
 
 
 @pytest.mark.parametrize(
+    "data",
+    [
+        "\0" * 160,  # str
+        np.zeros(160, dtype=np.int16),  # numpy_array
+        bytearray(160),  # bytearray
+        [0] * 160,  # list
+        None,  # none
+    ],
+    ids=["str", "numpy_array", "bytearray", "list", "none"],
+)
+def test_check_audio_data_non_bytes(data):
+    with pytest.raises(TypeError) as type_err:
+        check_audio_data(data, sample_width=2, channels=1)
+    assert "Audio data must be bytes" in str(type_err.value)
+
+
+@pytest.mark.parametrize(
     "filename, audio_format, expected",
     [
         ("filename.wav", "wav", "wav"),  # extension_and_format_same
