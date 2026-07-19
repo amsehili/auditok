@@ -33,6 +33,13 @@ multi-channel audio, and runs from a few lines of Python or the command line.
 
 Full documentation is available on `Read the Docs <https://auditok.readthedocs.io/en/latest/>`_.
 
+Want to try it without installing anything? The `browser playground
+<https://amsehili.github.io/auditok.js/>`_ runs the same detection engine —
+same parameters, same dB scale — on your own files or microphone, entirely
+client-side. It is built on `auditok.js
+<https://github.com/amsehili/auditok.js>`_, the JavaScript port of this
+library.
+
 .. contents:: Contents
     :depth: 2
     :backlinks: none
