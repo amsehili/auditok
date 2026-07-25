@@ -19,7 +19,7 @@ from auditok import (
     split_and_join_with_silence,
 )
 from auditok.audio import _duration_to_nb_windows, _read_offline
-from auditok.io import get_audio_source
+from auditok.io import BufferAudioSource, get_audio_source
 from auditok.signal import to_array
 from auditok.util import AudioReader
 
@@ -84,6 +84,52 @@ def test_load(skip, max_read, channels):
             to_read = round(max_read * sampling_rate * sample_width * channels)
         expected = fp.read(to_read)
     assert bytes(region) == expected
+
+
+@pytest.mark.parametrize(
+    "skip, max_read",
+    [
+        (0, None),  # no_skip_read_all
+        (2, None),  # skip_2_read_all
+        (2, 3),  # skip_2_read_3
+    ],
+    ids=[
+        "no_skip_read_all",
+        "skip_2_read_all",
+        "skip_2_read_3",
+    ],
+)
+def test_load_from_audio_source(skip, max_read):
+    sampling_rate = 10
+    sample_width = 2
+    filename = "tests/data/test_split_10HZ_mono.raw"
+    with open(filename, "rb") as fp:
+        data = fp.read()
+    source = BufferAudioSource(data, sampling_rate, sample_width, 1)
+    region = load(source, skip=skip, max_read=max_read)
+    start = round(skip * sampling_rate) * sample_width
+    if max_read is None:
+        expected = data[start:]
+    else:
+        stop = start + round(max_read * sampling_rate) * sample_width
+        expected = data[start:stop]
+    assert bytes(region) == expected
+    assert region.sr == sampling_rate
+    assert region.sw == sample_width
+    assert region.ch == 1
+
+
+@pytest.mark.parametrize(
+    "as_source", [False, True], ids=["filename", "audio_source"]
+)
+def test_load_skip_beyond_end(as_source):
+    input = "tests/data/test_split_10HZ_mono.raw"
+    if as_source:
+        with open(input, "rb") as fp:
+            input = BufferAudioSource(fp.read(), 10, 2, 1)
+    region = load(input, skip=9999, sr=10, sw=2, ch=1)
+    assert bytes(region) == b""
+    assert region.duration == 0
 
 
 @pytest.mark.parametrize(

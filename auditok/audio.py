@@ -1282,9 +1282,9 @@ def _read_offline(input, skip=0, max_read=None, **kwargs):
 
     Parameters
     ----------
-    input : str or bytes
-        Path to an audio file (if str) or a bytes object representing raw
-        audio data.
+    input : str, bytes, or AudioSource
+        Path to an audio file (if str), a bytes object representing raw
+        audio data, or an `AudioSource` to read from directly.
     skip : float, optional, default=0
         Amount of data to skip from the beginning of the audio source, in
         seconds.
@@ -1309,7 +1309,8 @@ def _read_offline(input, skip=0, max_read=None, **kwargs):
     data = audio_source.read(max_read)
     audio_source.close()
     return (
-        data,
+        # `read` returns None at end of stream (e.g., `skip` >= input duration)
+        data if data is not None else b"",
         audio_source.sampling_rate,
         audio_source.sample_width,
         audio_source.channels,

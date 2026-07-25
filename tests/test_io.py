@@ -823,6 +823,14 @@ def test_get_audio_source(input, expected_type, extra_args):
     )
 
 
+def test_get_audio_source_audio_source_passthrough():
+    source = BufferAudioSource(
+        b"\0" * 1600, sampling_rate=16000, sample_width=2, channels=1
+    )
+    assert get_audio_source(source) is source
+    assert get_audio_source(source, sr=8000, sw=1, ch=2) is source
+
+
 def test_get_audio_source_alias_prams():
     audio_source = get_audio_source(b"0" * 1600, sr=16000, sw=2, ch=1)
     assert audio_source.sampling_rate == 16000, (

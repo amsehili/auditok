@@ -1,6 +1,17 @@
 auditok Changelog
 =================
 
+Version 0.5.2
+-------------
+
+- Fix ``load`` with an ``AudioSource`` input: the docstring promised it
+  but the source fell through to the file-loading path and raised a
+  ``TypeError``. ``split`` already honored an ``AudioSource``; now both
+  do, and ``get_audio_source`` returns a passed ``AudioSource`` as-is.
+
+- ``load`` with ``skip`` beyond the end of the input now returns an
+  empty (zero-duration) ``AudioRegion`` instead of raising an error.
+
 Version 0.5.1
 -------------
 

@@ -1093,7 +1093,7 @@ def player_for(source: Any) -> AudioDevicePlayer:
 
 
 def get_audio_source(
-    input: str | bytes | None = None, **kwargs: Any
+    input: str | bytes | AudioSource | None = None, **kwargs: Any
 ) -> AudioSource:
     """
     Create and return an `AudioSource` based on the specified input.
@@ -1104,10 +1104,11 @@ def get_audio_source(
 
     Parameters
     ----------
-    input : str, bytes, "-", or None, optional
+    input : str, bytes, AudioSource, "-", or None, optional
         The source to read audio data from. Possible values are:
         - `str`: Path to a valid audio file.
         - `bytes`: Raw audio data.
+        - `AudioSource`: Returned as-is, ignoring `kwargs`.
         - "-": Read raw data from standard input.
         - None (default): Read audio data from the microphone using sounddevice.
     kwargs : dict, optional
@@ -1126,6 +1127,9 @@ def get_audio_source(
         An audio source created based on the specified input and audio
         parameters.
     """
+
+    if isinstance(input, AudioSource):
+        return input
 
     if input == "-":
         return StdinAudioSource(*_get_audio_parameters(kwargs))
